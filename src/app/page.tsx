@@ -10,7 +10,7 @@ export default function Page() {
 
   return (
     <main className="min-h-screen bg-[#0b0b12] text-zinc-100 flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-md shadow-[0_10px_40px_rgba(0,0,0,.45)]">
+      <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-white/3 backdrop-blur-md shadow-[0_10px_40px_rgba(0,0,0,.45)]">
         <header className="flex items-center gap-4 p-6 pb-2">
           <div className="w-16 h-16 rounded-xl grid place-items-center text-white font-black text-xl
                           shadow-[0_10px_30px_rgba(139,92,246,.35)]"
@@ -30,7 +30,7 @@ export default function Page() {
         <section className="grid gap-3 p-6 pt-3">
           {links.map((l) => (
             <a key={l.href} href={l.href} target="_blank" rel="noreferrer"
-               className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-4
+               className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/2 px-4 py-4
                           transition hover:-translate-y-0.5 hover:border-fuchsia-400/40">
               <span className="text-lg">{l.emoji}</span>
               <div className="flex-1">
