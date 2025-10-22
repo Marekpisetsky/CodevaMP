@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b5cf6"></stop>
+      <stop offset="1" stop-color="#22d3ee"></stop>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#0b0b12"></rect>
+  <circle cx="200" cy="315" r="140" fill="url(#g)"></circle>
+  <text x="200" y="330" text-anchor="middle" font-family="Inter,Segoe UI,Arial" font-weight="900" font-size="96" fill="white">CV</text>
+  <text x="380" y="300" font-family="Inter,Segoe UI,Arial" font-weight="800" font-size="60" fill="#e5e7eb">CodevaMP</text>
+  <text x="380" y="360" font-family="Inter,Segoe UI,Arial" font-size="32" fill="#9ca3af">
+    Gamer chill · Retos y tutoriales · Únete a la familia 💜
+  </text>
+</svg>
