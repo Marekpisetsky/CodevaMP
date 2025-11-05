@@ -106,6 +106,20 @@ export default function JuegosPage() {
             <p className="text-sm text-zinc-300">
               Selecciona tu rol, identifica amenazas enemigas y coordina sinergias con tu escuadra. Todo el flujo de trabajo ahora vive dentro de Juegos, listo para usarse durante scrims o ranked.
             </p>
+            <nav className="flex flex-wrap gap-2 text-xs">
+              <a
+                href="#mlbb-herramientas"
+                className="inline-flex items-center gap-2 rounded-full border border-fuchsia-400/40 bg-fuchsia-400/10 px-3 py-1 font-semibold text-fuchsia-100 transition hover:border-fuchsia-300/60 hover:bg-fuchsia-400/20"
+              >
+                Herramientas MLBB
+              </a>
+              <a
+                href="#mlbb-agenda"
+                className="inline-flex items-center gap-2 rounded-full border border-cyan-400/40 bg-cyan-400/10 px-3 py-1 font-semibold text-cyan-100 transition hover:border-cyan-300/60 hover:bg-cyan-400/20"
+              >
+                Agenda de práctica
+              </a>
+            </nav>
           </div>
           <div className="flex flex-col items-start gap-3 text-sm text-zinc-200">
             <Link
@@ -123,7 +137,7 @@ export default function JuegosPage() {
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[0.95fr,1.05fr] lg:items-start">
+        <div className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr] xl:items-start">
           <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
               {mlbbHighlights.map((item) => (
@@ -137,7 +151,7 @@ export default function JuegosPage() {
               ))}
             </div>
 
-            <div className="grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-6">
+            <section id="mlbb-agenda" className="grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-6">
               <h3 className="text-lg font-semibold text-white">
                 Rutina semanal recomendada
               </h3>
@@ -156,10 +170,22 @@ export default function JuegosPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </section>
           </div>
 
-          <MobileLegendsPicker />
+          <section id="mlbb-herramientas" className="space-y-4">
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+              <span className="inline-flex items-center rounded-full border border-indigo-400/40 bg-indigo-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-200">
+                Herramientas MLBB
+              </span>
+              <h3 className="mt-4 text-xl font-semibold text-white">Selector táctico y planificador de picks</h3>
+              <p className="mt-2 text-sm text-zinc-300">
+                Accede al Mobile Legends Picker renovado: ahora muestra puntuaciones comparativas, alertas de composición y un plan de juego listo para ejecutar durante tus partidas.
+              </p>
+            </div>
+
+            <MobileLegendsPicker />
+          </section>
         </div>
       </section>
 

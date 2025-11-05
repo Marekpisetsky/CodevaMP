@@ -14,6 +14,14 @@ type HeroRole = "Tank" | "Fighter" | "Assassin" | "Mage" | "Marksman" | "Support
 
 type Lane = "Gold" | "EXP" | "Mid" | "Jungle" | "Roam";
 
+type HeroMetrics = {
+  survivability: number;
+  damageSpike: number;
+  objectiveControl: number;
+  teamUtility: number;
+  scaling: number;
+};
+
 type Hero = {
   name: string;
   role: HeroRole;
@@ -24,6 +32,9 @@ type Hero = {
   countersHeroes: string[];
   synergyHeroes: string[];
   synergy: string;
+  playPattern: string;
+  macroFocus: string;
+  metrics: HeroMetrics;
 };
 
 const enemyTraits: { id: EnemyTrait; label: string; description: string }[] = [
@@ -46,6 +57,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Fanny", "Lancelot", "Ling", "Claude"],
     synergyHeroes: ["Pharsa", "Yve", "Lylia", "Brody"],
     synergy: "Caza asesinos móviles y permite que tus magos canalicen daño a salvo.",
+    playPattern: "Marca al jungla enemigo, corta dashes con Bouncing Ball y fuerza Tyrant's Rage sobre objetivos clave.",
+    macroFocus: "Asegura visión alrededor de tortuga y lord, zonificando entradas con tu cuerpo y control.",
+    metrics: {
+      survivability: 5,
+      damageSpike: 3,
+      objectiveControl: 4,
+      teamUtility: 5,
+      scaling: 3,
+    },
   },
   {
     name: "Lolita",
@@ -57,6 +77,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Beatrix", "Brody", "Claude", "Pharsa"],
     synergyHeroes: ["Brody", "Beatrix", "Claude", "Wanwan"],
     synergy: "Protege tiradores estáticos y devuelve daño masivo con el Noumenon Blast.",
+    playPattern: "Mantén cargado el escudo para negar poke y castiga engages con flicker + ultimate sorpresivo.",
+    macroFocus: "Juega alrededor de tu tirador: rota temprano a Gold y acompaña inicios de objetivos mayores.",
+    metrics: {
+      survivability: 4,
+      damageSpike: 3,
+      objectiveControl: 4,
+      teamUtility: 5,
+      scaling: 4,
+    },
   },
   {
     name: "Martis",
@@ -68,6 +97,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Fredrinn", "Tigreal", "Atlas", "Esmeralda"],
     synergyHeroes: ["Lancelot", "Pharsa", "Yve", "Claude"],
     synergy: "Se mantiene en pelea prolongada y remata objetivos con su ultimate.",
+    playPattern: "Spamea Mortal Coil para reposicionarte, cancela controles y remata con Decimation en ejecuciones seguras.",
+    macroFocus: "Empuja side lane tras ganar presión y rota al mid con ventaja de vida para forzar objetivos.",
+    metrics: {
+      survivability: 4,
+      damageSpike: 4,
+      objectiveControl: 3,
+      teamUtility: 3,
+      scaling: 4,
+    },
   },
   {
     name: "Paquito",
@@ -79,6 +117,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Martis", "Esmeralda", "Benedetta", "Fredrinn"],
     synergyHeroes: ["Lancelot", "Angela", "Diggie"],
     synergy: "Castiga frontales blandos y mantiene presión constante en side lanes.",
+    playPattern: "Acumula stacks con combos cortos y entra con Knockout Strike cuando puedas forzar 100% del burst.",
+    macroFocus: "Desplaza la pelea a tu línea tras limpiar oleadas y busca flanquear por la retaguardia en teamfights.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 5,
+      objectiveControl: 3,
+      teamUtility: 2,
+      scaling: 4,
+    },
   },
   {
     name: "Lancelot",
@@ -90,6 +137,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Estes", "Esmeralda", "Brody", "Wanwan"],
     synergyHeroes: ["Diggie", "Angela", "Khufra", "Atlas"],
     synergy: "Aprovecha gaps creados por tu roamer para eliminar backline de un combo.",
+    playPattern: "Resetea Thorned Rose tras cada dash, invade cuando tengas púas disponibles y guarda Phantom Execution defensivo.",
+    macroFocus: "Mantén presión en campamentos enemigos y forzad pick-offs antes de cada objetivo neutral.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 5,
+      objectiveControl: 4,
+      teamUtility: 3,
+      scaling: 3,
+    },
   },
   {
     name: "Fanny",
@@ -101,6 +157,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Beatrix", "Claude", "Ling", "Wanwan"],
     synergyHeroes: ["Lolita", "Diggie", "Angela"],
     synergy: "Domina cielos abiertos cuando tu equipo controla visión y energías.",
+    playPattern: "Traza rutas dobles para entrar y salir, administra energía con kills rápidas y evita zonas con CC pesado.",
+    macroFocus: "Divide el mapa presionando líneas abiertas y cierra peleas antes de quedarte sin recursos.",
+    metrics: {
+      survivability: 2,
+      damageSpike: 5,
+      objectiveControl: 3,
+      teamUtility: 2,
+      scaling: 3,
+    },
   },
   {
     name: "Ling",
@@ -112,6 +177,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Beatrix", "Yve", "Lylia", "Claude"],
     synergyHeroes: ["Diggie", "Khufra", "Angela"],
     synergy: "Divide el mapa y fuerza errores con llegadas inesperadas desde los muros.",
+    playPattern: "Permanece en muros para cargar energía, cae sobre backline y usa Tempest of Blades para reposicionarte.",
+    macroFocus: "Mantén oleadas laterales avanzadas y busca steals o picks cuando el enemigo rota mal.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 4,
+      objectiveControl: 4,
+      teamUtility: 2,
+      scaling: 4,
+    },
   },
   {
     name: "Lylia",
@@ -123,6 +197,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Valentina", "Esmeralda", "Martis", "Claude"],
     synergyHeroes: ["Khufra", "Atlas", "Tigreal", "Brody"],
     synergy: "Empuja líneas rápido y habilita rotaciones agresivas.",
+    playPattern: "Coloca sombras para zonas seguras, limpia wave con Bombs y reserva Black Shoes como botón de reset.",
+    macroFocus: "Presiona mid constantemente y acompaña al jungla en invasiones con movilidad disponible.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 4,
+      objectiveControl: 3,
+      teamUtility: 3,
+      scaling: 3,
+    },
   },
   {
     name: "Yve",
@@ -134,6 +217,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Ling", "Fanny", "Gusion", "Benedetta"],
     synergyHeroes: ["Khufra", "Atlas", "Tigreal", "Martis"],
     synergy: "Controla teamfights largas con su Starfield y pokea a distancia.",
+    playPattern: "Configura Starfield en choke points y alterna líneas y explosiones para mantener a raya engages.",
+    macroFocus: "Acompaña a tu roamer para colocar visión y controla objetivos forzando peleas en zonas cerradas.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 4,
+      objectiveControl: 4,
+      teamUtility: 4,
+      scaling: 4,
+    },
   },
   {
     name: "Pharsa",
@@ -145,6 +237,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Claude", "Wanwan", "Brody", "Valentina"],
     synergyHeroes: ["Khufra", "Atlas", "Diggie"],
     synergy: "Castiga posiciones malas con ultimate global y disuade engages.",
+    playPattern: "Abusa de la forma de ave para rotar, inicia Fethered Air Strike desde fog y remata con burst distante.",
+    macroFocus: "Juega alrededor de mid y oro, usando la ultimate para defender o castigar objetivos neutrales.",
+    metrics: {
+      survivability: 2,
+      damageSpike: 4,
+      objectiveControl: 4,
+      teamUtility: 3,
+      scaling: 3,
+    },
   },
   {
     name: "Brody",
@@ -156,6 +257,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Wanwan", "Claude", "Esmeralda", "Gusion"],
     synergyHeroes: ["Lolita", "Diggie", "Khufra"],
     synergy: "Pega fuerte en mid game y castiga engages prematuros.",
+    playPattern: "Abusa de combos básicos + skill 1, controla distancias con stun y busca ultimate cuando tengas 4 marcas.",
+    macroFocus: "Prioriza la primera torre de Oro, rota al mid tras minuto 8 para derrumbar estructuras con tu burst.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 4,
+      objectiveControl: 3,
+      teamUtility: 2,
+      scaling: 4,
+    },
   },
   {
     name: "Beatrix",
@@ -167,6 +277,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Brody", "Claude", "Wanwan", "Esmeralda"],
     synergyHeroes: ["Lolita", "Diggie", "Estes", "Claude"],
     synergy: "Adapta armas según la composición y aporta burst desde lejos.",
+    playPattern: "Alterna armas para limpiar wave segura y ejecuta combos Nibiru + Renner para objetivos clave.",
+    macroFocus: "Mantén control de la línea de oro y rota con Renner para amenazar snipes en teamfights.",
+    metrics: {
+      survivability: 2,
+      damageSpike: 5,
+      objectiveControl: 3,
+      teamUtility: 2,
+      scaling: 4,
+    },
   },
   {
     name: "Claude",
@@ -178,6 +297,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Estes", "Esmeralda", "Brody", "Diggie"],
     synergyHeroes: ["Angela", "Diggie", "Khufra"],
     synergy: "Se potencia con peel y control, explotando con su Blazing Duet.",
+    playPattern: "Gestiona stacks con Art of Thievery, limpia rápido y entra con Blazing Duet tras un buen control aliado.",
+    macroFocus: "Farmea hasta items clave y busca colapsos coordinados sobre la backline con movilidad de Battle Mirror.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 4,
+      objectiveControl: 3,
+      teamUtility: 3,
+      scaling: 5,
+    },
   },
   {
     name: "Wanwan",
@@ -189,6 +317,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Esmeralda", "Fredrinn", "Tigreal", "Atlas"],
     synergyHeroes: ["Diggie", "Lolita", "Estes"],
     synergy: "Rompe frontales cuando tu equipo puede revelar y marcar objetivos.",
+    playPattern: "Marca a enemigos con ataques básicos, activa ultimate tras romper debilidades y usa crossbow para limpiar.",
+    macroFocus: "Mantén visión de flancos, espera controles aliados y utiliza tu movilidad para rematar objetivos extendidos.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 4,
+      objectiveControl: 3,
+      teamUtility: 2,
+      scaling: 5,
+    },
   },
   {
     name: "Estes",
@@ -200,6 +337,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Lancelot", "Ling", "Gusion", "Fanny"],
     synergyHeroes: ["Brody", "Beatrix", "Wanwan", "Claude"],
     synergy: "Brilla en composiciones de teamfight 5v5 y front to back.",
+    playPattern: "Mantén lazos activos sobre tu tirador, usa ultimate para contrarrestar engages y coloca slow fields.",
+    macroFocus: "Reúne al equipo en objetivos mayores y evita que se separen demasiado de tu aura de curación.",
+    metrics: {
+      survivability: 4,
+      damageSpike: 2,
+      objectiveControl: 3,
+      teamUtility: 5,
+      scaling: 4,
+    },
   },
   {
     name: "Diggie",
@@ -211,6 +357,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Khufra", "Atlas", "Tigreal", "Gusion"],
     synergyHeroes: ["Lancelot", "Claude", "Fanny", "Wanwan"],
     synergy: "Neutraliza lockdown y otorga libertad a asesinos y tiradores.",
+    playPattern: "Molesta con bombas, guarda Time Journey para negar ultimates clave y protege rutas de escape.",
+    macroFocus: "Acompaña rotaciones agresivas y mantén control de visión con bombas en arbustos críticos.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 2,
+      objectiveControl: 3,
+      teamUtility: 5,
+      scaling: 4,
+    },
   },
   {
     name: "Atlas",
@@ -222,6 +377,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Brody", "Claude", "Wanwan", "Paquito"],
     synergyHeroes: ["Yve", "Pharsa", "Lylia", "Claude"],
     synergy: "Engage letal cuando tu equipo sigue con daño en área.",
+    playPattern: "Abusa de Perfect Match para entrar, recoge con Fatal Links y combina con flicker para arrastrar múltiples objetivos.",
+    macroFocus: "Coordina engages en espacios cerrados y fuerza purificaciones antes de objetivos críticos.",
+    metrics: {
+      survivability: 4,
+      damageSpike: 3,
+      objectiveControl: 4,
+      teamUtility: 5,
+      scaling: 3,
+    },
   },
   {
     name: "Tigreal",
@@ -233,6 +397,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Gusion", "Fanny", "Lancelot", "Ling"],
     synergyHeroes: ["Yve", "Pharsa", "Brody", "Wanwan"],
     synergy: "Encadena combos sencillos con flicker que cambian peleas.",
+    playPattern: "Engagea con Sacred Hammer + Implosion tras limpiar visión y guarda flicker para sorprender.",
+    macroFocus: "Forma front to back, protege a tus carries y controla entradas a objetivos con tu cuerpo.",
+    metrics: {
+      survivability: 4,
+      damageSpike: 2,
+      objectiveControl: 3,
+      teamUtility: 4,
+      scaling: 3,
+    },
   },
   {
     name: "Angela",
@@ -244,6 +417,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Lancelot", "Gusion", "Paquito", "Benedetta"],
     synergyHeroes: ["Lancelot", "Ling", "Claude", "Wanwan"],
     synergy: "Potencia asesinos hyper con sus buffs y ultimate global.",
+    playPattern: "Mantente cerca de tu carry principal, carga corazones y usa ultimate reactiva para potenciar engages.",
+    macroFocus: "Sincroniza tus rotaciones con el jungla y asegura que siempre tengas objetivo para montar.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 2,
+      objectiveControl: 3,
+      teamUtility: 5,
+      scaling: 4,
+    },
   },
   {
     name: "Esmeralda",
@@ -255,6 +437,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Estes", "Angela", "Pharsa", "Yve"],
     synergyHeroes: ["Diggie", "Claude", "Brody"],
     synergy: "Robusta en peleas largas con escudos casi infinitos.",
+    playPattern: "Alterna absorción de escudos con movilidad constante y entra cuando puedas robar barreras enemigas.",
+    macroFocus: "Mantén presión lateral y corta oleadas para forzar respuestas mientras preparas flancos.",
+    metrics: {
+      survivability: 5,
+      damageSpike: 3,
+      objectiveControl: 3,
+      teamUtility: 3,
+      scaling: 4,
+    },
   },
   {
     name: "Benedetta",
@@ -266,6 +457,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Paquito", "Martis", "Esmeralda", "Brody"],
     synergyHeroes: ["Lancelot", "Ling", "Angela"],
     synergy: "Presiona líneas y aporta control inesperado en peleas.",
+    playPattern: "Carga espadas moviéndote, limpia wave con combos rápidos y busca stuns sorpresivos con Alecto.",
+    macroFocus: "Juega a los flancos, divide mapa y conecta con tu equipo cuando hayas empujado profundo.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 4,
+      objectiveControl: 3,
+      teamUtility: 2,
+      scaling: 4,
+    },
   },
   {
     name: "Gusion",
@@ -277,6 +477,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Estes", "Pharsa", "Yve", "Lylia"],
     synergyHeroes: ["Diggie", "Angela", "Khufra"],
     synergy: "Explota carries blandos con combos rápidos de dagas.",
+    playPattern: "Encadena dagas y ultimate para burst instantáneo, resetea con Sword Spike para reposicionarte.",
+    macroFocus: "Aprovecha ventanas de ultimate disponible para buscar picks antes de objetivos y resets rápidos.",
+    metrics: {
+      survivability: 2,
+      damageSpike: 5,
+      objectiveControl: 3,
+      teamUtility: 2,
+      scaling: 3,
+    },
   },
   {
     name: "Valentina",
@@ -288,6 +497,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Lylia", "Pharsa", "Yve", "Tigreal"],
     synergyHeroes: ["Esmeralda", "Martis", "Atlas"],
     synergy: "Se adapta al draft enemigo copiando ultimates clave.",
+    playPattern: "Roba ultimate valiosa, juega agresivo con cargas de Shadow Strike y asegura experiencia extra.",
+    macroFocus: "Controla mid, roba campamentos con movilidad y replica engages enemigos a tu favor.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 4,
+      objectiveControl: 3,
+      teamUtility: 4,
+      scaling: 4,
+    },
   },
   {
     name: "Fredrinn",
@@ -299,6 +517,15 @@ const heroPool: Hero[] = [
     countersHeroes: ["Lancelot", "Gusion", "Fanny", "Ling"],
     synergyHeroes: ["Yve", "Pharsa", "Brody"],
     synergy: "Genera espacio absorbiendo daño y devolviendo control.",
+    playPattern: "Acumula combos con energía, usa taunts para frenar engages y remata con energía máxima.",
+    macroFocus: "Toma presión en línea, rota lentamente con tu jungla y absorbe recursos enemigos en peleas largas.",
+    metrics: {
+      survivability: 5,
+      damageSpike: 3,
+      objectiveControl: 4,
+      teamUtility: 4,
+      scaling: 4,
+    },
   },
 ];
 
@@ -316,6 +543,37 @@ const roleLabels: Record<RoleOption, string> = {
   Cualquiera: "Flex",
 };
 
+const lanes = ["Gold", "EXP", "Mid", "Jungle", "Roam"] as const;
+
+type LaneOption = Lane | "Todas";
+
+const laneLabels: Record<LaneOption, string> = {
+  Todas: "Todas las líneas",
+  Gold: "Gold · Tirador",
+  EXP: "EXP · Luchador",
+  Mid: "Mid · Mago",
+  Jungle: "Jungla",
+  Roam: "Roam / Soporte",
+};
+
+const traitLabels = enemyTraits.reduce<Record<EnemyTrait, string>>((acc, trait) => {
+  acc[trait.id] = trait.label;
+  return acc;
+}, {} as Record<EnemyTrait, string>);
+
+const heroByName = heroPool.reduce<Record<string, Hero>>((acc, hero) => {
+  acc[hero.name] = hero;
+  return acc;
+}, {});
+
+const metricLabels: Record<keyof HeroMetrics, string> = {
+  survivability: "Supervivencia",
+  damageSpike: "Daño explosivo",
+  objectiveControl: "Objetivos",
+  teamUtility: "Utilidad de equipo",
+  scaling: "Escalado",
+};
+
 const heroOptions = [...heroPool]
   .map((hero) => hero.name)
   .sort((a, b) => a.localeCompare(b, "es"));
@@ -326,13 +584,26 @@ type DraftSide = "enemy" | "ally";
 
 export default function MobileLegendsPicker() {
   const [selectedRole, setSelectedRole] = useState<RoleOption>("Cualquiera");
+  const [selectedLane, setSelectedLane] = useState<LaneOption>("Todas");
   const [activeTraits, setActiveTraits] = useState<EnemyTrait[]>([]);
   const [enemyPicks, setEnemyPicks] = useState<string[]>([]);
   const [allyPicks, setAllyPicks] = useState<string[]>([]);
 
   const suggestions = useMemo(() => {
+    const allyInfo = allyPicks.reduce(
+      (acc, pick) => {
+        const hero = heroByName[pick];
+        if (!hero) return acc;
+        acc.roles[hero.role] = (acc.roles[hero.role] ?? 0) + 1;
+        acc.lanes[hero.lane] = (acc.lanes[hero.lane] ?? 0) + 1;
+        return acc;
+      },
+      { roles: {} as Partial<Record<HeroRole, number>>, lanes: {} as Partial<Record<Lane, number>> }
+    );
+
     const candidates = heroPool
       .filter((hero) => (selectedRole === "Cualquiera" ? true : hero.role === selectedRole))
+      .filter((hero) => (selectedLane === "Todas" ? true : hero.lane === selectedLane))
       .filter((hero) => !enemyPicks.includes(hero.name) && !allyPicks.includes(hero.name));
 
     const scored = candidates
@@ -341,29 +612,104 @@ export default function MobileLegendsPicker() {
         const enemyHighlights = enemyPicks.filter((pick) => hero.countersHeroes.includes(pick));
         const allyHighlights = allyPicks.filter((pick) => hero.synergyHeroes.includes(pick));
 
-        const baseScore = activeTraits.length === 0 && enemyPicks.length === 0 ? 1 : 0;
-        const roleBonus = selectedRole === "Cualquiera" ? 0.5 : 1;
+        const countersScore = traitMatches.length * 12 + enemyHighlights.length * 18;
+        const synergyScore = allyHighlights.length * 10;
+        const metricsScore =
+          hero.metrics.survivability * 2.1 +
+          hero.metrics.damageSpike * 2.4 +
+          hero.metrics.objectiveControl * 2.2 +
+          hero.metrics.teamUtility * 2.5 +
+          hero.metrics.scaling * 1.7;
+        const laneFocusScore =
+          (selectedLane === "Todas" ? 10 : hero.lane === selectedLane ? 22 : 6) +
+          (selectedRole === "Cualquiera" ? 8 : hero.role === selectedRole ? 18 : 9);
+        const readinessBonus =
+          activeTraits.length === 0 && enemyPicks.length === 0 && allyPicks.length === 0 ? 10 : 0;
 
-        const score =
-          traitMatches.length * 2.2 +
-          enemyHighlights.length * 3.4 +
-          allyHighlights.length * 1.5 +
-          roleBonus +
-          baseScore;
+        const rawTotal = countersScore + synergyScore + metricsScore + laneFocusScore + readinessBonus;
+
+        const roleMultiplier =
+          allyInfo.roles[hero.role] && allyInfo.roles[hero.role]! > 0
+            ? Math.max(0.5, 1 - (allyInfo.roles[hero.role]! * 0.35))
+            : 1;
+        const laneMultiplier =
+          allyInfo.lanes[hero.lane] && allyInfo.lanes[hero.lane]! > 0
+            ? Math.max(0.55, 1 - allyInfo.lanes[hero.lane]! * 0.3)
+            : 1;
+        const disciplineMultiplier = roleMultiplier * laneMultiplier;
+
+        const finalScore = rawTotal * disciplineMultiplier;
+
+        const breakdown = [
+          { label: "Respuesta al enemigo", value: countersScore },
+          { label: "Sinergia aliada", value: synergyScore },
+          { label: "Plan macro", value: metricsScore },
+          { label: "Alineación de rol", value: laneFocusScore },
+        ];
+
+        const planSegments = [hero.playPattern];
+        if (traitMatches.length > 0) {
+          planSegments.push(
+            `Tu kit responde a ${
+              traitMatches.length > 1 ? "estas amenazas" : "esta amenaza"
+            }: ${traitMatches.map((trait) => traitLabels[trait]).join(", ")}.`
+          );
+        }
+        if (enemyHighlights.length > 0) {
+          planSegments.push(`Castiga a ${enemyHighlights.join(", ")} cuando busquen iniciarte.`);
+        }
+        if (allyHighlights.length > 0) {
+          planSegments.push(`Sincroniza combos con ${allyHighlights.join(", ")} para acelerar fights.`);
+        }
+        planSegments.push(hero.macroFocus);
+
+        const allyRoleCount = allyInfo.roles[hero.role] ?? 0;
+        const allyLaneCount = allyInfo.lanes[hero.lane] ?? 0;
+        const warnings: string[] = [];
+        if (disciplineMultiplier < 0.95) {
+          warnings.push(
+            `Tu equipo ya cuenta con ${allyRoleCount} ${hero.role.toLowerCase()}${
+              allyRoleCount === 1 ? "" : "s"
+            }.`
+          );
+        }
+        if (allyLaneCount > 0 && (selectedLane === "Todas" || selectedLane === hero.lane)) {
+          warnings.push(
+            `La línea ${hero.lane} ya tiene ${allyLaneCount} pieza${allyLaneCount === 1 ? "" : "s"} ocupando ese rol.`
+          );
+        }
+        const compositionWarning =
+          warnings.length > 0 ? `${warnings.join(" ")} Evalúa flexear o ajustar tu build.` : undefined;
 
         return {
           hero,
           traitMatches,
           enemyHighlights,
           allyHighlights,
-          score,
+          score: finalScore,
+          breakdown,
+          plan: planSegments.join(" "),
+          compositionWarning,
         };
       })
       .filter((entry) => entry.score > 0)
       .sort((a, b) => b.score - a.score);
 
-    return scored.slice(0, 5);
-  }, [activeTraits, allyPicks, enemyPicks, selectedRole]);
+    const maxScore = scored[0]?.score ?? 0;
+
+    return scored.slice(0, 5).map((entry) => {
+      const totalBreakdown = entry.breakdown.reduce((acc, item) => acc + item.value, 0);
+      const breakdownWithPercent = entry.breakdown.map((item) => ({
+        ...item,
+        percent: totalBreakdown > 0 ? Math.round((item.value / totalBreakdown) * 100) : 0,
+      }));
+      return {
+        ...entry,
+        relativeScore: maxScore > 0 ? Math.round((entry.score / maxScore) * 100) : 0,
+        breakdown: breakdownWithPercent,
+      };
+    });
+  }, [activeTraits, allyPicks, enemyPicks, selectedLane, selectedRole]);
 
   const toggleTrait = (trait: EnemyTrait) => {
     setActiveTraits((current) =>
@@ -389,6 +735,10 @@ export default function MobileLegendsPicker() {
   const renderDraftList = (side: DraftSide) => {
     const picks = side === "enemy" ? enemyPicks : allyPicks;
     const label = side === "enemy" ? "Enemigo" : "Aliado";
+    const chipColors =
+      side === "enemy"
+        ? "border-rose-400/40 bg-rose-400/20 text-rose-100"
+        : "border-emerald-400/40 bg-emerald-400/20 text-emerald-100";
 
     return (
       <div className="space-y-2">
@@ -413,13 +763,13 @@ export default function MobileLegendsPicker() {
               {picks.map((pick) => (
                 <li
                   key={`${side}-${pick}`}
-                  className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1"
+                  className={`flex items-center gap-1 rounded-full border px-3 py-1 text-white ${chipColors}`}
                 >
                   <span>{pick}</span>
                   <button
                     type="button"
                     onClick={() => handleRemovePick(side, pick)}
-                    className="text-zinc-400 transition hover:text-white"
+                    className="text-white/70 transition hover:text-white"
                     aria-label={`Quitar ${pick}`}
                   >
                     ×
@@ -466,8 +816,9 @@ export default function MobileLegendsPicker() {
         </span>
         <h3 className="text-xl font-semibold text-white">Encuentra el pick ideal para tu draft</h3>
         <p className="text-xs leading-relaxed text-zinc-300">
-          Selecciona tu rol, describe la composición enemiga y registra los picks aliados. El asistente pondera amenazas,
-          sinergias y tu estilo para recomendar héroes coherentes con el meta actual.
+          Define tu rol y la línea que quieres jugar, describe la composición enemiga y registra los picks aliados. El
+          asistente valora amenazas, sinergias y solidez macro para entregarte opciones ordenadas por puntaje y con un plan
+          de ejecución claro.
         </p>
       </header>
 
@@ -488,6 +839,26 @@ export default function MobileLegendsPicker() {
                   }`}
                 >
                   {roleLabels[role as RoleOption]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <span className="block text-xs uppercase tracking-wide text-zinc-400">Línea objetivo</span>
+            <div className="flex flex-wrap gap-2">
+              {["Todas", ...lanes].map((lane) => (
+                <button
+                  key={lane}
+                  type="button"
+                  onClick={() => setSelectedLane(lane as LaneOption)}
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                    selectedLane === lane
+                      ? "border-cyan-400/80 bg-cyan-400/20 text-white"
+                      : "border-white/10 bg-white/5 hover:border-white/30"
+                  }`}
+                >
+                  {laneLabels[lane as LaneOption]}
                 </button>
               ))}
             </div>
@@ -549,61 +920,139 @@ export default function MobileLegendsPicker() {
             </p>
           ) : (
             <ul className="space-y-3">
-              {suggestions.map(({ hero, traitMatches, enemyHighlights, allyHighlights }) => (
-                <li key={hero.name} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <span className="text-sm font-semibold text-white">{hero.name}</span>
-                      <span className="ml-2 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-zinc-300">
-                        {hero.role}
+              {suggestions.map(
+                ({
+                  hero,
+                  traitMatches,
+                  enemyHighlights,
+                  allyHighlights,
+                  plan,
+                  relativeScore,
+                  breakdown,
+                  compositionWarning,
+                }) => (
+                  <li key={hero.name} className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-white">{hero.name}</span>
+                        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-zinc-300">
+                          {hero.role}
+                        </span>
+                      </div>
+                      <span className="text-[10px] uppercase tracking-wide text-zinc-400">
+                        {hero.lane} lane · Dificultad {hero.difficulty}
                       </span>
                     </div>
-                    <span className="text-[10px] uppercase tracking-wide text-zinc-400">
-                      {hero.lane} lane · Dificultad {hero.difficulty}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-zinc-300">
-                    {hero.specialties.map((specialty) => (
-                      <span key={specialty} className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5">
-                        {specialty}
-                      </span>
-                    ))}
-                    {traitMatches.length > 0 && (
-                      <span className="rounded-full border border-cyan-400/60 bg-cyan-400/10 px-2 py-0.5 text-cyan-200">
-                        Responde {traitMatches.length} amenaza{traitMatches.length > 1 ? "s" : ""}
-                      </span>
+
+                    <div className="flex flex-wrap gap-2 text-[11px] text-zinc-300">
+                      {hero.specialties.map((specialty) => (
+                        <span key={specialty} className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5">
+                          {specialty}
+                        </span>
+                      ))}
+                      {traitMatches.length > 0 && (
+                        <span className="rounded-full border border-cyan-400/60 bg-cyan-400/10 px-2 py-0.5 text-cyan-200">
+                          Responde {traitMatches.length} amenaza{traitMatches.length > 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 text-xs leading-relaxed">
+                      <p className="text-zinc-300">{hero.synergy}</p>
+                      <p className="text-indigo-200">{plan}</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-fuchsia-200">
+                        <span>Puntaje recomendado</span>
+                        <span className="font-semibold">{relativeScore}/100</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-white/10">
+                        <div
+                          className="h-2 rounded-full bg-gradient-to-r from-fuchsia-400 via-cyan-400 to-emerald-400"
+                          style={{ width: `${Math.min(100, Math.max(relativeScore, 6))}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2 text-[11px]">
+                      {breakdown.map((item) => (
+                        <div
+                          key={`${hero.name}-${item.label}`}
+                          className="rounded-xl border border-white/10 bg-white/5 p-3"
+                        >
+                          <div className="flex items-center justify-between text-white/90">
+                            <span className="font-semibold">{item.label}</span>
+                            <span className="text-zinc-300">{item.percent}%</span>
+                          </div>
+                          <div className="mt-2 h-1.5 rounded-full bg-white/10">
+                            <div
+                              className="h-1.5 rounded-full bg-cyan-400/60"
+                              style={{ width: `${Math.min(100, item.percent)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid gap-2 text-[11px]">
+                      {(Object.entries(hero.metrics) as [keyof HeroMetrics, number][]).map(
+                        ([metricKey, metricValue]) => {
+                          const percent = Math.round((metricValue / 5) * 100);
+                          return (
+                            <div key={`${hero.name}-${metricKey}`} className="space-y-1 rounded-xl border border-white/10 bg-white/5 p-3">
+                              <div className="flex items-center justify-between text-white/90">
+                                <span>{metricLabels[metricKey]}</span>
+                                <span className="text-zinc-300">{metricValue}/5</span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-white/10">
+                                <div
+                                  className="h-1.5 rounded-full bg-emerald-400/60"
+                                  style={{ width: `${Math.min(100, percent)}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        }
+                      )}
+                    </div>
+
+                    {(enemyHighlights.length > 0 || allyHighlights.length > 0) && (
+                      <div className="grid gap-2 text-[11px]">
+                        {enemyHighlights.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-rose-100">
+                            <span className="font-semibold uppercase tracking-wide">Castiga</span>
+                            <span>{enemyHighlights.join(", ")}</span>
+                          </div>
+                        )}
+                        {allyHighlights.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-emerald-100">
+                            <span className="font-semibold uppercase tracking-wide">Sinergia</span>
+                            <span>{allyHighlights.join(", ")}</span>
+                          </div>
+                        )}
+                      </div>
                     )}
-                  </div>
-                  <p className="mt-3 text-xs leading-relaxed text-zinc-300">{hero.synergy}</p>
-                  {(enemyHighlights.length > 0 || allyHighlights.length > 0) && (
-                    <div className="mt-3 grid gap-2 text-[11px]">
-                      {enemyHighlights.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-rose-100">
-                          <span className="font-semibold uppercase tracking-wide">Castiga</span>
-                          <span>{enemyHighlights.join(", ")}</span>
-                        </div>
-                      )}
-                      {allyHighlights.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-emerald-100">
-                          <span className="font-semibold uppercase tracking-wide">Sinergia</span>
-                          <span>{allyHighlights.join(", ")}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </li>
-              ))}
+
+                    {compositionWarning && (
+                      <p className="rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-[11px] text-amber-100">
+                        {compositionWarning}
+                      </p>
+                    )}
+                  </li>
+                )
+              )}
             </ul>
           )}
         </div>
       </div>
 
-      <footer className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-zinc-300">
-        <p>
-          Consejo: Ajusta el draft si compartes rol con un aliado. Puedes bloquear picks enemigos clave o pivotear a composiciones
-          de comfort cuando el meta no favorece tu pool.
-        </p>
-      </footer>
+        <footer className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-zinc-300">
+          <p>
+            Consejo: Prioriza la opción con mejor puntaje, pero revisa las alertas de composición. Si saturas un rol o línea,
+            considera flexear tu pick o adaptar la build para cubrir carencias del equipo.
+          </p>
+        </footer>
     </div>
   );
 }
