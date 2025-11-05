@@ -333,7 +333,7 @@ export default function MobileLegendsPicker() {
   const suggestions = useMemo(() => {
     const candidates = heroPool
       .filter((hero) => (selectedRole === "Cualquiera" ? true : hero.role === selectedRole))
-      .filter((hero) => !enemyPicks.includes(hero.name));
+      .filter((hero) => !enemyPicks.includes(hero.name) && !allyPicks.includes(hero.name));
 
     const scored = candidates
       .map((hero) => {
