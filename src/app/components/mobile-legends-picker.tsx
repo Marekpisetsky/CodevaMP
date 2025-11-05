@@ -527,6 +527,246 @@ const heroPool: Hero[] = [
       scaling: 4,
     },
   },
+  {
+    name: "Akai",
+    role: "Tank",
+    lane: "Roam",
+    difficulty: "Media",
+    specialties: ["Desplazamiento", "Control"],
+    counters: ["mobility", "split-push"],
+    countersHeroes: ["Ling", "Fanny", "Benedetta", "Aamon"],
+    synergyHeroes: ["Yve", "Pharsa", "Claude", "Brody"],
+    synergy: "Encierra objetivos clave y separa al carry enemigo con su ultimate.",
+    playPattern: "Usa Thousand Pounder para iniciar, activa Heavy Spin para aislar y empuja hacia tu equipo.",
+    macroFocus: "Controla zonas estrechas en tortuga y lord, negando flancos con tu definitiva.",
+    metrics: {
+      survivability: 4,
+      damageSpike: 2,
+      objectiveControl: 5,
+      teamUtility: 5,
+      scaling: 3,
+    },
+  },
+  {
+    name: "Baxia",
+    role: "Tank",
+    lane: "Roam",
+    difficulty: "Media",
+    specialties: ["Anti-curación", "Rotaciones"],
+    counters: ["sustain", "split-push"],
+    countersHeroes: ["Esmeralda", "Estes", "Uranus", "Alice"],
+    synergyHeroes: ["Lylia", "Pharsa", "Lancelot", "Joy"],
+    synergy: "Reduce curaciones enemigas mientras persigue con gran movilidad.",
+    playPattern: "Activa Baxia Mark, rueda para entrar y mantente encima del objetivo para aplicar reducción de curación.",
+    macroFocus: "Traza rutas profundas con tus rodamientos para forzar respuestas y cortar la retaguardia.",
+    metrics: {
+      survivability: 4,
+      damageSpike: 3,
+      objectiveControl: 4,
+      teamUtility: 4,
+      scaling: 3,
+    },
+  },
+  {
+    name: "Joy",
+    role: "Assassin",
+    lane: "EXP",
+    difficulty: "Alta",
+    specialties: ["Inmunidad", "Movilidad"],
+    counters: ["crowd-control", "burst"],
+    countersHeroes: ["Kadita", "Yve", "Lylia", "Pharsa"],
+    synergyHeroes: ["Diggie", "Angela", "Claude", "Lancelot"],
+    synergy: "Danza alrededor de controles y castiga backlines con ritmo constante.",
+    playPattern: "Mantén el tempo con saltos perfectos, entra cuando tengas ritmo completo y remata con ultimate extendido.",
+    macroFocus: "Crea presión lateral y busca picks rápidos antes de objetivos neutrales.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 4,
+      objectiveControl: 3,
+      teamUtility: 3,
+      scaling: 4,
+    },
+  },
+  {
+    name: "Guinevere",
+    role: "Fighter",
+    lane: "EXP",
+    difficulty: "Media",
+    specialties: ["Airborne", "Burst"],
+    counters: ["burst", "mobility"],
+    countersHeroes: ["Paquito", "Yu Zhong", "Chou", "Aamon"],
+    synergyHeroes: ["Lylia", "Pharsa", "Claude", "Atlas"],
+    synergy: "Levanta a varios enemigos para combos en área devastadores.",
+    playPattern: "Prepara Esferas, busca engages con Violet Requiem y encadena con control aéreo.",
+    macroFocus: "Flanquea por arbustos cerrados y guarda ultimate para forzar recursos clave.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 4,
+      objectiveControl: 3,
+      teamUtility: 3,
+      scaling: 3,
+    },
+  },
+  {
+    name: "Hayabusa",
+    role: "Assassin",
+    lane: "Jungle",
+    difficulty: "Alta",
+    specialties: ["Split push", "Pick-off"],
+    counters: ["split-push", "sustain"],
+    countersHeroes: ["Claude", "Beatrix", "Pharsa", "Harith"],
+    synergyHeroes: ["Diggie", "Angela", "Chou", "Khufra"],
+    synergy: "Elimina tiradores aislados y mantiene presión lateral constante.",
+    playPattern: "Abusa de sombras para entrar y salir, ejecuta Ougi: Shadow Kill sobre objetivos aislados.",
+    macroFocus: "Presiona side lanes y fuerza 4v5 rotando rápidamente entre líneas.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 4,
+      objectiveControl: 3,
+      teamUtility: 2,
+      scaling: 4,
+    },
+  },
+  {
+    name: "Harith",
+    role: "Mage",
+    lane: "Mid",
+    difficulty: "Alta",
+    specialties: ["Dash", "Escalado"],
+    counters: ["mobility", "sustain"],
+    countersHeroes: ["Valentina", "Esmeralda", "Yve", "Lylia"],
+    synergyHeroes: ["Atlas", "Tigreal", "Diggie", "Claude"],
+    synergy: "Aprovecha controles aliados para rebotar dentro del Zaman Force.",
+    playPattern: "Coloca Zaman Force, encadena dashes cortos y administra cargas para mantenerte seguro.",
+    macroFocus: "Empuja mid velozmente y rota para pelear alrededor de objetivos con ultimate disponible.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 4,
+      objectiveControl: 3,
+      teamUtility: 3,
+      scaling: 4,
+    },
+  },
+  {
+    name: "Karrie",
+    role: "Marksman",
+    lane: "Gold",
+    difficulty: "Media",
+    specialties: ["True damage", "Tanque killer"],
+    counters: ["sustain", "crowd-control"],
+    countersHeroes: ["Uranus", "Gloo", "Belerick", "Fredrinn"],
+    synergyHeroes: ["Diggie", "Angela", "Estes", "Akai"],
+    synergy: "Derretir frontales duros con daño verdadero constante.",
+    playPattern: "Stackea Lightwheel Mark rápidamente y activa ultimate para derretir tanques.",
+    macroFocus: "Llega a power spike de dos ítems y rota a lord para priorizar objetivos prolongados.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 4,
+      objectiveControl: 4,
+      teamUtility: 2,
+      scaling: 5,
+    },
+  },
+  {
+    name: "Moskov",
+    role: "Marksman",
+    lane: "Gold",
+    difficulty: "Media",
+    specialties: ["Perforación", "Control"],
+    counters: ["split-push", "mobility"],
+    countersHeroes: ["Wanwan", "Ling", "Fanny", "Natalia"],
+    synergyHeroes: ["Tigreal", "Atlas", "Khufra", "Angela"],
+    synergy: "Clava enemigos contra paredes y aporta wave clear veloz.",
+    playPattern: "Aprovecha Spear of Misery para stunear en estructuras, entra con ultimate global para remates.",
+    macroFocus: "Mantén presión constante en oro y rota para limpiar waves profundas con rango extendido.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 4,
+      objectiveControl: 4,
+      teamUtility: 3,
+      scaling: 4,
+    },
+  },
+  {
+    name: "Natan",
+    role: "Marksman",
+    lane: "Gold",
+    difficulty: "Alta",
+    specialties: ["Reversal", "Daño híbrido"],
+    counters: ["mobility", "split-push"],
+    countersHeroes: ["Ling", "Benedetta", "Aamon", "Hayabusa"],
+    synergyHeroes: ["Diggie", "Mathilda", "Lolita", "Estes"],
+    synergy: "Escala con daño mixto y control de zonas gracias a su ultimate.",
+    playPattern: "Juega con distancia, posiciona ultimate para kitear hacia atrás y mantener DPS constante.",
+    macroFocus: "Farmea seguro, toma mid tras minuto 10 y coloca clones para defender o asediar.",
+    metrics: {
+      survivability: 2,
+      damageSpike: 4,
+      objectiveControl: 3,
+      teamUtility: 3,
+      scaling: 5,
+    },
+  },
+  {
+    name: "Novaria",
+    role: "Mage",
+    lane: "Mid",
+    difficulty: "Media",
+    specialties: ["Rastreo", "Burst a distancia"],
+    counters: ["poke", "mobility"],
+    countersHeroes: ["Ling", "Lancelot", "Harith", "Joy"],
+    synergyHeroes: ["Akai", "Atlas", "Tigreal", "Brody"],
+    synergy: "Revela al enemigo y aporta daño desde muy lejos.",
+    playPattern: "Canaliza astros para preparar disparos certeros y revela objetivos clave antes del engage.",
+    macroFocus: "Mantén visión del jungla enemigo y presiona mid sin exponerte gracias a tu rango.",
+    metrics: {
+      survivability: 2,
+      damageSpike: 4,
+      objectiveControl: 3,
+      teamUtility: 3,
+      scaling: 4,
+    },
+  },
+  {
+    name: "Popol y Kupa",
+    role: "Marksman",
+    lane: "Gold",
+    difficulty: "Media",
+    specialties: ["Trampas", "Push"],
+    counters: ["split-push", "mobility"],
+    countersHeroes: ["Fanny", "Ling", "Hayabusa", "Balmond"],
+    synergyHeroes: ["Diggie", "Lolita", "Khufra", "Atlas"],
+    synergy: "Asegura visión y controla zonas con trampas constantes.",
+    playPattern: "Coloca trampas en arbustos, poke con Kupa y derriba torres temprano.",
+    macroFocus: "Pusha línea de oro, protege objetivos con trampas y rota con ventaja temprana.",
+    metrics: {
+      survivability: 3,
+      damageSpike: 3,
+      objectiveControl: 4,
+      teamUtility: 3,
+      scaling: 4,
+    },
+  },
+  {
+    name: "Uranus",
+    role: "Tank",
+    lane: "EXP",
+    difficulty: "Media",
+    specialties: ["Regeneración", "Split push"],
+    counters: ["sustain", "split-push"],
+    countersHeroes: ["Esmeralda", "Yu Zhong", "Lapu-Lapu", "Zilong"],
+    synergyHeroes: ["Diggie", "Estes", "Karrie", "Claude"],
+    synergy: "Aguanta daño masivo y mantiene presión constante en side lanes.",
+    playPattern: "Acumula cargas de Energía Radiante, entra y sale para regenerarte y molestar backline.",
+    macroFocus: "Empuja líneas laterales sin morir y arrastra recursos enemigos lejos de objetivos principales.",
+    metrics: {
+      survivability: 5,
+      damageSpike: 2,
+      objectiveControl: 3,
+      teamUtility: 3,
+      scaling: 4,
+    },
+  },
 ];
 
 const roles = ["Tank", "Fighter", "Assassin", "Mage", "Marksman", "Support"] as const;
@@ -980,16 +1220,24 @@ export default function MobileLegendsPicker() {
                   compositionWarning,
                 }) => (
                   <li key={hero.name} className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-white">{hero.name}</span>
-                        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-zinc-300">
-                          {hero.role}
+                    <div className="grid gap-2 sm:grid-cols-[1fr,auto] sm:items-start">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-semibold text-white">{hero.name}</span>
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-zinc-300">
+                            {hero.role}
+                          </span>
+                        </div>
+                        <span className="text-[10px] uppercase tracking-wide text-zinc-400">
+                          {hero.lane} lane · Dificultad {hero.difficulty}
                         </span>
                       </div>
-                      <span className="text-[10px] uppercase tracking-wide text-zinc-400">
-                        {hero.lane} lane · Dificultad {hero.difficulty}
-                      </span>
+                      <div className="flex flex-col items-end justify-center gap-1 text-right">
+                        <span className="rounded-full border border-fuchsia-400/60 bg-fuchsia-400/10 px-3 py-1 text-[11px] font-semibold text-fuchsia-100">
+                          {relativeScore}/100
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wide text-fuchsia-200">Puntaje recomendado</span>
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2 text-[11px] text-zinc-300">
@@ -1011,10 +1259,6 @@ export default function MobileLegendsPicker() {
                     </div>
 
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-fuchsia-200">
-                        <span>Puntaje recomendado</span>
-                        <span className="font-semibold">{relativeScore}/100</span>
-                      </div>
                       <div className="h-2 rounded-full bg-white/10">
                         <div
                           className="h-2 rounded-full bg-gradient-to-r from-fuchsia-400 via-cyan-400 to-emerald-400"
@@ -1158,58 +1402,66 @@ export default function MobileLegendsPicker() {
                     }
                   };
 
+                  const cardBaseClasses =
+                    "group relative flex h-full flex-col justify-between overflow-hidden rounded-3xl border p-4 text-left transition";
+                  const cardVariantClasses = isRecommended
+                    ? "border-fuchsia-300/80 bg-white text-slate-900 shadow-[0_0_30px_-12px_rgba(217,70,239,0.6)]"
+                    : "border-white/10 bg-slate-900/40 text-white hover:border-white/30 hover:bg-white/10";
+                  const disabledClasses = disablesSelection
+                    ? "opacity-50"
+                    : "shadow-[0_0_30px_-15px_rgba(217,70,239,0.9)]";
+                  const nameClasses = isRecommended ? "text-lg font-semibold text-slate-900" : "text-lg font-semibold text-white";
+                  const metaClasses = isRecommended
+                    ? "text-[11px] uppercase tracking-wide text-cyan-600"
+                    : "text-[11px] uppercase tracking-wide text-cyan-200";
+                  const summaryClasses = isRecommended ? "text-xs text-slate-600" : "text-xs text-zinc-200";
+                  const patternClasses = isRecommended ? "text-[11px] text-indigo-600" : "text-[11px] text-indigo-200";
+                  const roleChipClasses = isRecommended
+                    ? "rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-[11px] uppercase tracking-wide text-slate-600"
+                    : "rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] uppercase tracking-wide text-zinc-300";
+                  const specialtyChipClasses = isRecommended
+                    ? "rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-slate-600"
+                    : "rounded-full border border-white/20 bg-black/20 px-2 py-0.5";
+                  const counterChipClasses = isRecommended
+                    ? "rounded-full border border-emerald-500/50 bg-emerald-400/20 px-2 py-0.5 text-emerald-700"
+                    : "rounded-full border border-emerald-400/60 bg-emerald-400/20 px-2 py-0.5 text-emerald-100";
+                  const recommendedChipClasses = isRecommended
+                    ? "rounded-full border border-fuchsia-400/60 bg-fuchsia-200/70 px-2 py-0.5 text-fuchsia-700"
+                    : "rounded-full border border-fuchsia-400/70 bg-fuchsia-400/20 px-2 py-0.5 text-fuchsia-100";
+                  const takenChipClasses = isRecommended
+                    ? "rounded-full border border-amber-400/60 bg-amber-200/70 px-2 py-0.5 text-amber-700"
+                    : "rounded-full border border-amber-400/60 bg-amber-400/10 px-2 py-0.5 text-amber-100";
+
                   return (
                     <button
                       key={`${pickerSide}-${hero.name}`}
                       type="button"
                       onClick={handleSelect}
                       disabled={disablesSelection}
-                      className={`group relative flex h-full flex-col justify-between overflow-hidden rounded-3xl border p-4 text-left transition ${
-                        isRecommended
-                          ? "border-fuchsia-400/70 bg-gradient-to-br from-fuchsia-500/30 via-purple-500/20 to-cyan-500/20"
-                          : "border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10"
-                      } ${disablesSelection ? "opacity-50" : "shadow-[0_0_30px_-15px_rgba(217,70,239,0.9)]"}`}
+                      className={`${cardBaseClasses} ${cardVariantClasses} ${disabledClasses}`}
                     >
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-lg font-semibold text-white">{hero.name}</span>
-                          <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] uppercase tracking-wide text-zinc-300">
-                            {hero.role}
-                          </span>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className={nameClasses}>{hero.name}</span>
+                          <span className={roleChipClasses}>{hero.role}</span>
                         </div>
-                        <p className="text-[11px] uppercase tracking-wide text-cyan-200">
+                        <p className={metaClasses}>
                           {hero.lane} lane · Dificultad {hero.difficulty}
                         </p>
-                        <p className="text-xs text-zinc-200">{hero.synergy}</p>
-                        <p className="text-[11px] text-indigo-200">{hero.playPattern}</p>
+                        <p className={summaryClasses}>{hero.synergy}</p>
+                        <p className={patternClasses}>{hero.playPattern}</p>
                       </div>
 
-                      <div className="mt-4 flex flex-wrap gap-2 text-[10px] text-zinc-200">
+                      <div className="mt-4 flex flex-wrap gap-2 text-[10px]">
                         {hero.specialties.map((specialty) => (
-                          <span
-                            key={`${hero.name}-${specialty}`}
-                            className="rounded-full border border-white/20 bg-black/20 px-2 py-0.5"
-                          >
+                          <span key={`${hero.name}-${specialty}`} className={specialtyChipClasses}>
                             {specialty}
                           </span>
                         ))}
-                        {countersActive && (
-                          <span className="rounded-full border border-emerald-400/60 bg-emerald-400/20 px-2 py-0.5 text-emerald-100">
-                            Castiga amenazas activas
-                          </span>
-                        )}
-                        {isRecommended && (
-                          <span className="rounded-full border border-fuchsia-400/70 bg-fuchsia-400/20 px-2 py-0.5 text-fuchsia-100">
-                            Recomendado
-                          </span>
-                        )}
-                        {isTaken && (
-                          <span className="rounded-full border border-amber-400/60 bg-amber-400/10 px-2 py-0.5 text-amber-100">
-                            Ocupado
-                          </span>
-                        )}
+                        {countersActive && <span className={counterChipClasses}>Castiga amenazas activas</span>}
+                        {isRecommended && <span className={recommendedChipClasses}>Recomendado</span>}
+                        {isTaken && <span className={takenChipClasses}>Ocupado</span>}
                       </div>
-                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 translate-y-12 bg-gradient-to-t from-black/70 via-black/0 to-transparent transition group-hover:translate-y-6" />
                     </button>
                   );
                 })}
