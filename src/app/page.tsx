@@ -82,7 +82,7 @@ export default function Page() {
               Conoce la misión
             </Link>
           </div>
-        </div>
+          </div>
 
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-zinc-300 shadow-2xl">
           <h2 className="text-lg font-semibold text-white">Agenda destacada</h2>
@@ -92,8 +92,8 @@ export default function Page() {
                 <div className="text-sm font-semibold text-white">{item.title}</div>
                 <div className="text-xs text-zinc-300">{item.detail}</div>
               </li>
-            ))}
-          </ul>
+              ))}
+            </ul>
           <p className="mt-4 text-xs text-zinc-400">
             Toda la planificación detallada está disponible en la página de proyectos y en Discord.
           </p>
