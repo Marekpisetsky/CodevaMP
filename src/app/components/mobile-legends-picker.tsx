@@ -858,6 +858,8 @@ const metricLabels: Record<keyof HeroMetrics, string> = {
 const sortedHeroPool = [...heroPool].sort((a, b) => a.name.localeCompare(b.name, "es"));
 
 const MAX_TEAM_PICKS = 5;
+const MAX_RECOMMENDATIONS = 12;
+const FEATURED_RECOMMENDATIONS = 3;
 
 type DraftSide = "enemy" | "ally";
 
@@ -869,6 +871,7 @@ export default function MobileLegendsPicker() {
   const [allyPicks, setAllyPicks] = useState<string[]>([]);
   const [pickerSide, setPickerSide] = useState<DraftSide | null>(null);
   const [heroSearch, setHeroSearch] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const suggestions = useMemo(() => {
     const allyInfo = allyPicks.reduce(
@@ -976,9 +979,10 @@ export default function MobileLegendsPicker() {
       .filter((entry) => entry.score > 0)
       .sort((a, b) => b.score - a.score);
 
-    const maxScore = scored[0]?.score ?? 0;
+    const limited = scored.slice(0, MAX_RECOMMENDATIONS);
+    const maxScore = limited[0]?.score ?? 0;
 
-    return scored.slice(0, 5).map((entry) => {
+    return limited.map((entry, index) => {
       const totalBreakdown = entry.breakdown.reduce((acc, item) => acc + item.value, 0);
       const breakdownWithPercent = entry.breakdown.map((item) => ({
         ...item,
@@ -988,9 +992,19 @@ export default function MobileLegendsPicker() {
         ...entry,
         relativeScore: maxScore > 0 ? Math.round((entry.score / maxScore) * 100) : 0,
         breakdown: breakdownWithPercent,
+        rank: index + 1,
       };
     });
   }, [activeTraits, allyPicks, enemyPicks, selectedLane, selectedRole]);
+
+  const topRecommendations = useMemo(
+    () => suggestions.slice(0, FEATURED_RECOMMENDATIONS),
+    [suggestions]
+  );
+  const extendedRecommendations = useMemo(
+    () => suggestions.slice(FEATURED_RECOMMENDATIONS),
+    [suggestions]
+  );
 
   const toggleTrait = (trait: EnemyTrait) => {
     setActiveTraits((current) =>
@@ -1238,62 +1252,65 @@ export default function MobileLegendsPicker() {
         </div>
 
         <div className="space-y-3 rounded-3xl border border-white/10 bg-white/5 p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-sm font-semibold text-white">Recomendaciones</span>
-            <span className="text-xs text-zinc-400">
-              {suggestions.length > 0
-                ? `${suggestions.length} opción${suggestions.length > 1 ? "es" : ""}`
-                : "Ajusta filtros"}
-            </span>
+            <div className="flex items-center gap-3 text-xs text-zinc-400">
+              <span>
+                {suggestions.length > 0
+                  ? `Top ${suggestions.length} opción${suggestions.length > 1 ? "es" : ""}`
+                  : "Ajusta filtros"}
+              </span>
+              {extendedRecommendations.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced((current) => !current)}
+                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-zinc-200 transition hover:border-white/30 hover:bg-white/10"
+                >
+                  {showAdvanced ? "Ocultar análisis" : "Ver análisis"}
+                </button>
+              )}
+            </div>
           </div>
           {suggestions.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-4 text-xs text-zinc-400">
               Añade amenazas, enemigos o aliados para personalizar la búsqueda.
             </p>
           ) : (
-            <ul className="space-y-3">
-              {suggestions.map(
-                ({
-                  hero,
-                  traitMatches,
-                  enemyHighlights,
-                  allyHighlights,
-                  plan,
-                  relativeScore,
-                  breakdown,
-                  compositionWarning,
-                }) => {
-                  const costChips = getHeroCostChips(hero.costs);
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {topRecommendations.map(({ hero, traitMatches, relativeScore, plan, rank, compositionWarning }) => {
+                  const quickSentences = plan.match(/[^.]+(?:\.)?/g) ?? [plan];
+                  const quickPlan = quickSentences.slice(0, 2).join(" ").trim() || plan;
+                  const quickSpecialties = hero.specialties.slice(0, 2);
+                  const isInAllyTeam = allyPicks.includes(hero.name);
+                  const allyTeamFull = allyPicks.length >= MAX_TEAM_PICKS;
+                  const addDisabled = isInAllyTeam || allyTeamFull;
                   return (
-                    <li key={hero.name} className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <div className="grid gap-2 sm:grid-cols-[1fr,auto] sm:items-start">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-semibold text-white">{hero.name}</span>
-                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-zinc-300">
-                              {hero.role}
-                            </span>
+                    <div
+                      key={`featured-${hero.name}`}
+                      className="flex h-full flex-col justify-between gap-3 rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/80 via-indigo-950/70 to-slate-900/80 p-4 text-left"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <span className="text-base font-semibold text-white">{hero.name}</span>
+                            <p className="text-[11px] uppercase tracking-wide text-zinc-400">
+                              {hero.role} · {hero.lane} · Dificultad {hero.difficulty}
+                            </p>
                           </div>
-                          <span className="text-[10px] uppercase tracking-wide text-zinc-400">
-                            {hero.lane} lane · Dificultad {hero.difficulty}
+                          <span className="rounded-full border border-fuchsia-400/60 bg-fuchsia-400/20 px-3 py-1 text-[11px] font-semibold text-fuchsia-100">
+                            #{rank}
                           </span>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] uppercase tracking-wide text-zinc-500">
-                            <span>{hero.title}</span>
-                            <span>• {hero.faction}</span>
-                            <span>• Lanzado: {hero.release}</span>
-                          </div>
                         </div>
-                        <div className="flex flex-col items-end justify-center gap-1 text-right">
-                          <span className="rounded-full border border-fuchsia-400/60 bg-fuchsia-400/10 px-3 py-1 text-[11px] font-semibold text-fuchsia-100">
-                            {relativeScore}/100
-                          </span>
-                          <span className="text-[10px] uppercase tracking-wide text-fuchsia-200">Puntaje recomendado</span>
-                        </div>
+                        <p className="text-sm text-zinc-200">{hero.synergy}</p>
+                        <p className="text-xs text-indigo-200">{quickPlan}</p>
                       </div>
-
-                      <div className="flex flex-wrap gap-2 text-[11px] text-zinc-300">
-                        {hero.specialties.map((specialty) => (
-                          <span key={specialty} className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5">
+                      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                        {quickSpecialties.map((specialty) => (
+                          <span
+                            key={`${hero.name}-featured-${specialty}`}
+                            className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5"
+                          >
                             {specialty}
                           </span>
                         ))}
@@ -1302,97 +1319,182 @@ export default function MobileLegendsPicker() {
                             Responde {traitMatches.length} amenaza{traitMatches.length > 1 ? "s" : ""}
                           </span>
                         )}
-                        {costChips.map((chip) => (
-                          <span
-                            key={`${hero.name}-${chip.type}`}
-                            className={`rounded-full border px-2 py-0.5 ${costChipStyles[chip.type]}`}
-                          >
-                            {chip.label}
-                          </span>
-                        ))}
                       </div>
-
-                      <div className="space-y-2 text-xs leading-relaxed">
-                        <p className="text-zinc-300">{hero.synergy}</p>
-                        <p className="text-indigo-200">{plan}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="rounded-full border border-fuchsia-400/60 bg-fuchsia-400/10 px-3 py-1 text-[11px] font-semibold text-fuchsia-100">
+                          {relativeScore}/100
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleAddPick("ally", hero.name)}
+                          disabled={addDisabled}
+                          className="rounded-full border border-emerald-400/60 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-100 transition hover:border-emerald-300/80 hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-zinc-400"
+                        >
+                          {isInAllyTeam ? "Ya en mi draft" : "Agregar al draft"}
+                        </button>
                       </div>
-
-                      <div className="space-y-2">
-                        <div className="h-2 rounded-full bg-white/10">
-                          <div
-                            className="h-2 rounded-full bg-gradient-to-r from-fuchsia-400 via-cyan-400 to-emerald-400"
-                            style={{ width: `${Math.min(100, Math.max(relativeScore, 6))}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid gap-2 text-[11px]">
-                        {breakdown.map((item) => (
-                          <div
-                            key={`${hero.name}-${item.label}`}
-                            className="rounded-xl border border-white/10 bg-white/5 p-3"
-                          >
-                            <div className="flex items-center justify-between text-white/90">
-                              <span className="font-semibold">{item.label}</span>
-                              <span className="text-zinc-300">{item.percent}%</span>
-                            </div>
-                            <div className="mt-2 h-1.5 rounded-full bg-white/10">
-                              <div
-                                className="h-1.5 rounded-full bg-cyan-400/60"
-                                style={{ width: `${Math.min(100, item.percent)}%` }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="grid gap-2 text-[11px]">
-                        {(Object.entries(hero.metrics) as [keyof HeroMetrics, number][]).map(
-                          ([metricKey, metricValue]) => {
-                            const percent = Math.round((metricValue / 5) * 100);
-                            return (
-                              <div key={`${hero.name}-${metricKey}`} className="space-y-1 rounded-xl border border-white/10 bg-white/5 p-3">
-                                <div className="flex items-center justify-between text-white/90">
-                                  <span>{metricLabels[metricKey]}</span>
-                                  <span className="text-zinc-300">{metricValue}/5</span>
-                                </div>
-                                <div className="h-1.5 rounded-full bg-white/10">
-                                  <div
-                                    className="h-1.5 rounded-full bg-emerald-400/60"
-                                    style={{ width: `${Math.min(100, percent)}%` }}
-                                  />
-                                </div>
-                              </div>
-                            );
-                          }
-                        )}
-                      </div>
-
-                      {(enemyHighlights.length > 0 || allyHighlights.length > 0) && (
-                        <div className="grid gap-2 text-[11px]">
-                          {enemyHighlights.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-rose-100">
-                              <span className="font-semibold uppercase tracking-wide">Castiga</span>
-                              <span>{enemyHighlights.join(", ")}</span>
-                            </div>
-                          )}
-                          {allyHighlights.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-emerald-100">
-                              <span className="font-semibold uppercase tracking-wide">Sinergiza</span>
-                              <span>{allyHighlights.join(", ")}</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
                       {compositionWarning && (
                         <p className="text-xs text-amber-300">{compositionWarning}</p>
                       )}
-                    </li>
+                    </div>
                   );
-                }
+                })}
+              </div>
+
+              {showAdvanced && (
+                <div className="space-y-3">
+                  <p className="text-[11px] uppercase tracking-wide text-zinc-400">
+                    Análisis detallado de cada opción
+                  </p>
+                  <ul className="space-y-3">
+                    {suggestions.map(
+                      ({
+                        hero,
+                        traitMatches,
+                        enemyHighlights,
+                        allyHighlights,
+                        plan,
+                        relativeScore,
+                        breakdown,
+                        compositionWarning,
+                        rank,
+                      }) => {
+                        const costChips = getHeroCostChips(hero.costs);
+                        return (
+                          <li key={hero.name} className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <div className="grid gap-2 sm:grid-cols-[1fr,auto] sm:items-start">
+                              <div className="flex flex-col gap-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-sm font-semibold text-white">{hero.name}</span>
+                                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-zinc-300">
+                                    {hero.role}
+                                  </span>
+                                  <span className="rounded-full border border-fuchsia-400/60 bg-fuchsia-400/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-fuchsia-100">
+                                    #{rank}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] uppercase tracking-wide text-zinc-400">
+                                  {hero.lane} lane · Dificultad {hero.difficulty}
+                                </span>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] uppercase tracking-wide text-zinc-500">
+                                  <span>{hero.title}</span>
+                                  <span>• {hero.faction}</span>
+                                  <span>• Lanzado: {hero.release}</span>
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end justify-center gap-1 text-right">
+                                <span className="rounded-full border border-fuchsia-400/60 bg-fuchsia-400/10 px-3 py-1 text-[11px] font-semibold text-fuchsia-100">
+                                  {relativeScore}/100
+                                </span>
+                                <span className="text-[10px] uppercase tracking-wide text-fuchsia-200">Puntaje recomendado</span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 text-[11px] text-zinc-300">
+                              {hero.specialties.map((specialty) => (
+                                <span key={specialty} className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5">
+                                  {specialty}
+                                </span>
+                              ))}
+                              {traitMatches.length > 0 && (
+                                <span className="rounded-full border border-cyan-400/60 bg-cyan-400/10 px-2 py-0.5 text-cyan-200">
+                                  Responde {traitMatches.length} amenaza{traitMatches.length > 1 ? "s" : ""}
+                                </span>
+                              )}
+                              {costChips.map((chip) => (
+                                <span
+                                  key={`${hero.name}-${chip.type}`}
+                                  className={`rounded-full border px-2 py-0.5 ${costChipStyles[chip.type]}`}
+                                >
+                                  {chip.label}
+                                </span>
+                              ))}
+                            </div>
+
+                            <div className="space-y-2 text-xs leading-relaxed">
+                              <p className="text-zinc-300">{hero.synergy}</p>
+                              <p className="text-indigo-200">{plan}</p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="h-2 rounded-full bg-white/10">
+                                <div
+                                  className="h-2 rounded-full bg-gradient-to-r from-fuchsia-400 via-cyan-400 to-emerald-400"
+                                  style={{ width: `${Math.min(100, Math.max(relativeScore, 6))}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid gap-2 text-[11px]">
+                              {breakdown.map((item) => (
+                                <div
+                                  key={`${hero.name}-${item.label}`}
+                                  className="rounded-xl border border-white/10 bg-white/5 p-3"
+                                >
+                                  <div className="flex items-center justify-between text-white/90">
+                                    <span className="font-semibold">{item.label}</span>
+                                    <span className="text-zinc-300">{item.percent}%</span>
+                                  </div>
+                                  <div className="mt-2 h-1.5 rounded-full bg-white/10">
+                                    <div
+                                      className="h-1.5 rounded-full bg-cyan-400/60"
+                                      style={{ width: `${Math.min(100, item.percent)}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="grid gap-2 text-[11px]">
+                              {(Object.entries(hero.metrics) as [keyof HeroMetrics, number][]).map(
+                                ([metricKey, metricValue]) => {
+                                  const percent = Math.round((metricValue / 5) * 100);
+                                  return (
+                                    <div key={`${hero.name}-${metricKey}`} className="space-y-1 rounded-xl border border-white/10 bg-white/5 p-3">
+                                      <div className="flex items-center justify-between text-white/90">
+                                        <span>{metricLabels[metricKey]}</span>
+                                        <span className="text-zinc-300">{metricValue}/5</span>
+                                      </div>
+                                      <div className="h-1.5 rounded-full bg-white/10">
+                                        <div
+                                          className="h-1.5 rounded-full bg-emerald-400/60"
+                                          style={{ width: `${Math.min(100, percent)}%` }}
+                                        />
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                              )}
+                            </div>
+
+                            {(enemyHighlights.length > 0 || allyHighlights.length > 0) && (
+                              <div className="grid gap-2 text-[11px]">
+                                {enemyHighlights.length > 0 && (
+                                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-rose-100">
+                                    <span className="font-semibold uppercase tracking-wide">Castiga</span>
+                                    <span>{enemyHighlights.join(", ")}</span>
+                                  </div>
+                                )}
+                                {allyHighlights.length > 0 && (
+                                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-emerald-100">
+                                    <span className="font-semibold uppercase tracking-wide">Sinergiza</span>
+                                    <span>{allyHighlights.join(", ")}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {compositionWarning && (
+                              <p className="text-xs text-amber-300">{compositionWarning}</p>
+                            )}
+                          </li>
+                        );
+                      }
+                    )}
+                  </ul>
+                </div>
               )}
-            </ul>
+            </div>
           )}
         </div>
       </div>
