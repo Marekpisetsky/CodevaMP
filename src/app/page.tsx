@@ -1,6 +1,9 @@
+import MobileLegendsPicker from "./components/mobile-legends-picker";
+
 export default function Page() {
   const navItems = [
     { href: "#acerca", label: "Acerca de" },
+    { href: "#juegos", label: "Juegos" },
     { href: "#proyectos", label: "Proyectos" },
     { href: "#donaciones", label: "Donaciones" },
     { href: "#legal", label: "Legal" }
@@ -214,6 +217,41 @@ export default function Page() {
               </a>
             ))}
           </div>
+        </section>
+
+        <section id="juegos" className="mt-16 space-y-6">
+          <div className="flex flex-wrap items-start justify-between gap-6">
+            <div className="max-w-2xl space-y-3">
+              <span className="inline-flex items-center rounded-full border border-cyan-400/40 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-200">
+                Juegos · Mobile Legends: Bang Bang
+              </span>
+              <h2 className="text-2xl font-semibold text-white">Laboratorio táctico para la Land of Dawn</h2>
+              <p className="text-sm text-zinc-300">
+                Desde guías rápidas hasta análisis de drafts competitivos, esta sección concentra todo lo
+                relacionado con Mobile Legends: Bang Bang. Aprende a leer composiciones, optimiza tu rotación
+                y encuentra picks que se adapten a cada parche.
+              </p>
+              <p className="text-xs text-zinc-400">
+                Actualizado semanalmente con parches, torneos y sugerencias basadas en scrims de la comunidad.
+              </p>
+            </div>
+            <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-zinc-200">
+              <h3 className="text-lg font-semibold text-white">Eventos destacados</h3>
+              <ul className="mt-3 space-y-3 text-xs">
+                <li className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  📅 Clash semanal: Serie BO3 con revisión de drafts en directo.
+                </li>
+                <li className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  🧭 Ruta a Mythic: Mentorías express para roles clave cada jueves.
+                </li>
+                <li className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  🧠 Taller de macro: Cómo convertir ventaja de tortuga en presión cruzada.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <MobileLegendsPicker />
         </section>
 
         <section id="proyectos" className="mt-16 space-y-10">
