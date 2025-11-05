@@ -1,12 +1,13 @@
 import Link from "next/link";
+import MobileLegendsPicker from "@/app/components/mobile-legends-picker";
 import SiteShell from "@/app/components/site-shell";
 
 const featuredLabs = [
   {
     title: "Mobile Legends · Laboratorio táctico",
     summary:
-      "Draft planner interactivo, análisis de parches y calendario de scrims. Incluye el nuevo Mobile Legends Picker mejorado.",
-    href: "/juegos/mobile-legends",
+      "Draft planner interactivo, análisis de parches y calendario de scrims. Incluye el nuevo Mobile Legends Picker dentro de la sección.",
+    href: "#mlbb",
     tag: "Actualizado",
   },
   {
@@ -31,6 +32,43 @@ const scrimCalendar = [
   { day: "Sábado", focus: "Ligas comunitarias", format: "Bracket suizo", slots: "16 equipos" },
 ];
 
+const mlbbHighlights = [
+  {
+    title: "Parche 1.8.92",
+    detail:
+      "Khufra y Atlas dominan el engage mientras tiradores como Brody y Beatrix brillan en mid game.",
+  },
+  {
+    title: "Objetivos del meta",
+    detail:
+      "Prioriza tortuga temprana y visión constante del jungla enemigo para mantener el tempo de la partida.",
+  },
+  {
+    title: "Tendencias",
+    detail:
+      "Dúos roam + jungla agresivos que permitan rotaciones rápidas hacia Gold Lane y peleas coordinadas.",
+  },
+];
+
+const mlbbSessions = [
+  {
+    label: "Lunes · Review",
+    description: "VOD review grupal centrado en fase de líneas y macro decisiones tempranas.",
+  },
+  {
+    label: "Miércoles · Scrims",
+    description: "Prácticas contra equipos de nivel similar. Rotaciones y setups de objetivos en vivo.",
+  },
+  {
+    label: "Viernes · Road to Mythic",
+    description: "Coaching express por rol, ejercicios mecánicos y medición de progreso semanal.",
+  },
+  {
+    label: "Domingo · Laboratorio abierto",
+    description: "Sesión para testear picks off-meta, responder preguntas y compartir recursos.",
+  },
+];
+
 export default function JuegosPage() {
   return (
     <SiteShell currentPath="/juegos" accent="emerald">
@@ -45,13 +83,85 @@ export default function JuegosPage() {
           Esta sección agrupa todas las experiencias tácticas de CodevaMP. Encontrarás pizarras de draft, planillas de scrims, recursos descargables y guías paso a paso para Mobile Legends, shooters competitivos y aventuras cooperativas.
         </p>
         <Link
-          href="/juegos/mobile-legends"
+          href="#mlbb"
           prefetch
           className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 px-5 py-2 text-sm font-semibold text-black shadow-md transition hover:scale-[1.02]"
         >
-          Abrir el laboratorio de MLBB
+          Ir al laboratorio de MLBB
         </Link>
       </header>
+
+      <section
+        id="mlbb"
+        className="mt-12 grid gap-8 rounded-3xl border border-white/10 bg-white/5 p-8"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="max-w-2xl space-y-3">
+            <span className="inline-flex items-center rounded-full border border-fuchsia-400/40 bg-fuchsia-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-fuchsia-200">
+              Mobile Legends · Bang Bang
+            </span>
+            <h2 className="text-2xl font-semibold text-white">
+              Laboratorio MLBB: planifica drafts y ajusta tu estrategia
+            </h2>
+            <p className="text-sm text-zinc-300">
+              Selecciona tu rol, identifica amenazas enemigas y coordina sinergias con tu escuadra. Todo el flujo de trabajo ahora vive dentro de Juegos, listo para usarse durante scrims o ranked.
+            </p>
+          </div>
+          <div className="flex flex-col items-start gap-3 text-sm text-zinc-200">
+            <Link
+              href="https://discord.gg/codevamp"
+              prefetch={false}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-500 to-purple-500 px-5 py-2 text-sm font-semibold text-black shadow-md transition hover:scale-[1.02]"
+            >
+              Unirse a scrims MLBB
+            </Link>
+            <span className="rounded-full border border-fuchsia-400/30 bg-fuchsia-400/10 px-3 py-1 text-xs font-semibold text-fuchsia-200">
+              Actualizado al parche 1.8.92
+            </span>
+          </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[0.95fr,1.05fr] lg:items-start">
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              {mlbbHighlights.map((item) => (
+                <div
+                  key={item.title}
+                  className="rounded-3xl border border-white/10 bg-white/5 p-6"
+                >
+                  <h3 className="text-lg font-semibold text-white">{item.title}</h3>
+                  <p className="mt-2 text-sm text-zinc-300">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-6">
+              <h3 className="text-lg font-semibold text-white">
+                Rutina semanal recomendada
+              </h3>
+              <ul className="grid gap-3 text-sm text-zinc-300">
+                {mlbbSessions.map((session) => (
+                  <li
+                    key={session.label}
+                    className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                  >
+                    <span className="block font-semibold text-white">
+                      {session.label}
+                    </span>
+                    <span className="text-xs text-zinc-300">
+                      {session.description}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <MobileLegendsPicker />
+        </div>
+      </section>
 
       <section className="mt-12 grid gap-6 rounded-3xl border border-white/10 bg-white/5 p-8">
         <h2 className="text-2xl font-semibold text-white">Laboratorios destacados</h2>
