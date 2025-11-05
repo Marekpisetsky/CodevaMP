@@ -1,56 +1,80 @@
-import Link from "next/link";
-import SiteShell from "./components/site-shell";
+import MobileLegendsPicker from "./components/mobile-legends-picker";
 
-const socialLinks = [
-  { href: "https://youtube.com/@CodevaMPYT", label: "YouTube", sub: "Videos, retos y directos", emoji: "▶️" },
-  { href: "https://twitch.tv/codevamp", label: "Twitch", sub: "Streams chill", emoji: "🎥" },
-  { href: "https://kick.com/codevamp", label: "Kick", sub: "Directos alternos", emoji: "🟢" },
-  { href: "https://www.tiktok.com/@codevamp_official", label: "TikTok", sub: "Clips y highlights", emoji: "🎶" },
-  { href: "https://instagram.com/codevamp_official", label: "Instagram", sub: "Arte y previews", emoji: "📸" },
-  { href: "https://chat.whatsapp.com/L8MGmH5dIzYLGpVOTxnHNT", label: "Comunidad WhatsApp", sub: "Únete al chat oficial", emoji: "💬" },
-];
+export default function Page() {
+  const navItems = [
+    { href: "#acerca", label: "Acerca de" },
+    { href: "#juegos", label: "Juegos" },
+    { href: "#proyectos", label: "Proyectos" },
+    { href: "#donaciones", label: "Donaciones" },
+    { href: "#legal", label: "Legal" }
+  ];
 
-const quickSections = [
-  {
-    title: "Acerca de CodevaMP",
-    description: "Conoce la historia, los valores y la misión que guía cada stream y torneo de la familia.",
-    href: "/acerca",
-    accent: "from-indigo-500/70 to-fuchsia-500/70",
-  },
-  {
-    title: "Laboratorio de Juegos",
-    description: "Estrategias, guías y tools dedicados a Mobile Legends y otros títulos competitivos.",
-    href: "/juegos",
-    accent: "from-emerald-500/70 to-cyan-500/70",
-  },
-  {
-    title: "Proyectos en curso",
-    description: "Series, cursos y ligas comunitarias con calendarios y requisitos claros para unirte.",
-    href: "/proyectos",
-    accent: "from-amber-500/70 to-rose-500/70",
-  },
-  {
-    title: "Apoya la iniciativa",
-    description: "Opciones transparentes de donación, patrocinios y cómo se usa cada aporte.",
-    href: "/donaciones",
-    accent: "from-fuchsia-500/70 to-purple-500/70",
-  },
-];
+  const socialLinks = [
+    { href: "https://youtube.com/@CodevaMPYT", label: "YouTube", sub: "Videos, retos y directos", emoji: "▶️" },
+    { href: "https://twitch.tv/codevamp", label: "Twitch", sub: "Streams chill", emoji: "🎥" },
+    { href: "https://kick.com/codevamp", label: "Kick", sub: "Directos alternos", emoji: "🟢" },
+    { href: "https://www.tiktok.com/@codevamp_official", label: "TikTok", sub: "Clips y highlights", emoji: "🎶" },
+    { href: "https://instagram.com/codevamp_official", label: "Instagram", sub: "Arte y previews", emoji: "📸" },
+    { href: "https://chat.whatsapp.com/L8MGmH5dIzYLGpVOTxnHNT", label: "Comunidad WhatsApp", sub: "Únete al chat oficial", emoji: "💬" }
+  ];
 
-const agenda = [
-  {
-    title: "MLBB Scrims · Meta de la semana",
-    detail: "Miércoles 21:00 GMT-5 — pruebas del nuevo parche con análisis de drafts en vivo.",
-  },
-  {
-    title: "Jornadas Road to Mythic",
-    detail: "Viernes 19:30 GMT-5 — coaching express para roles de jungla y roam.",
-  },
-  {
-    title: "Community Chill Night",
-    detail: "Domingo 17:00 GMT-5 — juegos party, sorteos y feedback del roadmap.",
-  },
-];
+  const donationOptions = [
+    { href: "https://paypal.me/codevamp", label: "PayPal", description: "Apoya con una donación única o recurrente de forma segura.", accent: "from-indigo-500 to-cyan-400" },
+    { href: "https://ko-fi.com/codevamp", label: "Ko-fi", description: "Invítame un café digital y ayuda a producir más contenido.", accent: "from-fuchsia-500 to-amber-400" },
+    { href: "https://patreon.com/codevamp", label: "Patreon", description: "Únete como mecenas para acceder a beneficios exclusivos.", accent: "from-purple-500 to-blue-400" }
+  ];
+
+  const projectCategories = [
+    {
+      id: "mlbb",
+      title: "Mobile Legends: Bang Bang",
+      description:
+        "Guías, estrategias y eventos especiales centrados en MLBB para impulsar a la comunidad hispana.",
+      projects: [
+        { name: "Road to Mythic", detail: "Serie competitiva semanal con análisis de partidas rank." },
+        { name: "Academia MLBB", detail: "Cursos rápidos para roles, composiciones y macrojuego." },
+        { name: "Liga Comunidad", detail: "Torneos mensuales patrocinados por la comunidad." }
+      ]
+    },
+    {
+      id: "fps",
+      title: "Shooter & FPS",
+      description:
+        "Cobertura de Valorant, Call of Duty y otros shooters con tácticas, configuraciones y scrims comunitarios.",
+      projects: [
+        { name: "Valorant Bootcamp", detail: "Entrenamientos y custom lobbies para mejorar aim y comunicación." },
+        { name: "Zona COD", detail: "Retos por temporadas y breakdowns de las mejores armas." }
+      ]
+    },
+    {
+      id: "aventura",
+      title: "Aventura & RPG",
+      description:
+        "Experiencias inmersivas, reseñas narrativas y guías de progresión para títulos de mundo abierto.",
+      projects: [
+        { name: "Ruta RPG", detail: "Streams guiados con decisiones de la comunidad." },
+        { name: "Lore Fridays", detail: "Charlas en directo sobre historias y universos favoritos." }
+      ]
+    }
+  ];
+
+  const legalItems = [
+    {
+      title: "Aviso Legal",
+      detail:
+        "CodevaMP es una marca dedicada a la creación de contenido y organización de eventos gaming. Toda la información publicada se ofrece con fines divulgativos y de entretenimiento."
+    },
+    {
+      title: "Política de Privacidad",
+      detail:
+        "Los datos recabados a través de formularios o newsletters se utilizan exclusivamente para comunicación comunitaria. Puedes solicitar la eliminación de tus datos en cualquier momento escribiendo a hola@codevamp.gg."
+    },
+    {
+      title: "Términos de Uso",
+      detail:
+        "Al participar en nuestras comunidades aceptas mantener un ambiente respetuoso, seguir las normas publicadas y cumplir con la normativa vigente sobre propiedad intelectual y conducta online."
+    }
+  ];
 
 export default function Page() {
   return (
@@ -93,51 +117,85 @@ export default function Page() {
                 <div className="text-xs text-zinc-300">{item.detail}</div>
               </li>
             ))}
-          </ul>
-          <p className="mt-4 text-xs text-zinc-400">
-            Toda la planificación detallada está disponible en la página de proyectos y en Discord.
-          </p>
-        </div>
-      </header>
+          </div>
+        </section>
 
-      <section className="grid gap-5 rounded-3xl border border-white/10 bg-white/5 p-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2 className="text-2xl font-semibold text-white">Explora las nuevas páginas</h2>
-          <p className="max-w-xl text-sm text-zinc-300">
-            Cada sección se cargó como ruta independiente para profundizar contenidos sin perder velocidad. Están prefetch y listas para visitar al instante.
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {quickSections.map((section) => (
-            <Link
-              key={section.href}
-              href={section.href}
-              prefetch
-              className={`group flex flex-col justify-between rounded-3xl border border-white/10 bg-white/5 p-6 transition hover:border-white/30 hover:bg-white/10`}
-            >
-              <div>
-                <span className={`inline-flex items-center rounded-full bg-gradient-to-r ${section.accent} px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-black shadow`}>Nuevo</span>
-                <h3 className="mt-4 text-lg font-semibold text-white">{section.title}</h3>
-                <p className="mt-2 text-sm text-zinc-300">{section.description}</p>
-              </div>
-              <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-fuchsia-200 transition group-hover:translate-x-1">
-                Entrar
-                <span aria-hidden>↗</span>
+        <section id="donaciones" className="mt-16 grid gap-6 rounded-3xl border border-white/10 bg-white/5 p-8">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-semibold text-white">Apoya el proyecto</h2>
+              <p className="text-sm text-zinc-300">
+                Cada aportación ayuda a producir nuevos eventos, mejorar la calidad de los directos y financiar premios
+                para la comunidad.
+              </p>
+            </div>
+            <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-4 py-1 text-xs font-semibold text-emerald-200">
+              Transparencia total
+            </span>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {donationOptions.map((option) => (
+              <a
+                key={option.href}
+                href={option.href}
+                target="_blank"
+                rel="noreferrer"
+                className={`flex flex-col gap-2 rounded-3xl border border-white/10 bg-white/5 p-5 transition hover:border-white/40 hover:bg-white/10`}
+              >
+                <span
+                  className={`inline-flex w-fit items-center rounded-full bg-gradient-to-r ${option.accent} px-3 py-1 text-xs font-semibold text-black`}
+                >
+                  {option.label}
+                </span>
+                <p className="text-sm text-zinc-200">{option.description}</p>
+              </a>
+            ))}
+          </div>
+        </section>
+
+        <section id="juegos" className="mt-16 space-y-6">
+          <div className="flex flex-wrap items-start justify-between gap-6">
+            <div className="max-w-2xl space-y-3">
+              <span className="inline-flex items-center rounded-full border border-cyan-400/40 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-200">
+                Juegos · Mobile Legends: Bang Bang
               </span>
-            </Link>
-          ))}
-        </div>
-      </section>
+              <h2 className="text-2xl font-semibold text-white">Laboratorio táctico para la Land of Dawn</h2>
+              <p className="text-sm text-zinc-300">
+                Desde guías rápidas hasta análisis de drafts competitivos, esta sección concentra todo lo
+                relacionado con Mobile Legends: Bang Bang. Aprende a leer composiciones, optimiza tu rotación
+                y encuentra picks que se adapten a cada parche.
+              </p>
+              <p className="text-xs text-zinc-400">
+                Actualizado semanalmente con parches, torneos y sugerencias basadas en scrims de la comunidad.
+              </p>
+            </div>
+            <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-zinc-200">
+              <h3 className="text-lg font-semibold text-white">Eventos destacados</h3>
+              <ul className="mt-3 space-y-3 text-xs">
+                <li className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  📅 Clash semanal: Serie BO3 con revisión de drafts en directo.
+                </li>
+                <li className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  🧭 Ruta a Mythic: Mentorías express para roles clave cada jueves.
+                </li>
+                <li className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  🧠 Taller de macro: Cómo convertir ventaja de tortuga en presión cruzada.
+                </li>
+              </ul>
+            </div>
+          </div>
 
-      <section className="mt-12 grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2 className="text-2xl font-semibold text-white">Conecta con la comunidad</h2>
-          <p className="max-w-xl text-sm text-zinc-300">
-            Sígueme para no perderte streams, anuncios y oportunidades de scrims o torneos.
-          </p>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          {socialLinks.map((link) => (
+          <MobileLegendsPicker />
+        </section>
+
+        <section id="proyectos" className="mt-16 space-y-10">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-semibold text-white">Proyectos en curso</h2>
+              <p className="text-sm text-zinc-300">
+                Organización dedicada por categorías para ayudarte a encontrar el contenido que más te inspira.
+              </p>
+            </div>
             <a
               key={link.href}
               href={link.href}
