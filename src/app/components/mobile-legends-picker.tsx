@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type EnemyTrait =
   | "burst"
@@ -574,9 +574,7 @@ const metricLabels: Record<keyof HeroMetrics, string> = {
   scaling: "Escalado",
 };
 
-const heroOptions = [...heroPool]
-  .map((hero) => hero.name)
-  .sort((a, b) => a.localeCompare(b, "es"));
+const sortedHeroPool = [...heroPool].sort((a, b) => a.name.localeCompare(b.name, "es"));
 
 const MAX_TEAM_PICKS = 5;
 
@@ -588,6 +586,8 @@ export default function MobileLegendsPicker() {
   const [activeTraits, setActiveTraits] = useState<EnemyTrait[]>([]);
   const [enemyPicks, setEnemyPicks] = useState<string[]>([]);
   const [allyPicks, setAllyPicks] = useState<string[]>([]);
+  const [pickerSide, setPickerSide] = useState<DraftSide | null>(null);
+  const [heroSearch, setHeroSearch] = useState("");
 
   const suggestions = useMemo(() => {
     const allyInfo = allyPicks.reduce(
@@ -718,13 +718,16 @@ export default function MobileLegendsPicker() {
   };
 
   const handleAddPick = (side: DraftSide, heroName: string) => {
-    if (!heroName) return;
+    if (!heroName) return false;
     const update = side === "enemy" ? setEnemyPicks : setAllyPicks;
+    let added = false;
     update((current) => {
       if (current.includes(heroName)) return current;
       if (current.length >= MAX_TEAM_PICKS) return current;
+      added = true;
       return [...current, heroName];
     });
+    return added;
   };
 
   const handleRemovePick = (side: DraftSide, heroName: string) => {
@@ -739,6 +742,12 @@ export default function MobileLegendsPicker() {
       side === "enemy"
         ? "border-rose-400/40 bg-rose-400/20 text-rose-100"
         : "border-emerald-400/40 bg-emerald-400/20 text-emerald-100";
+    const openPicker = () => {
+      if (picks.length >= MAX_TEAM_PICKS) return;
+      setPickerSide(side);
+      setHeroSearch("");
+    };
+    const isTeamFull = picks.length >= MAX_TEAM_PICKS;
 
     return (
       <div className="space-y-2">
@@ -780,32 +789,71 @@ export default function MobileLegendsPicker() {
           )}
         </div>
 
-        <select
-          disabled={(side === "enemy" ? enemyPicks : allyPicks).length >= MAX_TEAM_PICKS}
-          defaultValue=""
-          onChange={(event) => {
-            handleAddPick(side, event.currentTarget.value);
-            event.currentTarget.value = "";
-          }}
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none transition focus:border-fuchsia-400 disabled:cursor-not-allowed disabled:opacity-40"
+        <button
+          type="button"
+          onClick={openPicker}
+          disabled={isTeamFull}
+          className="flex w-full items-center justify-between rounded-2xl border border-dashed border-fuchsia-400/60 bg-fuchsia-400/10 px-4 py-3 text-left text-xs font-semibold text-white transition hover:border-fuchsia-300 hover:bg-fuchsia-400/20 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-zinc-400"
         >
-          <option value="" disabled>
+          <span className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-cyan-500 text-sm text-black shadow-md">
+              +
+            </span>
             Añadir héroe {label.toLowerCase()}
-          </option>
-          {heroOptions.map((option) => {
-            const picks = side === "enemy" ? enemyPicks : allyPicks;
-            const opposite = side === "enemy" ? allyPicks : enemyPicks;
-            const disabled = picks.includes(option) || opposite.includes(option);
-            return (
-              <option key={`${side}-${option}`} value={option} disabled={disabled}>
-                {option}
-                {disabled ? " (ocupado)" : ""}
-              </option>
-            );
-          })}
-        </select>
+          </span>
+          <span className="text-[10px] uppercase tracking-wide text-fuchsia-200">
+            {isTeamFull ? "Equipo completo" : `${picks.length}/${MAX_TEAM_PICKS}`}
+          </span>
+        </button>
       </div>
     );
+  };
+
+  useEffect(() => {
+    if (!pickerSide) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setPickerSide(null);
+        setHeroSearch("");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [pickerSide]);
+
+  const recommendedHeroes = useMemo(
+    () => new Set(suggestions.map((item) => item.hero.name)),
+    [suggestions]
+  );
+
+  const heroCards = useMemo(() => {
+    if (!pickerSide) return [] as Hero[];
+    const search = heroSearch.trim().toLowerCase();
+    return sortedHeroPool.filter((hero) => {
+      if (enemyPicks.includes(hero.name) || allyPicks.includes(hero.name)) {
+        return true;
+      }
+      if (!search) return true;
+      const haystack = [
+        hero.name,
+        hero.role,
+        hero.lane,
+        hero.difficulty,
+        hero.specialties.join(" "),
+        hero.synergy,
+        hero.playPattern,
+        hero.macroFocus,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(search);
+    });
+  }, [allyPicks, enemyPicks, heroSearch, pickerSide]);
+
+  const closePicker = () => {
+    setPickerSide(null);
+    setHeroSearch("");
   };
 
   return (
@@ -1053,6 +1101,136 @@ export default function MobileLegendsPicker() {
             considera flexear tu pick o adaptar la build para cubrir carencias del equipo.
           </p>
         </footer>
+
+      {pickerSide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="relative flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 shadow-2xl"
+          >
+            <div className="flex flex-col gap-4 border-b border-white/5 bg-white/5 px-6 py-5 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] uppercase tracking-wide text-fuchsia-200">{pickerSide === "enemy" ? "Bando enemigo" : "Mi escuadra"}</span>
+                  <h4 className="text-2xl font-semibold">
+                    Elige un héroe impresionante
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={closePicker}
+                  className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs uppercase tracking-wide text-zinc-200 transition hover:border-white/30 hover:bg-white/20"
+                >
+                  Cerrar
+                </button>
+              </div>
+              <p className="text-xs text-zinc-300">
+                Usa la búsqueda para encontrar héroes por nombre, rol o especialidad. Los recomendados por el asistente brillan con un aura especial.
+              </p>
+              <div className="relative">
+                <input
+                  autoFocus
+                  value={heroSearch}
+                  onChange={(event) => setHeroSearch(event.currentTarget.value)}
+                  placeholder="Buscar por nombre, rol, sinergias o estilo de juego"
+                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none transition focus:border-fuchsia-400 focus:ring-2 focus:ring-fuchsia-500/40"
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs uppercase tracking-wide text-zinc-500">
+                  {heroCards.length} héroe{heroCards.length === 1 ? "" : "s"}
+                </span>
+              </div>
+            </div>
+
+            <div className="scrollbar-thin flex-1 space-y-6 overflow-y-auto px-6 py-6">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {heroCards.map((hero) => {
+                  const isTaken = enemyPicks.includes(hero.name) || allyPicks.includes(hero.name);
+                  const isRecommended = recommendedHeroes.has(hero.name);
+                  const countersActive = activeTraits.some((trait) => hero.counters.includes(trait));
+                  const disablesSelection =
+                    (pickerSide === "enemy" ? enemyPicks : allyPicks).length >= MAX_TEAM_PICKS || isTaken;
+                  const handleSelect = () => {
+                    if (!pickerSide || disablesSelection) return;
+                    const added = handleAddPick(pickerSide, hero.name);
+                    if (added) {
+                      closePicker();
+                    }
+                  };
+
+                  return (
+                    <button
+                      key={`${pickerSide}-${hero.name}`}
+                      type="button"
+                      onClick={handleSelect}
+                      disabled={disablesSelection}
+                      className={`group relative flex h-full flex-col justify-between overflow-hidden rounded-3xl border p-4 text-left transition ${
+                        isRecommended
+                          ? "border-fuchsia-400/70 bg-gradient-to-br from-fuchsia-500/30 via-purple-500/20 to-cyan-500/20"
+                          : "border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10"
+                      } ${disablesSelection ? "opacity-50" : "shadow-[0_0_30px_-15px_rgba(217,70,239,0.9)]"}`}
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-lg font-semibold text-white">{hero.name}</span>
+                          <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] uppercase tracking-wide text-zinc-300">
+                            {hero.role}
+                          </span>
+                        </div>
+                        <p className="text-[11px] uppercase tracking-wide text-cyan-200">
+                          {hero.lane} lane · Dificultad {hero.difficulty}
+                        </p>
+                        <p className="text-xs text-zinc-200">{hero.synergy}</p>
+                        <p className="text-[11px] text-indigo-200">{hero.playPattern}</p>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-2 text-[10px] text-zinc-200">
+                        {hero.specialties.map((specialty) => (
+                          <span
+                            key={`${hero.name}-${specialty}`}
+                            className="rounded-full border border-white/20 bg-black/20 px-2 py-0.5"
+                          >
+                            {specialty}
+                          </span>
+                        ))}
+                        {countersActive && (
+                          <span className="rounded-full border border-emerald-400/60 bg-emerald-400/20 px-2 py-0.5 text-emerald-100">
+                            Castiga amenazas activas
+                          </span>
+                        )}
+                        {isRecommended && (
+                          <span className="rounded-full border border-fuchsia-400/70 bg-fuchsia-400/20 px-2 py-0.5 text-fuchsia-100">
+                            Recomendado
+                          </span>
+                        )}
+                        {isTaken && (
+                          <span className="rounded-full border border-amber-400/60 bg-amber-400/10 px-2 py-0.5 text-amber-100">
+                            Ocupado
+                          </span>
+                        )}
+                      </div>
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 translate-y-12 bg-gradient-to-t from-black/70 via-black/0 to-transparent transition group-hover:translate-y-6" />
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-5 text-xs text-zinc-300">
+                <p className="font-semibold text-white">
+                  {pickerSide === "enemy"
+                    ? "Consejo anti-draft:"
+                    : "Inspiración para tu escuadra:"}
+                </p>
+                <p className="mt-2">
+                  {pickerSide === "enemy"
+                    ? "Identifica qué picks enemigos te forzaron a reaccionar y construye respuestas con control de mapa y visión."
+                    : "Sincroniza tu draft con objetivos neutrales y asegúrate de equilibrar iniciación, daño sostenido y peel."}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
