@@ -1,6 +1,7 @@
 import Link from "next/link";
 import MobileLegendsPicker from "@/app/components/mobile-legends-picker";
 import SiteShell from "@/app/components/site-shell";
+import { mlbbPatchHistory } from "@/app/data/mobile-legends-patch-history";
 
 const featuredLabs = [
   {
@@ -34,19 +35,19 @@ const scrimCalendar = [
 
 const mlbbHighlights = [
   {
-    title: "Parche 1.8.92",
+    title: "Parche 1.8.20 · Roles",
     detail:
-      "Khufra y Atlas dominan el engage mientras tiradores como Brody y Beatrix brillan en mid game.",
+      "Los tanques pierden su etiqueta de soporte y Nana queda como maga pura, obligando a replantear el peel del equipo.",
   },
   {
-    title: "Objetivos del meta",
+    title: "Parche 1.6.84 · Julian",
     detail:
-      "Prioriza tortuga temprana y visión constante del jungla enemigo para mantener el tempo de la partida.",
+      "El debut del Raven sin definitiva llega con ajustes a Irithel, Thamuz y Akai, más eventos especiales como Transformers y MSC.",
   },
   {
-    title: "Tendencias",
+    title: "Parche 1.4.94 · Especialidades",
     detail:
-      "Dúos roam + jungla agresivos que permitan rotaciones rápidas hacia Gold Lane y peleas coordinadas.",
+      "Se añaden Magic/Mixed Damage, Guard y Support, redefiniendo builds de Bruno, Selena, Karina y compañía.",
   },
 ];
 
@@ -119,6 +120,12 @@ export default function JuegosPage() {
               >
                 Agenda de práctica
               </a>
+              <a
+                href="#mlbb-parches"
+                className="inline-flex items-center gap-2 rounded-full border border-violet-400/40 bg-violet-400/10 px-3 py-1 font-semibold text-violet-100 transition hover:border-violet-300/60 hover:bg-violet-400/20"
+              >
+                Historial de parches
+              </a>
             </nav>
           </div>
           <div className="flex flex-col items-start gap-3 text-sm text-zinc-200">
@@ -132,7 +139,7 @@ export default function JuegosPage() {
               Unirse a scrims MLBB
             </Link>
             <span className="rounded-full border border-fuchsia-400/30 bg-fuchsia-400/10 px-3 py-1 text-xs font-semibold text-fuchsia-200">
-              Actualizado al parche 1.8.92
+              Cobertura 1.8.20 · 1.6.84 · 1.4.94
             </span>
           </div>
         </div>
@@ -187,6 +194,53 @@ export default function JuegosPage() {
             <MobileLegendsPicker />
           </section>
         </div>
+
+        <section
+          id="mlbb-parches"
+          className="mt-6 space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6"
+        >
+          <div className="space-y-3">
+            <span className="inline-flex items-center rounded-full border border-violet-400/40 bg-violet-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-violet-200">
+              Cronología MLBB
+            </span>
+            <h3 className="text-lg font-semibold text-white">
+              Historial de parches clave
+            </h3>
+            <p className="text-sm text-zinc-300">
+              Resumen curado de cambios de roles, especialidades y eventos desde 2016 hasta la versión 1.8.20 para contextualizar drafts y composiciones.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {mlbbPatchHistory.map((entry) => (
+              <article
+                key={entry.version}
+                className="flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-white/5 p-5"
+              >
+                <header className="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-base font-semibold text-white">
+                      Parche {entry.version}
+                    </h4>
+                    <p className="text-xs uppercase tracking-wide text-violet-200">
+                      {entry.date}
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-zinc-100">
+                    {entry.theme}
+                  </span>
+                </header>
+                <ul className="mt-4 space-y-2 text-xs text-zinc-300">
+                  {entry.highlights.map((highlight) => (
+                    <li key={highlight} className="flex items-start gap-2">
+                      <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-violet-300" />
+                      <span>{highlight}</span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </section>
       </section>
 
       <section className="mt-12 grid gap-6 rounded-3xl border border-white/10 bg-white/5 p-8">
