@@ -2,6 +2,7 @@ import Link from "next/link";
 import MobileLegendsPicker from "@/app/components/mobile-legends-picker";
 import SiteShell from "@/app/components/site-shell";
 import { mlbbPatchHistory } from "@/app/data/mobile-legends-patch-history";
+import { mlbbHeroTutorials } from "@/app/data/mobile-legends-hero-tutorials";
 
 const featuredLabs = [
   {
@@ -121,6 +122,18 @@ export default function JuegosPage() {
                 Agenda de práctica
               </a>
               <a
+                href="#mlbb-tutoriales"
+                className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 font-semibold text-amber-100 transition hover:border-amber-300/60 hover:bg-amber-400/20"
+              >
+                Tutoriales de héroes
+              </a>
+              <a
+                href="#mlbb-app"
+                className="inline-flex items-center gap-2 rounded-full border border-teal-400/40 bg-teal-400/10 px-3 py-1 font-semibold text-teal-100 transition hover:border-teal-300/60 hover:bg-teal-400/20"
+              >
+                App Praxis RL
+              </a>
+              <a
                 href="#mlbb-parches"
                 className="inline-flex items-center gap-2 rounded-full border border-violet-400/40 bg-violet-400/10 px-3 py-1 font-semibold text-violet-100 transition hover:border-violet-300/60 hover:bg-violet-400/20"
               >
@@ -194,6 +207,140 @@ export default function JuegosPage() {
             <MobileLegendsPicker />
           </section>
         </div>
+
+        <section
+          id="mlbb-tutoriales"
+          className="mt-6 space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6"
+        >
+          <div className="space-y-3">
+            <span className="inline-flex items-center rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-200">
+              Tutoriales y rutas de aprendizaje
+            </span>
+            <h3 className="text-lg font-semibold text-white">
+              Domina cada héroe con guías curadas
+            </h3>
+            <p className="text-sm text-zinc-300">
+              Material en vídeo, PDF y listas de chequeo actualizadas por rol. Usa estos recursos para afianzar mecánicas antes
+              de entrar a scrims o como tarea entre sesiones del laboratorio.
+            </p>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            {mlbbHeroTutorials.map((tutorial) => (
+              <article
+                key={`${tutorial.hero}-${tutorial.format}`}
+                className="flex h-full flex-col justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-5"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="text-base font-semibold text-white">{tutorial.hero}</h4>
+                      <p className="text-[11px] uppercase tracking-wide text-zinc-400">
+                        {tutorial.role} · {tutorial.lane}
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-amber-400/60 bg-amber-400/15 px-3 py-1 text-[11px] font-semibold text-amber-100">
+                      {tutorial.difficulty}
+                    </span>
+                  </div>
+                  <p className="text-sm text-zinc-200">{tutorial.summary}</p>
+                </div>
+                <div className="space-y-3 text-xs text-zinc-300">
+                  <div className="flex flex-wrap gap-2">
+                    {tutorial.focus.map((topic) => (
+                      <span
+                        key={`${tutorial.hero}-${topic}`}
+                        className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-zinc-200"
+                      >
+                        {topic}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-zinc-400">
+                    <span>{tutorial.duration} · {tutorial.format}</span>
+                    <span>Actualizado {tutorial.lastUpdate}</span>
+                  </div>
+                  <Link
+                    href={tutorial.url}
+                    prefetch={false}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-amber-400/60 bg-amber-400/15 px-3 py-1 text-[11px] font-semibold text-amber-100 transition hover:border-amber-300/60 hover:bg-amber-400/25"
+                  >
+                    Abrir recurso
+                    <span aria-hidden>↗</span>
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section
+          id="mlbb-app"
+          className="mt-6 space-y-6 rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/70 via-teal-900/60 to-emerald-900/70 p-6"
+        >
+          <div className="space-y-3">
+            <span className="inline-flex items-center rounded-full border border-teal-400/50 bg-teal-400/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-teal-100">
+              Praxis · App de entrenamiento autónomo
+            </span>
+            <h3 className="text-lg font-semibold text-white">
+              Aprende MLBB con bucles de refuerzo y simulación
+            </h3>
+            <p className="text-sm text-emerald-100/90">
+              La aplicación móvil exclusiva de CodevaMP entrenará bots con aprendizaje por refuerzo, analizará tus partidas y
+              propondrá rutinas adaptativas. Beta cerrada en camino: puedes registrarte para recibir acceso anticipado.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-[1.1fr,0.9fr] md:items-start">
+            <div className="space-y-3 text-sm text-emerald-100/90">
+              <p>
+                El motor combina datos del Picker, reseñas expertas y telemetría in-game para construir políticas que se ajustan
+                a tu estilo. Praxis evalúa decisiones frame a frame y actualiza builds, rutas y llamados en cuestión de minutos.
+              </p>
+              <ul className="space-y-2 text-xs">
+                <li className="flex items-start gap-2">
+                  <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-teal-300" />
+                  <span>Simulador de scrims con agentes de refuerzo para practicar drafts y macro sin necesidad de 5-stack.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-teal-300" />
+                  <span>Asistente de partidas en vivo que detecta patrones y sugiere ajustes de build o rotaciones en tiempo real.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-teal-300" />
+                  <span>Módulo de auto-play controlado para entrenar micro mecánicas y evaluar consistencia en escenarios repetibles.</span>
+                </li>
+              </ul>
+            </div>
+            <div className="space-y-4 rounded-2xl border border-white/10 bg-black/30 p-4 text-xs text-teal-100">
+              <div className="space-y-2">
+                <span className="text-[11px] uppercase tracking-wide text-teal-200">Roadmap 2024</span>
+                <ul className="space-y-2">
+                  <li>• Abril: prototipo offline con scrims simuladas y panel táctico.</li>
+                  <li>• Junio: integración de telemetría directa y playlists de entrenamiento personalizadas.</li>
+                  <li>• Agosto: despliegue de agentes en ranked y métricas compartibles en la app.</li>
+                </ul>
+              </div>
+              <div className="space-y-3">
+                <span className="text-[11px] uppercase tracking-wide text-teal-200">Inscripciones</span>
+                <p className="text-emerald-100/90">
+                  Cupos limitados para testers (50 plazas). Prioridad para equipos competitivos y creadores que aporten feedback
+                  estructurado.
+                </p>
+                <Link
+                  href="https://forms.gle/8S1fWLj3QA?mlbb-app"
+                  prefetch={false}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-teal-400/60 bg-teal-400/20 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-black transition hover:border-teal-300/70 hover:bg-teal-300"
+                >
+                  Quiero probar la app
+                  <span aria-hidden>↗</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <section
           id="mlbb-parches"
