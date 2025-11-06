@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { heroBaseRecords } from "@/app/data/mobile-legends-heroes";
+import { mlbbExpertFeedback } from "@/app/data/mobile-legends-expert-feedback";
+import type { MobileLegendsExpertReview } from "@/app/data/mobile-legends-expert-feedback";
 
 type EnemyTrait =
   | "burst"
@@ -145,6 +147,49 @@ const laneMacroTemplates: Record<Lane, string> = {
   Mid: "Coordina con tu jungla para dominar Tortuga y controlar visión en el río.",
   Jungle: "Administra los tiempos de campamentos e invade con prioridad de líneas para asegurar cada objetivo neutral.",
   Roam: "Coloca visión en arbustos críticos, protege a tu tirador y acompaña cada objetivo neutral.",
+};
+
+const relativeTimeFormatter = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
+
+function formatRelativeTimeFromNow(value: string) {
+  if (!value) return "ahora";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "recientemente";
+  const diff = date.getTime() - Date.now();
+  const minute = 60 * 1000;
+  if (Math.abs(diff) < 60 * minute) {
+    return relativeTimeFormatter.format(Math.round(diff / minute), "minute");
+  }
+  const hour = 60 * minute;
+  if (Math.abs(diff) < 24 * hour) {
+    return relativeTimeFormatter.format(Math.round(diff / hour), "hour");
+  }
+  const day = 24 * hour;
+  if (Math.abs(diff) < 7 * day) {
+    return relativeTimeFormatter.format(Math.round(diff / day), "day");
+  }
+  const week = 7 * day;
+  return relativeTimeFormatter.format(Math.round(diff / week), "week");
+}
+
+type ExpertFeedbackSummary = {
+  hero: string;
+  role: HeroRole;
+  lane: Lane;
+  headline: string;
+  recommendation: string;
+  priorityTags: string[];
+  confidence: number;
+  averageRating: number;
+  totalReviews: number;
+  latestReviewAt: string;
+  reviews: MobileLegendsExpertReview[];
+};
+
+type FeedbackStreamEntry = {
+  hero: string;
+  review: MobileLegendsExpertReview;
+  summary: ExpertFeedbackSummary;
 };
 
 const laneSynergySnippets: Record<Lane, string> = {
@@ -781,6 +826,33 @@ const heroPool: Hero[] = heroBaseRecords.map((base) => {
   };
 });
 
+const expertFeedbackSummaries: ExpertFeedbackSummary[] = mlbbExpertFeedback.map((entry) => {
+  const sortedReviews = [...entry.reviews].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const totalReviews = sortedReviews.length;
+  const averageRating = totalReviews > 0
+    ? sortedReviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews
+    : 0;
+
+  return {
+    hero: entry.hero,
+    role: entry.role as HeroRole,
+    lane: entry.lane as Lane,
+    headline: entry.headline,
+    recommendation: entry.recommendation,
+    priorityTags: entry.priorityTags,
+    confidence: entry.confidence,
+    averageRating,
+    totalReviews,
+    latestReviewAt: sortedReviews[0]?.createdAt ?? new Date().toISOString(),
+    reviews: sortedReviews,
+  };
+});
+
+const expertFeedbackByHero = expertFeedbackSummaries.reduce<Record<string, ExpertFeedbackSummary>>((acc, entry) => {
+  acc[entry.hero] = entry;
+  return acc;
+}, {});
+
 type CostChipType = "bp" | "diamonds" | "tickets" | "fragments" | "gems";
 
 type CostChip = { type: CostChipType; label: string };
@@ -872,6 +944,7 @@ export default function MobileLegendsPicker() {
   const [pickerSide, setPickerSide] = useState<DraftSide | null>(null);
   const [heroSearch, setHeroSearch] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [activeReviewIndex, setActiveReviewIndex] = useState(0);
 
   const suggestions = useMemo(() => {
     const allyInfo = allyPicks.reduce(
@@ -1006,6 +1079,54 @@ export default function MobileLegendsPicker() {
     [suggestions]
   );
 
+  const relevantFeedbackSummaries = useMemo(() => {
+    const heroCandidates = new Set<string>();
+    allyPicks.forEach((hero) => heroCandidates.add(hero));
+    enemyPicks.forEach((hero) => heroCandidates.add(hero));
+    topRecommendations.forEach((entry) => heroCandidates.add(entry.hero.name));
+
+    const prioritized = Array.from(heroCandidates)
+      .map((hero) => expertFeedbackByHero[hero])
+      .filter((entry): entry is ExpertFeedbackSummary => Boolean(entry));
+
+    const sortedFallback = [...expertFeedbackSummaries].sort((a, b) => {
+      const aScore = a.averageRating * a.confidence;
+      const bScore = b.averageRating * b.confidence;
+      return bScore - aScore;
+    });
+
+    const pool = prioritized.length > 0 ? [...prioritized, ...sortedFallback] : sortedFallback;
+
+    const unique: ExpertFeedbackSummary[] = [];
+    pool.forEach((entry) => {
+      if (!entry) return;
+      if (unique.some((item) => item.hero === entry.hero)) return;
+      if (unique.length >= 3) return;
+      unique.push(entry);
+    });
+
+    return unique;
+  }, [allyPicks, enemyPicks, topRecommendations]);
+
+  const feedbackStream = useMemo(() => {
+    const stream: FeedbackStreamEntry[] = relevantFeedbackSummaries.flatMap((summary) =>
+      summary.reviews.map((review) => ({
+        hero: summary.hero,
+        review,
+        summary,
+      }))
+    );
+
+    return stream
+      .sort((a, b) => new Date(b.review.createdAt).getTime() - new Date(a.review.createdAt).getTime())
+      .slice(0, 12);
+  }, [relevantFeedbackSummaries]);
+
+  const activePulse =
+    feedbackStream.length > 0
+      ? feedbackStream[activeReviewIndex % feedbackStream.length]
+      : null;
+
   const toggleTrait = (trait: EnemyTrait) => {
     setActiveTraits((current) =>
       current.includes(trait) ? current.filter((item) => item !== trait) : [...current, trait]
@@ -1116,6 +1237,18 @@ export default function MobileLegendsPicker() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [pickerSide]);
+
+  useEffect(() => {
+    if (feedbackStream.length <= 1) return;
+    const interval = window.setInterval(() => {
+      setActiveReviewIndex((current) => (current + 1) % feedbackStream.length);
+    }, 9000);
+    return () => window.clearInterval(interval);
+  }, [feedbackStream.length]);
+
+  useEffect(() => {
+    setActiveReviewIndex(0);
+  }, [feedbackStream.length]);
 
   const recommendedHeroes = useMemo(
     () => new Set(suggestions.map((item) => item.hero.name)),
@@ -1498,6 +1631,106 @@ export default function MobileLegendsPicker() {
           )}
         </div>
       </div>
+
+      {relevantFeedbackSummaries.length > 0 && (
+        <section className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-6">
+          <header className="space-y-2">
+            <span className="inline-flex items-center rounded-full border border-fuchsia-400/40 bg-fuchsia-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-fuchsia-200">
+              Feedback en vivo
+            </span>
+            <h4 className="text-lg font-semibold text-white">Triangulación con reseñas expertas</h4>
+            <p className="text-xs leading-relaxed text-zinc-300">
+              Las recomendaciones del laboratorio se nutren de reseñas curadas por coaches, analistas y jugadores profesionales.
+              Cada tarjeta se actualiza automáticamente cuando entran valoraciones nuevas, equilibrando datos y experiencia en campo.
+            </p>
+          </header>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {relevantFeedbackSummaries.map((entry) => {
+              const ratingPercent = Math.round((entry.averageRating / 5) * 100);
+              const confidencePercent = Math.round(entry.confidence * 100);
+              const latestReview = entry.reviews[0];
+              return (
+                <article
+                  key={entry.hero}
+                  className="flex h-full flex-col justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h5 className="text-base font-semibold text-white">{entry.hero}</h5>
+                        <p className="text-[11px] uppercase tracking-wide text-zinc-400">
+                          {entry.role} · {entry.lane}
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-emerald-400/50 bg-emerald-400/15 px-3 py-1 text-[11px] font-semibold text-emerald-100">
+                        {confidencePercent}% confianza
+                      </span>
+                    </div>
+                    <p className="text-sm text-zinc-200">{entry.headline}</p>
+                    <p className="text-xs text-indigo-200">{entry.recommendation}</p>
+                  </div>
+
+                  <div className="space-y-3 text-[11px] text-zinc-400">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span>Consenso experto</span>
+                        <span className="text-zinc-200">{entry.averageRating.toFixed(1)}/5</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-white/10">
+                        <div
+                          className="h-2 rounded-full bg-gradient-to-r from-fuchsia-400 via-cyan-400 to-emerald-400"
+                          style={{ width: `${Math.min(100, Math.max(ratingPercent, 6))}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span>Última reseña</span>
+                        <span className="text-zinc-200">{formatRelativeTimeFromNow(entry.latestReviewAt)}</span>
+                      </div>
+                      <div className="text-[11px] text-zinc-300">
+                        {latestReview?.comment ?? "Se registrará la próxima reseña en cuanto llegue."}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {entry.priorityTags.map((tag) => (
+                        <span
+                          key={`${entry.hero}-${tag}`}
+                          className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-zinc-200"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="text-[10px] text-zinc-400">
+                      {entry.totalReviews} reseña{entry.totalReviews === 1 ? "" : "s"} verificadas
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          {activePulse && (
+            <div className="space-y-2 rounded-2xl border border-fuchsia-400/40 bg-fuchsia-400/10 p-4 text-xs text-fuchsia-100">
+              <span className="inline-flex items-center gap-2 text-[11px] uppercase tracking-wide">
+                <span className="flex h-2 w-2 animate-pulse rounded-full bg-fuchsia-300" />
+                Reseña en vivo
+              </span>
+              <p className="text-sm text-white">“{activePulse.review.comment}”</p>
+              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                <span className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-white/90">{activePulse.hero}</span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-white/80">{activePulse.review.reviewer}</span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-white/80">{activePulse.review.specialization}</span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-white/70">{activePulse.review.focus}</span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-white/70">{activePulse.review.rating.toFixed(1)}/5</span>
+                <span className="text-white/70">{formatRelativeTimeFromNow(activePulse.review.createdAt)}</span>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
         <footer className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-zinc-300">
           <p>
