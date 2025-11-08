@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { heroBaseRecords } from "@/app/data/mobile-legends-heroes";
 import { mlbbExpertFeedback } from "@/app/data/mobile-legends-expert-feedback";
+import { mlbbDraftAgent } from "@/app/data/mobile-legends-draft-agent";
 import type { MobileLegendsExpertReview } from "@/app/data/mobile-legends-expert-feedback";
 
 type EnemyTrait =
@@ -932,6 +933,7 @@ const sortedHeroPool = [...heroPool].sort((a, b) => a.name.localeCompare(b.name,
 const MAX_TEAM_PICKS = 5;
 const MAX_RECOMMENDATIONS = 12;
 const FEATURED_RECOMMENDATIONS = 3;
+const DRAFT_AGENT_DOWNLOAD_URL = "/api/mlbb-draft-agent";
 
 type DraftSide = "enemy" | "ally";
 
@@ -945,6 +947,7 @@ export default function MobileLegendsPicker() {
   const [heroSearch, setHeroSearch] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [activeReviewIndex, setActiveReviewIndex] = useState(0);
+  const latestItem = mlbbDraftAgent.latestItem;
 
   const suggestions = useMemo(() => {
     const allyInfo = allyPicks.reduce(
@@ -1300,6 +1303,31 @@ export default function MobileLegendsPicker() {
           de ejecución claro.
         </p>
       </header>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-fuchsia-400/40 bg-fuchsia-400/10 p-4 text-xs text-fuchsia-100 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-white">Agente táctico descargable</p>
+          <p className="text-xs text-fuchsia-100/90">
+            Descarga el paquete offline con bans prioritarios, rutas de picks y builds que integran el nuevo {latestItem.name}.
+          </p>
+          <p className="text-[11px] uppercase tracking-wide text-fuchsia-200">
+            Versión {mlbbDraftAgent.version} · Actualizado {mlbbDraftAgent.updatedAt}
+          </p>
+        </div>
+        <div className="flex flex-col items-start gap-2 md:items-end">
+          <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] uppercase tracking-wide text-white/90">
+            Último ítem: {latestItem.name}
+          </span>
+          <a
+            href={DRAFT_AGENT_DOWNLOAD_URL}
+            download
+            className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-fuchsia-600 shadow-md transition hover:scale-105"
+          >
+            Descargar agente
+            <span aria-hidden>↓</span>
+          </a>
+        </div>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[0.95fr,1.05fr] lg:items-start">
         <div className="space-y-5">
