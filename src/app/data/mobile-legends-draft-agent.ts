@@ -1,39 +1,4 @@
-export type MlbbDraftAgentItem = {
-  name: string;
-  description: string;
-  recommendedFor: string[];
-  timing: string;
-};
-
-export type MlbbDraftAgentBan = {
-  hero: string;
-  priority: "Alta" | "Media" | "Situacional";
-  reason: string;
-};
-
-export type MlbbDraftAgentPick = {
-  role: string;
-  headline: string;
-  heroes: string[];
-  plan: string;
-};
-
-export type MlbbDraftAgentBuild = {
-  hero: string;
-  coreItems: string[];
-  situationalItems: string[];
-  notes: string;
-};
-
-export type MlbbDraftAgent = {
-  version: string;
-  updatedAt: string;
-  latestItem: MlbbDraftAgentItem;
-  bans: MlbbDraftAgentBan[];
-  priorityPicks: MlbbDraftAgentPick[];
-  builds: MlbbDraftAgentBuild[];
-  notes: string[];
-};
+import type { MlbbDraftAgent } from "@shared/mobile-legends/types";
 
 export const mlbbDraftAgent: MlbbDraftAgent = {
   version: "2024.04",

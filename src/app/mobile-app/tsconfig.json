@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-native",
+    "allowJs": false,
+    "paths": {
+      "@shared/*": ["../shared/*"],
+      "@web/*": ["../src/*"]
+    }
+  },
+  "include": ["./App.tsx", "./src/**/*"],
+  "exclude": ["node_modules"]
+}

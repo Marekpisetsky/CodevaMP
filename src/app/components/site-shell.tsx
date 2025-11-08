@@ -7,6 +7,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/juegos", label: "Juegos" },
   { href: "/juegos/mobile-legends", label: "MLBB" },
   { href: "/proyectos", label: "Proyectos" },
+  { href: "/download", label: "Descargas" },
   { href: "/donaciones", label: "Donaciones" },
   { href: "/legal", label: "Legal" },
 ];
