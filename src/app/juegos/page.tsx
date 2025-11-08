@@ -8,8 +8,8 @@ const featuredLabs = [
   {
     title: "Mobile Legends · Laboratorio táctico",
     summary:
-      "Draft planner interactivo, análisis de parches y calendario de scrims. Incluye el nuevo Mobile Legends Picker dentro de la sección.",
-    href: "#mlbb",
+      "Draft planner interactivo, nueva app Mobile Legends Picker, análisis de parches y calendario de scrims en un solo lugar.",
+    href: "/juegos/mobile-legends",
     tag: "Actualizado",
   },
   {
@@ -85,11 +85,11 @@ export default function JuegosPage() {
           Esta sección agrupa todas las experiencias tácticas de CodevaMP. Encontrarás pizarras de draft, planillas de scrims, recursos descargables y guías paso a paso para Mobile Legends, shooters competitivos y aventuras cooperativas.
         </p>
         <Link
-          href="#mlbb"
+          href="/juegos/mobile-legends"
           prefetch
           className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 px-5 py-2 text-sm font-semibold text-black shadow-md transition hover:scale-[1.02]"
         >
-          Ir al laboratorio de MLBB
+          Abrir app MLBB Picker
         </Link>
       </header>
 
