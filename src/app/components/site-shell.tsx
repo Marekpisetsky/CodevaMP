@@ -77,7 +77,7 @@ export default function SiteShell({
     return () => {
       window.cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [disableEffects]);
 
   useEffect(() => {
     const root = rootRef.current;

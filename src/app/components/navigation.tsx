@@ -9,12 +9,14 @@ export type NavItem = {
 };
 
 export default function Navigation({
-  items: _items,
-  activePath: _activePath,
+  items,
+  activePath,
 }: {
   items: NavItem[];
   activePath?: string;
 }) {
+  void items;
+  void activePath;
   return (
     <div className="flex items-center gap-3 text-lg font-semibold text-white">
       <Link href="/" prefetch className="flex items-center gap-3">
