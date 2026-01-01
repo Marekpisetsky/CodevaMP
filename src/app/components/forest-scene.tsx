@@ -393,7 +393,7 @@ export default function ForestScene() {
             parentByIndex !== null && intensity > linkThreshold && item.z > 0;
           let neighborIndex: number | null = null;
           if (isActive) {
-            const parent = parentByIndex.get(index);
+            const parent = parentByIndex?.get(index);
             if (parent !== undefined) {
               neighborIndex = parent;
             }
