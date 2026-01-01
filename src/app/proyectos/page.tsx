@@ -1,87 +1,82 @@
 import Link from "next/link";
 import SiteShell from "@/app/components/site-shell";
 
-const projectCategories = [
+const projectCollections = [
   {
-    name: "Mobile Legends",
-    description: "Serie Road to Mythic, ligas comunitarias y cursos intensivos por rol.",
+    name: "Interfaces vivas",
+    description: "Experimentos visuales e interactivos que responden al ritmo del usuario.",
     initiatives: [
-      { title: "Road to Mythic", detail: "Temporadas mensuales con ladder interno, coaching y premios." },
-      { title: "Academia MLBB", detail: "Clases cortas grabadas + hojas de práctica descargables." },
-      { title: "Liga Comunidad", detail: "Torneo patrocinado con transmisión oficial y analistas invitados." },
+      { title: "Topografias mutantes", detail: "Mapas sensibles al gesto y al tiempo de exploracion." },
+      { title: "Ventanas respirables", detail: "Layouts modulares que se reorganizan con luz y sonido." },
+      { title: "Cartografias fluidas", detail: "Rutas no lineales para descubrir historias en capas." },
     ],
   },
   {
-    name: "FPS & Shooters",
-    description: "Bootcamps de aim, stratbooks y scrims regulares para Valorant y COD.",
+    name: "Arte y animacion",
+    description: "Piezas animadas, objetos digitales y sistemas expresivos curados por el estudio.",
     initiatives: [
-      { title: "Valorant Bootcamp", detail: "Rutinas de aim y teoría del juego divididas por roles." },
-      { title: "Zona COD", detail: "Eventos temáticos según temporada con loadouts optimizados." },
+      { title: "Loops organicos", detail: "Animaciones breves como artefactos sensoriales." },
+      { title: "Esculturas digitales", detail: "Formas que viven entre lo fisico y lo digital." },
     ],
   },
   {
-    name: "Proyectos narrativos",
-    description: "Experiencias colaborativas centradas en storytelling y decisiones de la audiencia.",
+    name: "Prototipos jugables",
+    description: "Microjuegos y experiencias cortas que exploran mecanicas nuevas.",
     initiatives: [
-      { title: "Lore Fridays", detail: "Directos semanales explorando universos y teorías de la comunidad." },
-      { title: "Ruta RPG", detail: "Campañas en vivo donde el chat decide el camino y recursos del equipo." },
+      { title: "Pasillos interactivos", detail: "Juegos breves con enfoque en presencia y ritmo." },
+      { title: "Sistemas de decision", detail: "Prototipos que reaccionan a elecciones sutiles." },
     ],
   },
 ];
 
-const roadmap = [
+const calls = [
   {
-    quarter: "Q1",
-    focus: "Lanzar versión beta del hub de miembros y completar 3 bootcamps express.",
+    title: "Convocatoria permanente",
+    detail: "Recibimos piezas de artistas, animadores, disenadores y personas curiosas.",
   },
   {
-    quarter: "Q2",
-    focus: "Expandir las ligas comunitarias a formato híbrido online/presencial con aliados regionales.",
+    title: "Residencias modulares",
+    detail: "Acompanamos proyectos en proceso con feedback y exploracion conjunta.",
   },
   {
-    quarter: "Q3",
-    focus: "Publicar biblioteca de recursos descargables (layouts, overlays, plantillas de torneo).",
-  },
-  {
-    quarter: "Q4",
-    focus: "Retrospectiva anual + lanzamiento de incubadora de creadores y staff voluntario.",
+    title: "Colecciones tematicas",
+    detail: "Curamos series de obras con un hilo sensorial o conceptual compartido.",
   },
 ];
 
 export default function ProyectosPage() {
   return (
-    <SiteShell currentPath="/proyectos" accent="amber">
-      <header className="space-y-6 rounded-3xl border border-white/10 bg-white/5 p-10">
-        <span className="inline-flex items-center rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-200">
-          Proyectos
+    <SiteShell currentPath="/proyectos">
+      <header className="space-y-6">
+        <span className="inline-flex items-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+          Proyectos y colecciones
         </span>
-        <h1 className="text-3xl font-semibold text-white sm:text-4xl">Roadmap creativo & competitivo 2024</h1>
-        <p className="text-sm leading-relaxed text-zinc-300 sm:text-base">
-          Cada iniciativa nace de feedback directo de la comunidad. Trabajamos con objetivos trimestrales, métricas públicas y reuniones abiertas en Discord para ajustar prioridades.
+        <h1 className="text-3xl font-semibold text-white sm:text-4xl">Colecciones explorables en expansion</h1>
+        <p className="text-sm leading-relaxed text-slate-300 sm:text-base">
+          CodevaMP Studio publica proyectos propios y de otras personas. No es un portafolio, es un archivo vivo de
+          exploraciones interactivas, arte y sistemas en movimiento.
         </p>
         <Link
-          href="https://notion.so/codevamp-roadmap"
-          prefetch={false}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-rose-500 px-5 py-2 text-sm font-semibold text-black shadow-md transition hover:scale-[1.02]"
+          href="/explorar"
+          prefetch
+          className="inline-flex items-center gap-2 border border-white/20 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/60"
         >
-          Ver tablero vivo
+          Ir al laboratorio
         </Link>
       </header>
 
-      <section className="mt-12 grid gap-6 rounded-3xl border border-white/10 bg-white/5 p-8">
-        <h2 className="text-2xl font-semibold text-white">Iniciativas principales</h2>
+      <section className="mt-12 grid gap-6">
+        <h2 className="text-2xl font-semibold text-white">Colecciones principales</h2>
         <div className="grid gap-4 md:grid-cols-3">
-          {projectCategories.map((category) => (
-            <div key={category.name} className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          {projectCollections.map((category) => (
+            <div key={category.name} className="border-t border-white/10 pt-6">
               <h3 className="text-lg font-semibold text-white">{category.name}</h3>
-              <p className="mt-2 text-sm text-zinc-300">{category.description}</p>
-              <ul className="mt-4 space-y-2 text-sm text-zinc-300">
+              <p className="mt-2 text-sm text-slate-300">{category.description}</p>
+              <ul className="mt-4 space-y-2 text-sm text-slate-300">
                 {category.initiatives.map((initiative) => (
-                  <li key={initiative.title} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <li key={initiative.title} className="border-l border-white/10 pl-3">
                     <span className="font-semibold text-white">{initiative.title}</span>
-                    <p className="text-xs text-zinc-300">{initiative.detail}</p>
+                    <p className="text-xs text-slate-300">{initiative.detail}</p>
                   </li>
                 ))}
               </ul>
@@ -90,47 +85,39 @@ export default function ProyectosPage() {
         </div>
       </section>
 
-      <section className="mt-12 grid gap-6 rounded-3xl border border-white/10 bg-white/5 p-8">
+      <section className="mt-12 grid gap-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2 className="text-2xl font-semibold text-white">Roadmap trimestral</h2>
-          <p className="max-w-xl text-sm text-zinc-300">
-            Las metas se revisan en asambleas abiertas. Publicamos resultados y siguientes pasos en Notion.
+          <h2 className="text-2xl font-semibold text-white">Convocatorias abiertas</h2>
+          <p className="max-w-xl text-sm text-slate-300">
+            Queremos sumar exploraciones de distintas disciplinas. Comparte tu pieza y la curamos en el archivo vivo.
           </p>
         </div>
-        <div className="overflow-hidden rounded-3xl border border-white/10">
-          <table className="min-w-full divide-y divide-white/10 text-sm text-zinc-300">
-            <thead className="bg-white/10 text-xs uppercase tracking-wide text-zinc-200">
-              <tr>
-                <th scope="col" className="px-4 py-3 text-left">Trimestre</th>
-                <th scope="col" className="px-4 py-3 text-left">Objetivo</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {roadmap.map((item) => (
-                <tr key={item.quarter} className="bg-white/5">
-                  <td className="px-4 py-3 font-medium text-white">{item.quarter}</td>
-                  <td className="px-4 py-3">{item.focus}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid gap-4 md:grid-cols-3">
+          {calls.map((call) => (
+            <div key={call.title} className="border-t border-white/10 pt-6">
+              <h3 className="text-lg font-semibold text-white">{call.title}</h3>
+              <p className="mt-2 text-sm text-slate-300">{call.detail}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      <section className="mt-12 grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-8">
+      <section className="mt-12 grid gap-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold text-white">Participa como staff o patrocinador</h2>
-            <p className="text-sm text-zinc-300">
-              Buscamos casters, diseñadores, analistas y marcas que quieran construir junto a CodevaMP. Ofrecemos reportes mensuales y espacios de visibilidad dedicados.
+            <h2 className="text-2xl font-semibold text-white">Quieres participar?</h2>
+            <p className="text-sm text-slate-300">
+              Envia tu propuesta y la hacemos parte del universo CodevaMP Studio.
             </p>
           </div>
-          <Link
-            href="mailto:alianzas@codevamp.gg"
-            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-emerald-500 px-5 py-2 text-sm font-semibold text-black shadow-md transition hover:scale-[1.02]"
+          <a
+            href="https://chat.whatsapp.com/L8MGmH5dIzYLGpVOTxnHNT"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 border border-white/20 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/60"
           >
-            Escribir a alianzas
-          </Link>
+            Compartir proyecto
+          </a>
         </div>
       </section>
     </SiteShell>

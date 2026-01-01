@@ -1,22 +1,38 @@
 import type { Metadata, Viewport } from "next";
+import { Fraunces, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
+const display = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
+  weight: ["400", "600", "700"],
+});
+
+const sans = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  weight: ["400", "500", "600", "700"],
+});
+
 export const metadata: Metadata = {
-  title: "CodevaMP — Comunidad gamer chill",
-  description: "Gamer chill, retos y tutoriales. Conecta con la familia CodevaMP.",
-  metadataBase: new URL("https://codevamp.com"),
+  title: "CodevaMP Studio - laboratorio de sistemas interactivos",
+  description:
+    "Universo en construccion: mini-apps, prototipos jugables, herramientas, juegos y experiencias modulares.",
+  metadataBase: new URL("https://codevamp.studio"),
   openGraph: {
-    title: "CodevaMP — Comunidad gamer chill",
-    description: "Únete a la familia CodevaMP.",
-    url: "https://codevamp.com/links",
+    title: "CodevaMP Studio - laboratorio de sistemas interactivos",
+    description:
+      "Explora proyectos experimentales, interfaces vivas y colecciones curadas por el estudio.",
+    url: "https://codevamp.studio",
     type: "website",
-    images: ["/og-image.svg"], // ✅ usamos la versión SVG
+    images: ["/og-image.svg"],
   },
   twitter: {
     card: "summary_large_image",
-    title: "CodevaMP — Comunidad gamer chill",
-    description: "Únete a la familia CodevaMP.",
-    images: ["/og-image.svg"], // ✅ también SVG aquí
+    title: "CodevaMP Studio - laboratorio de sistemas interactivos",
+    description:
+      "Explora proyectos experimentales, interfaces vivas y colecciones curadas por el estudio.",
+    images: ["/og-image.svg"],
   },
   icons: {
     icon: "/favicon.svg",
@@ -25,7 +41,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#7c3aed",
+  themeColor: "#0b1220",
 };
 
 export default function RootLayout({
@@ -34,8 +50,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="antialiased">
+    <html lang="es">
+      <body className={`${sans.variable} ${display.variable} antialiased`}>
         {children}
       </body>
     </html>

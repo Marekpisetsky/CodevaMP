@@ -1,48 +1,327 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useEffect, useRef } from "react";
 import Navigation, { type NavItem } from "./navigation";
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Inicio" },
-  { href: "/acerca", label: "Acerca" },
-  { href: "/juegos", label: "Juegos" },
-  { href: "/juegos/mobile-legends", label: "MLBB" },
+  { href: "/explorar", label: "Explorar" },
   { href: "/proyectos", label: "Proyectos" },
-  { href: "/download", label: "Descargas" },
-  { href: "/donaciones", label: "Donaciones" },
+  { href: "/acerca", label: "Acerca" },
+  { href: "/donaciones", label: "Apoyar" },
   { href: "/legal", label: "Legal" },
 ];
 
 export default function SiteShell({
   children,
   currentPath,
-  accent,
+  disableEffects = false,
+  enableHeroTransition = false,
+  heroSectionId = "hero-section",
+  nextSectionId = "intro-section",
 }: {
   children: ReactNode;
   currentPath?: string;
-  accent?: "indigo" | "violet" | "emerald" | "amber";
+  disableEffects?: boolean;
+  enableHeroTransition?: boolean;
+  heroSectionId?: string;
+  nextSectionId?: string;
 }) {
-  const accentMap = {
-    indigo: "from-indigo-500 to-cyan-500",
-    violet: "from-fuchsia-500 to-purple-500",
-    emerald: "from-emerald-500 to-teal-500",
-    amber: "from-amber-400 to-orange-500",
-  } as const;
+  const sceneRef = useRef<HTMLDivElement | null>(null);
+  const rootRef = useRef<HTMLElement | null>(null);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+  const heroLockRef = useRef(false);
+  const triggerHeroZoomRef = useRef<null | (() => void)>(null);
 
-  const accentClass = accent ? accentMap[accent] : accentMap.indigo;
+  useEffect(() => {
+    if (disableEffects) {
+      return;
+    }
+    const scene = sceneRef.current;
+    if (!scene) {
+      return;
+    }
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) {
+      return;
+    }
+
+    const state = {
+      smoothX: 0,
+      smoothY: 0,
+      targetX: 0,
+      targetY: 0,
+    };
+
+    let rafId = 0;
+
+    const tick = (time: number) => {
+      state.smoothX += (state.targetX - state.smoothX) * 0.06;
+      state.smoothY += (state.targetY - state.smoothY) * 0.06;
+
+      const driftX = Math.sin(time * 0.00008) * 24;
+      const driftY = Math.cos(time * 0.00006) * 18;
+
+      scene.style.setProperty("--parallax-x", `${state.smoothX * 28}px`);
+      scene.style.setProperty("--parallax-y", `${state.smoothY * 22}px`);
+      scene.style.setProperty("--idle-x", `${driftX}px`);
+      scene.style.setProperty("--idle-y", `${driftY}px`);
+
+      rafId = window.requestAnimationFrame(tick);
+    };
+
+    rafId = window.requestAnimationFrame(tick);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, []);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) {
+      return;
+    }
+
+    const state = {
+      dragging: false,
+      heroDrag: false,
+      pendingDrag: false,
+      startY: 0,
+      startScroll: 0,
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) {
+        event.preventDefault();
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("a, button, input, textarea, select")) {
+        return;
+      }
+      if (enableHeroTransition && root.scrollTop <= 2) {
+        state.heroDrag = true;
+        state.startY = event.clientY;
+        root.setPointerCapture(event.pointerId);
+        return;
+      }
+      state.pendingDrag = true;
+      state.startY = event.clientY;
+      state.startScroll = root.scrollTop;
+      root.setPointerCapture(event.pointerId);
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (state.heroDrag) {
+        const deltaY = event.clientY - state.startY;
+        if (deltaY < -16) {
+          triggerHeroZoomRef.current?.();
+          state.heroDrag = false;
+        }
+        return;
+      }
+      if (!state.dragging && state.pendingDrag) {
+        const deltaY = event.clientY - state.startY;
+        if (Math.abs(deltaY) < 6) {
+          return;
+        }
+        state.dragging = true;
+        state.pendingDrag = false;
+        root.classList.add("is-dragging");
+      }
+      if (!state.dragging) {
+        return;
+      }
+      const deltaY = event.clientY - state.startY;
+      root.scrollTop = state.startScroll - deltaY;
+    };
+
+    const endDrag = (event: PointerEvent) => {
+      if (state.heroDrag) {
+        state.heroDrag = false;
+        root.releasePointerCapture(event.pointerId);
+        return;
+      }
+      if (state.pendingDrag) {
+        state.pendingDrag = false;
+        root.releasePointerCapture(event.pointerId);
+        return;
+      }
+      if (!state.dragging) {
+        return;
+      }
+      state.dragging = false;
+      root.classList.remove("is-dragging");
+      root.releasePointerCapture(event.pointerId);
+    };
+
+    const handleContextMenu = (event: Event) => {
+      event.preventDefault();
+    };
+
+    let rafId = 0;
+    const updateScrollProgress = () => {
+      const height = root.clientHeight || 1;
+      const progress = Math.min(1, Math.max(0, root.scrollTop / (height * 1.8)));
+      const zoomThreshold = 0.55;
+      const zoomProgress = Math.min(1, progress / zoomThreshold);
+      const revealProgress = Math.min(1, Math.max(0, (progress - zoomThreshold) / (1 - zoomThreshold)));
+      document.documentElement.style.setProperty("--scene-progress", progress.toFixed(4));
+      document.documentElement.style.setProperty("--scene-zoom", zoomProgress.toFixed(4));
+      document.documentElement.style.setProperty("--scene-reveal", revealProgress.toFixed(4));
+    };
+    const scheduleUpdate = () => {
+      if (rafId) {
+        return;
+      }
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0;
+        updateScrollProgress();
+      });
+    };
+
+    updateScrollProgress();
+
+    root.addEventListener("scroll", scheduleUpdate, { passive: true });
+    root.addEventListener("pointerdown", handlePointerDown);
+    root.addEventListener("pointermove", handlePointerMove);
+    root.addEventListener("pointerup", endDrag);
+    root.addEventListener("pointercancel", endDrag);
+    root.addEventListener("contextmenu", handleContextMenu);
+    root.addEventListener("auxclick", handleContextMenu);
+
+    return () => {
+      root.removeEventListener("scroll", scheduleUpdate);
+      root.removeEventListener("pointerdown", handlePointerDown);
+      root.removeEventListener("pointermove", handlePointerMove);
+      root.removeEventListener("pointerup", endDrag);
+      root.removeEventListener("pointercancel", endDrag);
+      root.removeEventListener("contextmenu", handleContextMenu);
+      root.removeEventListener("auxclick", handleContextMenu);
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+    };
+  }, [enableHeroTransition]);
+
+  useEffect(() => {
+    if (!enableHeroTransition) {
+      return;
+    }
+    const root = rootRef.current;
+    const overlay = overlayRef.current;
+    const hero = document.getElementById(heroSectionId);
+    const nextSection = document.getElementById(nextSectionId);
+    if (!root || !overlay || !hero || !nextSection) {
+      return;
+    }
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) {
+      return;
+    }
+
+    let isLocked = false;
+    let zoomTimer = 0;
+    let overlayTimer = 0;
+    let unlockTimer = 0;
+
+    const clearTimers = () => {
+      window.clearTimeout(zoomTimer);
+      window.clearTimeout(overlayTimer);
+      window.clearTimeout(unlockTimer);
+    };
+
+    const releaseLock = () => {
+      isLocked = false;
+      heroLockRef.current = false;
+      root.style.overflow = "";
+      hero.classList.remove("hero-zooming");
+      overlay.classList.remove("is-active");
+    };
+
+    const triggerZoomTransition = () => {
+      if (isLocked || heroLockRef.current) {
+        return;
+      }
+      isLocked = true;
+      heroLockRef.current = true;
+      hero.classList.add("hero-zooming");
+      overlay.classList.add("is-active");
+      overlayTimer = window.setTimeout(() => {
+        const target = nextSection.offsetTop;
+        const current = root.scrollTop;
+        root.scrollTo({
+          top: current + (target - current) * 0.75,
+          behavior: "smooth",
+        });
+      }, 160);
+      unlockTimer = window.setTimeout(releaseLock, 420);
+    };
+
+    const triggerPeek = () => {
+      hero.classList.add("hero-peek");
+      zoomTimer = window.setTimeout(() => {
+        hero.classList.remove("hero-peek");
+      }, 240);
+    };
+
+    triggerHeroZoomRef.current = triggerZoomTransition;
+
+    const handleWheel = (event: WheelEvent) => {
+      if (root.scrollTop > 2) {
+        return;
+      }
+      if (event.deltaY > 0) {
+        event.preventDefault();
+        triggerZoomTransition();
+        return;
+      }
+      if (event.deltaY < 0) {
+        triggerPeek();
+      }
+    };
+
+    const wheelOptions: AddEventListenerOptions = { passive: false, capture: true };
+    root.addEventListener("wheel", handleWheel, wheelOptions);
+
+    return () => {
+      clearTimers();
+      root.removeEventListener("wheel", handleWheel, wheelOptions);
+      releaseLock();
+      triggerHeroZoomRef.current = null;
+      root.style.overflow = "";
+    };
+  }, [enableHeroTransition, heroSectionId, nextSectionId]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050513] text-zinc-100">
-      <div className="pointer-events-none absolute inset-0 opacity-60">
-        <div className="absolute -left-1/3 top-1/4 h-80 w-80 rounded-full bg-purple-500 blur-[120px]" />
-        <div className={`absolute right-0 top-0 h-72 w-72 rounded-full bg-gradient-to-br ${accentClass} blur-[140px]`} />
-        <div className="absolute bottom-0 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-amber-400 blur-[120px]" />
+    <main ref={rootRef} className="scene-root relative min-h-screen bg-black text-slate-100">
+      {!disableEffects && (
+        <div ref={sceneRef} className="studio-scene" aria-hidden>
+          <div className="studio-base" />
+          <div className="studio-light" />
+          <div className="studio-depth" />
+          <div className="studio-arches" />
+          <div className="studio-mist" />
+          <div className="vignette" />
+        </div>
+      )}
+      {enableHeroTransition && (
+        <div ref={overlayRef} className="transition-overlay" aria-hidden>
+          <div className="transition-overlay__fog" />
+          <div className="transition-overlay__aberration" />
+        </div>
+      )}
+
+      <div className="scene-nav">
+        <Navigation items={NAV_ITEMS} activePath={currentPath} />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-10">
-        <Navigation items={NAV_ITEMS} activePath={currentPath} />
-        <div className="mt-8 flex-1 pb-16">
-          {children}
-        </div>
+      <div className="scene-content">
+        {children}
       </div>
     </main>
   );
