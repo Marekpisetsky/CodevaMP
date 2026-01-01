@@ -398,8 +398,7 @@ export default function ForestScene() {
               neighborIndex = parent;
             }
           }
-          const showLines = neighborIndex !== null;
-          if (!showLines) {
+          if (neighborIndex === null) {
             line.style.opacity = "0";
             crossA.style.opacity = "0";
             crossB.style.opacity = "0";
