@@ -2,17 +2,6 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
-import Navigation, { type NavItem } from "./navigation";
-
-const NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "Inicio" },
-  { href: "/explorar", label: "Explorar" },
-  { href: "/proyectos", label: "Proyectos" },
-  { href: "/acerca", label: "Acerca" },
-  { href: "/donaciones", label: "Apoyar" },
-  { href: "/legal", label: "Legal" },
-];
-
 export default function SiteShell({
   children,
   currentPath,
@@ -28,6 +17,7 @@ export default function SiteShell({
   heroSectionId?: string;
   nextSectionId?: string;
 }) {
+  void currentPath;
   const sceneRef = useRef<HTMLDivElement | null>(null);
   const rootRef = useRef<HTMLElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
@@ -43,40 +33,10 @@ export default function SiteShell({
       return;
     }
 
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReducedMotion) {
-      return;
-    }
-
-    const state = {
-      smoothX: 0,
-      smoothY: 0,
-      targetX: 0,
-      targetY: 0,
-    };
-
-    let rafId = 0;
-
-    const tick = (time: number) => {
-      state.smoothX += (state.targetX - state.smoothX) * 0.06;
-      state.smoothY += (state.targetY - state.smoothY) * 0.06;
-
-      const driftX = Math.sin(time * 0.00008) * 24;
-      const driftY = Math.cos(time * 0.00006) * 18;
-
-      scene.style.setProperty("--parallax-x", `${state.smoothX * 28}px`);
-      scene.style.setProperty("--parallax-y", `${state.smoothY * 22}px`);
-      scene.style.setProperty("--idle-x", `${driftX}px`);
-      scene.style.setProperty("--idle-y", `${driftY}px`);
-
-      rafId = window.requestAnimationFrame(tick);
-    };
-
-    rafId = window.requestAnimationFrame(tick);
-
-    return () => {
-      window.cancelAnimationFrame(rafId);
-    };
+    scene.style.setProperty("--parallax-x", "0px");
+    scene.style.setProperty("--parallax-y", "0px");
+    scene.style.setProperty("--idle-x", "0px");
+    scene.style.setProperty("--idle-y", "0px");
   }, [disableEffects]);
 
   useEffect(() => {
@@ -302,10 +262,6 @@ export default function SiteShell({
       {!disableEffects && (
         <div ref={sceneRef} className="studio-scene" aria-hidden>
           <div className="studio-base" />
-          <div className="studio-light" />
-          <div className="studio-depth" />
-          <div className="studio-arches" />
-          <div className="studio-mist" />
           <div className="vignette" />
         </div>
       )}
@@ -315,10 +271,6 @@ export default function SiteShell({
           <div className="transition-overlay__aberration" />
         </div>
       )}
-
-      <div className="scene-nav">
-        <Navigation items={NAV_ITEMS} activePath={currentPath} />
-      </div>
 
       <div className="scene-content">
         {children}
