@@ -2,11 +2,14 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
+import Link from "next/link";
+
 export default function SiteShell({
   children,
   currentPath,
   disableEffects = false,
   enableHeroTransition = false,
+  lockScroll = false,
   heroSectionId = "hero-section",
   nextSectionId = "intro-section",
 }: {
@@ -14,6 +17,7 @@ export default function SiteShell({
   currentPath?: string;
   disableEffects?: boolean;
   enableHeroTransition?: boolean;
+  lockScroll?: boolean;
   heroSectionId?: string;
   nextSectionId?: string;
 }) {
@@ -33,13 +37,46 @@ export default function SiteShell({
       return;
     }
 
-    scene.style.setProperty("--parallax-x", "0px");
-    scene.style.setProperty("--parallax-y", "0px");
-    scene.style.setProperty("--idle-x", "0px");
-    scene.style.setProperty("--idle-y", "0px");
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) {
+      return;
+    }
+
+    const state = {
+      smoothX: 0,
+      smoothY: 0,
+      targetX: 0,
+      targetY: 0,
+    };
+
+    let rafId = 0;
+
+    const tick = (time: number) => {
+      state.smoothX += (state.targetX - state.smoothX) * 0.06;
+      state.smoothY += (state.targetY - state.smoothY) * 0.06;
+
+      const driftX = Math.sin(time * 0.00008) * 24;
+      const driftY = Math.cos(time * 0.00006) * 18;
+
+      scene.style.setProperty("--parallax-x", `${state.smoothX * 28}px`);
+      scene.style.setProperty("--parallax-y", `${state.smoothY * 22}px`);
+      scene.style.setProperty("--idle-x", `${driftX}px`);
+      scene.style.setProperty("--idle-y", `${driftY}px`);
+
+      rafId = window.requestAnimationFrame(tick);
+    };
+
+    rafId = window.requestAnimationFrame(tick);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
   }, [disableEffects]);
 
   useEffect(() => {
+    if (lockScroll) {
+      return;
+    }
     const root = rootRef.current;
     if (!root) {
       return;
@@ -168,6 +205,9 @@ export default function SiteShell({
   }, [enableHeroTransition]);
 
   useEffect(() => {
+    if (lockScroll) {
+      return;
+    }
     if (!enableHeroTransition) {
       return;
     }
@@ -255,13 +295,20 @@ export default function SiteShell({
       triggerHeroZoomRef.current = null;
       root.style.overflow = "";
     };
-  }, [enableHeroTransition, heroSectionId, nextSectionId]);
+  }, [enableHeroTransition, heroSectionId, nextSectionId, lockScroll]);
 
   return (
-    <main ref={rootRef} className="scene-root relative min-h-screen bg-black text-slate-100">
+    <main
+      ref={rootRef}
+      className={`scene-root relative min-h-screen bg-black text-slate-100 ${lockScroll ? "scene-root--locked" : ""}`}
+    >
       {!disableEffects && (
         <div ref={sceneRef} className="studio-scene" aria-hidden>
           <div className="studio-base" />
+          <div className="studio-light" />
+          <div className="studio-depth" />
+          <div className="studio-arches" />
+          <div className="studio-mist" />
           <div className="vignette" />
         </div>
       )}
@@ -271,6 +318,16 @@ export default function SiteShell({
           <div className="transition-overlay__aberration" />
         </div>
       )}
+
+      <div className="scene-mark">
+        <Link href="/" prefetch className="scene-mark__link">
+          <span className="scene-mark__badge">CV</span>
+          <span className="scene-mark__text">
+            <span className="scene-mark__title">CodevaMP Studio</span>
+            <span className="scene-mark__subtitle">Laboratorio de sistemas interactivos</span>
+          </span>
+        </Link>
+      </div>
 
       <div className="scene-content">
         {children}
