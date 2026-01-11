@@ -367,8 +367,8 @@ export default function ForestScene() {
       fragment.style.setProperty("--edge-y", `${edgeY.toFixed(1)}px`);
       const pull = seeded(seed + 71) > 0.65 ? 1 : 0;
       fragment.style.setProperty("--pull", `${pull}`);
-      const depthOut = 40 + seeded(seed + 51) * 160;
-      const depthIn = 240 + seeded(seed + 59) * 360;
+      const depthOut = 60 + seeded(seed + 51) * 220;
+      const depthIn = 260 + seeded(seed + 59) * 420;
       fragment.style.setProperty("--z-out", `${depthOut.toFixed(1)}px`);
       fragment.style.setProperty("--z-in", `${depthIn.toFixed(1)}px`);
       fragment.style.setProperty("--glow", `${(12 + seeded(seed + 63) * 18).toFixed(1)}`);
@@ -892,10 +892,10 @@ export default function ForestScene() {
       return;
     }
     if (plate.baseId === "visuales") {
-      const transitionDelay = 200;
-      const portalArriveDelay = 1600 + transitionDelay;
-      const portalDepartDelay = 2500 + transitionDelay;
-      const portalNavigateDelay = 4700 + transitionDelay;
+      const transitionDelay = 80;
+      const portalArriveDelay = 1400 + transitionDelay;
+      const portalDepartDelay = 2250 + transitionDelay;
+      const portalNavigateDelay = 4500 + transitionDelay;
       const tile = tileRefs.current[index];
       if (tile) {
         setPortalOrigin({

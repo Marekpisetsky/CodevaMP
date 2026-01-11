@@ -690,7 +690,8 @@ body {
 
 .portal-transition.is-active {
   opacity: 1;
-  animation: portal-dive 2.8s cubic-bezier(0.2, 0, 0.8, 1) forwards;
+  animation: portal-dive 2.68s cubic-bezier(0.2, 0, 0.8, 1) forwards;
+  animation-delay: 0.12s;
 }
 
 .portal-fragments {
@@ -724,7 +725,7 @@ body {
 
 .portal-transition.is-active .portal-fragment {
   opacity: 1;
-  animation: fragment-swirl 2.6s cubic-bezier(0.2, 0, 0.8, 1) forwards;
+  animation: fragment-swirl 2.45s cubic-bezier(0.2, 0, 0.8, 1) forwards;
   animation-delay: var(--delay, 0s);
 }
 
@@ -762,12 +763,12 @@ body {
 }
 
 .portal-transition.is-active .portal-fragment::before {
-  animation: fragment-skin 2.4s ease forwards;
+  animation: fragment-skin 2.25s ease forwards;
   animation-delay: calc(var(--delay, 0s) + 0.35s);
 }
 
 .portal-transition.is-active .portal-fragment::after {
-  animation: fragment-grass 2.4s ease forwards;
+  animation: fragment-grass 2.25s ease forwards;
   animation-delay: calc(var(--delay, 0s) + 0.75s);
 }
 
@@ -817,14 +818,14 @@ body {
   animation:
     portal-spin 1s linear infinite,
     portal-expand 1.6s ease-in forwards;
-  animation-delay: 0s, 2.6s;
+  animation-delay: 0.12s, 2.6s;
 }
 
 .portal-transition.is-active .portal-core {
   animation:
     portal-pulse 0.9s ease-in-out infinite,
     portal-absorb 1.4s ease-in forwards;
-  animation-delay: 0s, 2.8s;
+  animation-delay: 0.12s, 2.8s;
 }
 
 .hero-field.vision-stage-expandx .hero-tile--vision-primary,
@@ -1039,13 +1040,17 @@ body {
     transform: translate3d(0, 0, 0)
       scale(calc(1 * var(--portal-transition-scale, 1)));
   }
+  35% {
+    transform: translate3d(0, 0, 35px)
+      scale(calc(1.01 * var(--portal-transition-scale, 1)));
+  }
   70% {
-    transform: translate3d(0, 0, 140px)
-      scale(calc(1.02 * var(--portal-transition-scale, 1)));
+    transform: translate3d(0, 0, 150px)
+      scale(calc(1.03 * var(--portal-transition-scale, 1)));
   }
   100% {
-    transform: translate3d(0, 0, 220px)
-      scale(calc(1.04 * var(--portal-transition-scale, 1)));
+    transform: translate3d(0, 0, 240px)
+      scale(calc(1.05 * var(--portal-transition-scale, 1)));
   }
 }
 
