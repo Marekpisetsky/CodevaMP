@@ -15,6 +15,9 @@ export default function VisualesAuthPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!supabase) {
+      return;
+    }
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
         router.replace("/visuales/app");
@@ -27,6 +30,10 @@ export default function VisualesAuthPage() {
     setBusy(true);
     setMessage(null);
     try {
+      if (!supabase) {
+        setMessage("Supabase no esta configurado.");
+        return;
+      }
       if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {

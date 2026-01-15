@@ -17,6 +17,9 @@ export default function VisualesHubPage() {
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
+    if (!supabase) {
+      return;
+    }
     supabase.auth.getSession().then(({ data }) => {
       setSessionUser(data.session?.user.id ?? null);
     });
@@ -32,6 +35,9 @@ export default function VisualesHubPage() {
 
 
   const handleSignOut = async () => {
+    if (!supabase) {
+      return;
+    }
     await supabase.auth.signOut();
     router.push("/visuales/auth");
   };
@@ -48,6 +54,10 @@ export default function VisualesHubPage() {
     }
     if (!file) {
       setError("Selecciona un archivo.");
+      return;
+    }
+    if (!supabase) {
+      setError("Supabase no esta configurado.");
       return;
     }
     setUploading(true);
