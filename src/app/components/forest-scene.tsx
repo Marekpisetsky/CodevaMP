@@ -572,6 +572,10 @@ export default function ForestScene() {
           const pitch = -Math.asin(normal.y);
           const targetScale = item.p * item.plate.size * (0.78 + (item.z + 1) * 0.12) * 0.65;
           const intensity = item.intensity;
+          const wobbleX = Math.sin(time * 0.0017 + item.plate.wobbleSeed * 1.7) * 6 * intensity;
+          const wobbleY = Math.cos(time * 0.0013 + item.plate.wobbleSeed * 1.1) * 6 * intensity;
+          const wobbleZ = Math.sin(time * 0.0021 + item.plate.wobbleSeed * 0.9) * 10 * intensity;
+          const idleWobble = Math.sin(time * 0.0011 + item.plate.wobbleSeed) * 4 * (1 - state.fieldStrength);
 
           const blendScale = targetScale + (closingAnim.startScale - targetScale) * (1 - eased);
           const blendYaw = yaw * 57.2958 + (closingAnim.startYaw - yaw * 57.2958) * (1 - eased);
@@ -656,7 +660,6 @@ export default function ForestScene() {
             "height 1.35s cubic-bezier(0.22, 0.61, 0.36, 1), " +
             "box-shadow 1.35s ease";
           const focusScale = stage === "center" ? 1.08 : 1.04;
-          const intensity = item.intensity;
           visionPoseRef.current = { x: targetX, y: targetY, scale: focusScale, yaw: 0, pitch: 0 };
           tile.style.transform =
             `translate(-50%, -50%) translate3d(${targetX}px, ${targetY}px, 0) ` +

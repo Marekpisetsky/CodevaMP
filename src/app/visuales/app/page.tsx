@@ -1,29 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SiteShell from "../../components/site-shell";
 import { supabase } from "../../lib/supabase";
 
-type Project = {
-  id: string;
-  title: string;
-  description: string | null;
-  type: string | null;
-  media_url: string | null;
-  created_at: string;
-  profiles?: {
-    display_name: string | null;
-    avatar_url: string | null;
-  } | null;
-};
-
 export default function VisualesHubPage() {
   const router = useRouter();
   const [sessionUser, setSessionUser] = useState<string | null>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -45,28 +30,6 @@ export default function VisualesHubPage() {
 
   const canUpload = Boolean(sessionUser);
 
-  const displayName = useMemo(() => {
-    if (sessionUser) {
-      return "Tu cabina";
-    }
-    return "Visitante";
-  }, [sessionUser]);
-
-  const fetchProjects = async () => {
-    setLoading(true);
-    setError(null);
-    const { data, error: fetchError } = await supabase
-      .from("projects")
-      .select("id,title,description,type,media_url,created_at")
-      .order("created_at", { ascending: false })
-      .limit(24);
-    if (fetchError) {
-      setError(fetchError.message);
-    } else {
-      setProjects((data ?? []) as Project[]);
-    }
-    setLoading(false);
-  };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -117,7 +80,6 @@ export default function VisualesHubPage() {
       setDescription("");
       setType("imagen");
       setFile(null);
-      fetchProjects();
     } finally {
       setUploading(false);
     }
