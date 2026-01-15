@@ -217,7 +217,7 @@ export default function SiteShell({
         window.cancelAnimationFrame(rafId);
       }
     };
-  }, [enableHeroTransition]);
+  }, [enableHeroTransition, lockScroll]);
 
   useEffect(() => {
     if (lockScroll) {

@@ -293,7 +293,6 @@ export default function VisualesSphereIntro({
         const elapsed = time - start;
         const t = Math.min(1, elapsed / durationMs);
         if (webgl) {
-          const eased = easeOutCubic(t);
           const phase = Math.min(1, t / 0.85);
           const boost = Math.max(0, (t - 0.85) / 0.15);
           const zFar = 8.2 - phase * 2.4 - boost * 0.6;

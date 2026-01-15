@@ -407,7 +407,6 @@ export default function ForestScene() {
     }
 
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const isFirefox = /firefox/i.test(navigator.userAgent);
 
     let rafId = 0;
     let rect = field.getBoundingClientRect();
@@ -533,7 +532,6 @@ export default function ForestScene() {
       const plates = platesRef.current;
       const rings = ringsRef.current;
       const repelRadius = baseRadius * 0.9;
-      const maxLift = 0;
       const projected = plates.map((plate, index) => {
         const base = project(plate.x, plate.y, plate.z);
         const dxBase = base.x - state.pointerX;
@@ -574,10 +572,6 @@ export default function ForestScene() {
           const pitch = -Math.asin(normal.y);
           const targetScale = item.p * item.plate.size * (0.78 + (item.z + 1) * 0.12) * 0.65;
           const intensity = item.intensity;
-          const wobbleX = Math.sin(time * 0.0017 + item.plate.wobbleSeed * 1.7) * 6 * intensity;
-          const wobbleY = Math.cos(time * 0.0013 + item.plate.wobbleSeed * 1.1) * 6 * intensity;
-          const wobbleZ = Math.sin(time * 0.0021 + item.plate.wobbleSeed * 0.9) * 10 * intensity;
-          const idleWobble = Math.sin(time * 0.0011 + item.plate.wobbleSeed) * 4 * (1 - state.fieldStrength);
 
           const blendScale = targetScale + (closingAnim.startScale - targetScale) * (1 - eased);
           const blendYaw = yaw * 57.2958 + (closingAnim.startYaw - yaw * 57.2958) * (1 - eased);
@@ -663,10 +657,6 @@ export default function ForestScene() {
             "box-shadow 1.35s ease";
           const focusScale = stage === "center" ? 1.08 : 1.04;
           const intensity = item.intensity;
-          const wobbleX = Math.sin(time * 0.0017 + item.plate.wobbleSeed * 1.7) * 6 * intensity;
-          const wobbleY = Math.cos(time * 0.0013 + item.plate.wobbleSeed * 1.1) * 6 * intensity;
-          const wobbleZ = Math.sin(time * 0.0021 + item.plate.wobbleSeed * 0.9) * 10 * intensity;
-          const idleWobble = Math.sin(time * 0.0011 + item.plate.wobbleSeed) * 4 * (1 - state.fieldStrength);
           visionPoseRef.current = { x: targetX, y: targetY, scale: focusScale, yaw: 0, pitch: 0 };
           tile.style.transform =
             `translate(-50%, -50%) translate3d(${targetX}px, ${targetY}px, 0) ` +
@@ -686,7 +676,6 @@ export default function ForestScene() {
         tile.style.transition = "";
         const intensity = item.intensity;
         const isShattering = shatterIndexRef.current === index;
-        const shatterElapsed = isShattering ? time - shatterStartRef.current : 0;
         const opacity = isShattering ? 0 : 1;
         const scale = item.p * item.plate.size * (0.78 + (item.z + 1) * 0.12) * 0.65;
         const tilt = item.plate.tilt;
