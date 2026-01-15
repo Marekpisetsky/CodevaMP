@@ -941,7 +941,12 @@ export default function ForestScene() {
         setIsPortalDeparting(true);
       }, portalDepartDelay);
       transitionTimeoutRef.current = window.setTimeout(() => {
-        router.push("/visuales");
+        try {
+          sessionStorage.setItem("visuales-enter-from-home", "1");
+        } catch {
+          // Ignore storage errors (private mode / blocked storage).
+        }
+        router.push("/visuales?intro=1");
       }, portalNavigateDelay);
     }
   };

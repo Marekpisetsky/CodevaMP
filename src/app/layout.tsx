@@ -6,12 +6,14 @@ const display = Fraunces({
   subsets: ["latin"],
   variable: "--font-display",
   weight: ["400", "600", "700"],
+  preload: false,
 });
 
 const sans = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-sans",
   weight: ["400", "500", "600", "700"],
+  preload: false,
 });
 
 export const metadata: Metadata = {

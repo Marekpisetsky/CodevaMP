@@ -1,6 +1,9 @@
-import type { CSSProperties } from "react";
+"use client"
+
+import { useEffect, useLayoutEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import SiteShell from "../components/site-shell";
+import VisualesSphereIntro from "../components/visuales-sphere-intro";
 
 const visualesHighlights = [
   {
@@ -29,12 +32,123 @@ const visualesFragments = [
 ];
 
 export default function VisualesPage() {
+  const [playEnter, setPlayEnter] = useState(false);
+  const [sphereActive, setSphereActive] = useState(false);
+  const [introDebug, setIntroDebug] = useState(false);
+  const [sphereDuration, setSphereDuration] = useState(5000);
+  const [introHold, setIntroHold] = useState(false);
+  const [usedSphereIntro, setUsedSphereIntro] = useState(false);
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const key = "visuales-enter-from-home";
+    let shouldIntro = false;
+    let forceIntro = false;
+    let holdIntro = false;
+    try {
+      forceIntro = window.location.search.includes("intro=1");
+      holdIntro = window.location.search.includes("hold=1");
+      const cameFromHome = sessionStorage.getItem(key) === "1";
+      if (sessionStorage.getItem(key)) {
+        sessionStorage.removeItem(key);
+      }
+      shouldIntro = forceIntro || cameFromHome;
+    } catch {
+      shouldIntro = false;
+    }
+    if (forceIntro) {
+      shouldIntro = true;
+      setIntroDebug(true);
+      setSphereActive(true);
+      setUsedSphereIntro(true);
+    }
+    if (holdIntro) {
+      setIntroHold(true);
+      setSphereDuration(20000);
+    }
+    if (!shouldIntro) {
+      return;
+    }
+    if (typeof document !== "undefined") {
+      const existing = document.getElementById("visuales-preoverlay");
+      if (!existing) {
+        const el = document.createElement("div");
+        el.id = "visuales-preoverlay";
+        el.className = "visuales-preoverlay";
+        document.body.appendChild(el);
+        window.setTimeout(() => {
+          el.classList.add("visuales-preoverlay--fade");
+          window.setTimeout(() => {
+            el.remove();
+          }, 600);
+        }, 1200);
+      }
+    }
+    setUsedSphereIntro(true);
+    let didStart = false;
+    let fallbackTimer = 0;
+    const startIntro = () => {
+      if (didStart) {
+        return;
+      }
+      didStart = true;
+      window.clearTimeout(fallbackTimer);
+      if (window.location.search.includes("intro=1")) {
+        window.history.replaceState({}, "", "/visuales");
+      }
+      setSphereActive(true);
+    };
+    fallbackTimer = window.setTimeout(startIntro, 500);
+    return () => {
+      window.clearTimeout(fallbackTimer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!sphereActive || introHold) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setSphereActive(false);
+      if (!usedSphereIntro) {
+        setPlayEnter(true);
+      }
+    }, sphereDuration + 1000);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [sphereActive, sphereDuration, introHold, usedSphereIntro]);
+
+  const handleSphereComplete = () => {
+    setSphereActive(false);
+    setPlayEnter(true);
+  };
+
+  const shouldPlayEnter = playEnter && !usedSphereIntro;
+  const shellClassName = [shouldPlayEnter ? "visuales-enter" : "", sphereActive ? "visuales-sphere-active" : ""]
+    .filter(Boolean)
+    .join(" ");
   return (
-    <SiteShell currentPath="/visuales" disableEffects>
-      <section className="visuales-hero" aria-labelledby="visuales-title">
+    <SiteShell currentPath="/visuales" disableEffects className={shellClassName}>
+      <VisualesSphereIntro
+        active={sphereActive}
+        onComplete={handleSphereComplete}
+        durationMs={sphereDuration}
+        debug={introDebug}
+      />
+      <section
+        className={`visuales-hero ${shouldPlayEnter ? "visuales-hero--enter" : ""}`}
+        aria-labelledby="visuales-title"
+      >
+        <div className="visuales-space" aria-hidden />
+        <div className="visuales-sun" aria-hidden />
+        <div className="visuales-planet" aria-hidden />
         <div className="visuales-sky" aria-hidden />
         <div className="visuales-orbit" aria-hidden />
         <div className="visuales-glow" aria-hidden />
+        <div className="visuales-atmosphere" aria-hidden />
         <div className="visuales-fragments" aria-hidden>
           {visualesFragments.map((fragment, index) => (
             <span
@@ -64,9 +178,9 @@ export default function VisualesPage() {
             <Link href="/" className="visuales-button visuales-button--primary">
               Volver al estudio
             </Link>
-            <button type="button" className="visuales-button visuales-button--ghost">
+            <Link href="/visuales/app" className="visuales-button visuales-button--ghost">
               Explorar proyectos
-            </button>
+            </Link>
           </div>
         </div>
       </section>

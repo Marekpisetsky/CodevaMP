@@ -10,6 +10,8 @@ export default function SiteShell({
   disableEffects = false,
   enableHeroTransition = false,
   lockScroll = false,
+  brandHref = "/",
+  className = "",
   heroSectionId = "hero-section",
   nextSectionId = "intro-section",
 }: {
@@ -18,6 +20,8 @@ export default function SiteShell({
   disableEffects?: boolean;
   enableHeroTransition?: boolean;
   lockScroll?: boolean;
+  brandHref?: string;
+  className?: string;
   heroSectionId?: string;
   nextSectionId?: string;
 }) {
@@ -27,6 +31,17 @@ export default function SiteShell({
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const heroLockRef = useRef(false);
   const triggerHeroZoomRef = useRef<null | (() => void)>(null);
+
+  useEffect(() => {
+    if (!currentPath) {
+      return;
+    }
+    try {
+      sessionStorage.setItem("last-path", currentPath);
+    } catch {
+      // Ignore storage errors.
+    }
+  }, [currentPath]);
 
   useEffect(() => {
     if (disableEffects) {
@@ -300,7 +315,7 @@ export default function SiteShell({
   return (
     <main
       ref={rootRef}
-      className={`scene-root relative min-h-screen bg-black text-slate-100 ${lockScroll ? "scene-root--locked" : ""}`}
+      className={`scene-root relative min-h-screen bg-black text-slate-100 ${lockScroll ? "scene-root--locked" : ""} ${className}`}
     >
       {!disableEffects && (
         <div ref={sceneRef} className="studio-scene" aria-hidden>
@@ -320,7 +335,7 @@ export default function SiteShell({
       )}
 
       <div className="scene-mark">
-        <Link href="/" prefetch className="scene-mark__link">
+        <Link href={brandHref} prefetch className="scene-mark__link">
           <span className="scene-mark__badge">CV</span>
           <span className="scene-mark__text">
             <span className="scene-mark__title">CodevaMP Studio</span>
