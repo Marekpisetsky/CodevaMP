@@ -571,10 +571,9 @@ export default function ForestScene() {
           const yaw = Math.atan2(normal.x, normal.z);
           const pitch = -Math.asin(normal.y);
           const targetScale = item.p * item.plate.size * (0.78 + (item.z + 1) * 0.12) * 0.65;
-          const intensity = item.intensity;
-          const wobbleX = Math.sin(time * 0.0017 + item.plate.wobbleSeed * 1.7) * 6 * intensity;
-          const wobbleY = Math.cos(time * 0.0013 + item.plate.wobbleSeed * 1.1) * 6 * intensity;
-          const wobbleZ = Math.sin(time * 0.0021 + item.plate.wobbleSeed * 0.9) * 10 * intensity;
+          const wobbleX = Math.sin(time * 0.0017 + item.plate.wobbleSeed * 1.7) * 6 * item.intensity;
+          const wobbleY = Math.cos(time * 0.0013 + item.plate.wobbleSeed * 1.1) * 6 * item.intensity;
+          const wobbleZ = Math.sin(time * 0.0021 + item.plate.wobbleSeed * 0.9) * 10 * item.intensity;
           const idleWobble = Math.sin(time * 0.0011 + item.plate.wobbleSeed) * 4 * (1 - state.fieldStrength);
 
           const blendScale = targetScale + (closingAnim.startScale - targetScale) * (1 - eased);
@@ -677,7 +676,6 @@ export default function ForestScene() {
         }
 
         tile.style.transition = "";
-        const intensity = item.intensity;
         const isShattering = shatterIndexRef.current === index;
         const opacity = isShattering ? 0 : 1;
         const scale = item.p * item.plate.size * (0.78 + (item.z + 1) * 0.12) * 0.65;
@@ -696,7 +694,7 @@ export default function ForestScene() {
 
         tile.style.opacity = opacity.toFixed(3);
         tile.style.zIndex = `${Math.round((item.z + 1) * 1000)}`;
-        tile.style.setProperty("--tile-glow", intensity.toFixed(3));
+        tile.style.setProperty("--tile-glow", item.intensity.toFixed(3));
         const normal = rotateNormal(item.plate.x, item.plate.y, item.plate.z);
         const yaw = Math.atan2(normal.x, normal.z);
         const pitch = -Math.asin(normal.y);
