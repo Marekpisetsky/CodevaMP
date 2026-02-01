@@ -678,7 +678,6 @@ export default function VisualesSphereIntro({
       aria-hidden
       data-html2canvas-ignore="true"
     >
-      {debug ? <div className="visuales-sphere-debug">{debugMessage || "debug"}</div> : null}
       <div className="visuales-portal-window" aria-hidden />
       <div className="visuales-sphere-stars" />
       <div className="visuales-sphere-sun" />

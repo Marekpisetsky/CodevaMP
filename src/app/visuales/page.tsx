@@ -1,200 +1,462 @@
-"use client"
+"use client";
 
-import { useEffect, useLayoutEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import SiteShell from "../components/site-shell";
-import VisualesSphereIntro from "../components/visuales-sphere-intro";
+import { supabase } from "../lib/supabase";
 
-const visualesHighlights = [
-  {
-    title: "Celestial pop",
-    detail: "Paisajes de color saturado con brillo orbital, halos y destellos suaves.",
-  },
-  {
-    title: "Kawaii fantastico",
-    detail: "Formas amables, ritmos juguetones y detalles que invitan a tocar.",
-  },
-  {
-    title: "Anti-realismo japones",
-    detail: "Reglas propias, gravedad flexible y narrativa sensorial.",
-  },
-];
-
-const visualesFragments = [
-  { x: "8%", y: "18%", s: "22px", r: "-18deg" },
-  { x: "18%", y: "62%", s: "14px", r: "24deg" },
-  { x: "28%", y: "32%", s: "12px", r: "-32deg" },
-  { x: "64%", y: "22%", s: "18px", r: "12deg" },
-  { x: "72%", y: "46%", s: "10px", r: "-20deg" },
-  { x: "84%", y: "28%", s: "16px", r: "32deg" },
-  { x: "78%", y: "68%", s: "20px", r: "-12deg" },
-  { x: "40%", y: "76%", s: "12px", r: "18deg" },
-];
-
-export default function VisualesPage() {
-  const [playEnter, setPlayEnter] = useState(false);
-  const [sphereActive, setSphereActive] = useState(false);
-  const [introDebug, setIntroDebug] = useState(false);
-  const [sphereDuration, setSphereDuration] = useState(5000);
-  const [introHold, setIntroHold] = useState(false);
-  const [usedSphereIntro, setUsedSphereIntro] = useState(false);
-
-  useLayoutEffect(() => {
+export default function VisualesHubPage() {
+  const router = useRouter();
+  const [sessionUser, setSessionUser] = useState<string | null | undefined>(undefined);
+  const [username, setUsername] = useState<string | null>(() => {
     if (typeof window === "undefined") {
-      return;
+      return null;
     }
-    const key = "visuales-enter-from-home";
-    let shouldIntro = false;
-    let forceIntro = false;
-    let holdIntro = false;
     try {
-      forceIntro = window.location.search.includes("intro=1");
-      holdIntro = window.location.search.includes("hold=1");
-      const cameFromHome = sessionStorage.getItem(key) === "1";
-      if (sessionStorage.getItem(key)) {
-        sessionStorage.removeItem(key);
-      }
-      shouldIntro = forceIntro || cameFromHome;
+      return sessionStorage.getItem("visuales-username");
     } catch {
-      shouldIntro = false;
+      return null;
     }
-    if (forceIntro) {
-      shouldIntro = true;
-      setIntroDebug(true);
-      setSphereActive(true);
-      setUsedSphereIntro(true);
+  });
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [type, setType] = useState("imagen");
+  const [file, setFile] = useState<File | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [avatarInitial, setAvatarInitial] = useState<string>(() => {
+    if (typeof window === "undefined") {
+      return "";
     }
-    if (holdIntro) {
-      setIntroHold(true);
-      setSphereDuration(20000);
+    try {
+      const stored = sessionStorage.getItem("visuales-avatar");
+      if (stored) {
+        return stored;
+      }
+      const storedUsername = sessionStorage.getItem("visuales-username");
+      return storedUsername ? storedUsername.slice(0, 1).toUpperCase() : "";
+    } catch {
+      return "";
     }
-    if (!shouldIntro) {
+  });
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const resolvedInitial = (() => {
+    if (username) {
+      return username.slice(0, 1).toUpperCase();
+    }
+    if (sessionUser === null) {
+      return "G";
+    }
+    if (avatarInitial) {
+      return avatarInitial.slice(0, 1).toUpperCase();
+    }
+    return "U";
+  })();
+
+  useEffect(() => {
+    if (!supabase) {
       return;
     }
-    if (typeof document !== "undefined") {
-      const existing = document.getElementById("visuales-preoverlay");
-      if (!existing) {
-        const el = document.createElement("div");
-        el.id = "visuales-preoverlay";
-        el.className = "visuales-preoverlay";
-        document.body.appendChild(el);
-        window.setTimeout(() => {
-          el.classList.add("visuales-preoverlay--fade");
-          window.setTimeout(() => {
-            el.remove();
-          }, 600);
-        }, 1200);
+    supabase.auth.getSession().then(({ data }) => {
+      const user = data.session?.user ?? null;
+      setSessionUser(user?.id ?? null);
+      if (user) {
+        const metaUsername = (user.user_metadata?.username as string | undefined)?.trim();
+        if (metaUsername) {
+          setUsername(metaUsername);
+          const nextInitial = metaUsername.slice(0, 1).toUpperCase();
+          setAvatarInitial(nextInitial);
+          try {
+            sessionStorage.setItem("visuales-username", metaUsername);
+            sessionStorage.setItem("visuales-avatar", nextInitial);
+          } catch {
+            // ignore
+          }
+        } else if (!username) {
+          const emailInitial = user.email?.slice(0, 1)?.toUpperCase();
+          if (emailInitial && !avatarInitial) {
+            setAvatarInitial(emailInitial);
+            try {
+              sessionStorage.setItem("visuales-avatar", emailInitial);
+            } catch {
+              // ignore
+            }
+          }
+        }
       }
-    }
-    setUsedSphereIntro(true);
-    let didStart = false;
-    let fallbackTimer = 0;
-    const startIntro = () => {
-      if (didStart) {
-        return;
+    });
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user ?? null;
+      setSessionUser(user?.id ?? null);
+      if (user) {
+        const metaUsername = (user.user_metadata?.username as string | undefined)?.trim();
+        if (metaUsername) {
+          setUsername(metaUsername);
+          const nextInitial = metaUsername.slice(0, 1).toUpperCase();
+          setAvatarInitial(nextInitial);
+          try {
+            sessionStorage.setItem("visuales-username", metaUsername);
+            sessionStorage.setItem("visuales-avatar", nextInitial);
+          } catch {
+            // ignore
+          }
+        } else if (!username) {
+          const emailInitial = user.email?.slice(0, 1)?.toUpperCase();
+          if (emailInitial && !avatarInitial) {
+            setAvatarInitial(emailInitial);
+            try {
+              sessionStorage.setItem("visuales-avatar", emailInitial);
+            } catch {
+              // ignore
+            }
+          }
+        }
       }
-      didStart = true;
-      window.clearTimeout(fallbackTimer);
-      if (window.location.search.includes("intro=1")) {
-        window.history.replaceState({}, "", "/visuales");
-      }
-      setSphereActive(true);
-    };
-    fallbackTimer = window.setTimeout(startIntro, 500);
+    });
     return () => {
-      window.clearTimeout(fallbackTimer);
+      authListener.subscription.unsubscribe();
     };
   }, []);
 
   useEffect(() => {
-    if (!sphereActive || introHold) {
+    if (!supabase || sessionUser === undefined) {
       return;
     }
-    const timeoutId = window.setTimeout(() => {
-      setSphereActive(false);
-      if (!usedSphereIntro) {
-        setPlayEnter(true);
-      }
-    }, sphereDuration + 1000);
+    if (!sessionUser) {
+      setUsername(null);
+      return;
+    }
+    let isActive = true;
+    supabase
+      .from("profiles")
+      .select("username, display_name")
+      .eq("id", sessionUser)
+      .single()
+      .then(({ data }) => {
+        if (!isActive) {
+          return;
+        }
+        const nextUsername = data?.username ?? null;
+        const nextDisplayName = data?.display_name ?? null;
+        setUsername(nextUsername);
+        setDisplayName(nextDisplayName);
+        if (nextUsername) {
+          try {
+            sessionStorage.setItem("visuales-username", nextUsername);
+          } catch {
+            // ignore
+          }
+        }
+      })
+      .catch(() => {
+        if (!isActive) {
+          return;
+        }
+        setUsername(null);
+        setDisplayName(null);
+      });
     return () => {
-      window.clearTimeout(timeoutId);
+      isActive = false;
     };
-  }, [sphereActive, sphereDuration, introHold, usedSphereIntro]);
+  }, [sessionUser]);
 
-  const handleSphereComplete = () => {
-    setSphereActive(false);
-    setPlayEnter(true);
+  useEffect(() => {
+    if (username) {
+      const nextInitial = username.slice(0, 1).toUpperCase();
+      setAvatarInitial(nextInitial);
+      try {
+        sessionStorage.setItem("visuales-avatar", nextInitial);
+      } catch {
+        // ignore
+      }
+      return;
+    }
+    if (sessionUser === null) {
+      setAvatarInitial("G");
+      try {
+        sessionStorage.setItem("visuales-avatar", "G");
+      } catch {
+        // ignore
+      }
+    }
+  }, [username, sessionUser]);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      return;
+    }
+    const handleOutside = (event: MouseEvent) => {
+      if (!menuRef.current || !event.target) {
+        return;
+      }
+      if (!menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", handleOutside);
+    return () => {
+      window.removeEventListener("mousedown", handleOutside);
+    };
+  }, [menuOpen]);
+
+  const canUpload = Boolean(sessionUser);
+
+  const handleSignOut = async () => {
+    if (!supabase) {
+      return;
+    }
+    await supabase.auth.signOut();
+    router.push("/visuales/auth");
   };
 
-  const shouldPlayEnter = playEnter && !usedSphereIntro;
-  const shellClassName = [shouldPlayEnter ? "visuales-enter" : "", sphereActive ? "visuales-sphere-active" : ""]
-    .filter(Boolean)
-    .join(" ");
+  const handleSwitchAccount = async () => {
+    await handleSignOut();
+  };
+
+  const handleRequireAuth = () => {
+    router.push("/visuales/auth");
+  };
+
+  const handleMyCabina = () => {
+    if (sessionUser === undefined) {
+      return;
+    }
+    if (username) {
+      router.push(`/visuales/estudio/@${username}`);
+      return;
+    }
+    router.push("/visuales/auth");
+  };
+
+  const handleUpload = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!sessionUser) {
+      setError("Necesitas iniciar sesion para subir proyectos.");
+      return;
+    }
+    if (!file) {
+      setError("Selecciona un archivo.");
+      return;
+    }
+    if (!supabase) {
+      setError("Supabase no esta configurado.");
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    try {
+      const extension = file.name.split(".").pop() || "file";
+      const filePath = `${sessionUser}/${Date.now()}.${extension}`;
+      const { error: uploadError } = await supabase.storage.from("projects").upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+      if (uploadError) {
+        setError(uploadError.message);
+        return;
+      }
+      const { data: publicData } = supabase.storage.from("projects").getPublicUrl(filePath);
+      const mediaUrl = publicData.publicUrl;
+      const { error: insertError } = await supabase.from("projects").insert({
+        user_id: sessionUser,
+        title,
+        description,
+        type,
+        media_url: mediaUrl,
+      });
+      if (insertError) {
+        setError(insertError.message);
+        return;
+      }
+      setTitle("");
+      setDescription("");
+      setType("imagen");
+      setFile(null);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
-    <SiteShell currentPath="/visuales" disableEffects className={shellClassName}>
-      <VisualesSphereIntro
-        active={sphereActive}
-        onComplete={handleSphereComplete}
-        durationMs={sphereDuration}
-        debug={introDebug}
-      />
-      <section
-        className={`visuales-hero ${shouldPlayEnter ? "visuales-hero--enter" : ""}`}
-        aria-labelledby="visuales-title"
-      >
-        <div className="visuales-space" aria-hidden />
-        <div className="visuales-sun" aria-hidden />
-        <div className="visuales-planet" aria-hidden />
-        <div className="visuales-sky" aria-hidden />
-        <div className="visuales-orbit" aria-hidden />
-        <div className="visuales-glow" aria-hidden />
-        <div className="visuales-atmosphere" aria-hidden />
-        <div className="visuales-fragments" aria-hidden>
-          {visualesFragments.map((fragment, index) => (
-            <span
-              key={`visuales-fragment-${index}`}
-              className="visuales-fragment"
-              style={
-                {
-                  "--fx": fragment.x,
-                  "--fy": fragment.y,
-                  "--fs": fragment.s,
-                  "--fr": fragment.r,
-                } as CSSProperties
-              }
-            />
-          ))}
+    <SiteShell currentPath="/visuales" disableEffects className="visuales-hub" brandHref="/visuales">
+      <div className="hub-topbar">
+        <div className="hub-brand">
+          <Link href="/visuales">
+            <span className="hub-brand__badge">VS</span>
+            <span className="hub-brand__text">
+              <span className="hub-brand__title">Visuales</span>
+              <span className="hub-brand__subtitle">Estudio creativo</span>
+            </span>
+          </Link>
         </div>
-        <div className="visuales-content">
-          <p className="visuales-eyebrow">CodevaMP Visuales</p>
-          <h1 id="visuales-title" className="visuales-title">
-            Una submarca nacida para explorar fantasia celestial, color extremo y narrativas pop.
-          </h1>
-          <p className="visuales-sub">
-            Visuales es un universo donde la luz y el ritmo son lenguaje. Creamos escenas que se comportan como
-            portales: todo vibra, todo responde, todo invita a perderse por un instante.
-          </p>
-          <div className="visuales-actions">
-            <Link href="/" className="visuales-button visuales-button--primary">
-              Volver al estudio
-            </Link>
-            <Link href="/visuales/app" className="visuales-button visuales-button--ghost">
-              Explorar proyectos
-            </Link>
+        <div className="hub-search">
+          <input type="search" placeholder="Buscar proyectos, creadores, tags..." />
+        </div>
+        <div className="hub-topbar__actions">
+          <button type="button" className="hub-upload-button" onClick={() => setShowUpload((prev) => !prev)}>
+            Subir proyecto
+          </button>
+          <div className="hub-account-menu" ref={menuRef}>
+            <button
+              type="button"
+              className="visuales-avatar visuales-avatar--button"
+              aria-label="Abrir opciones de cuenta"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              disabled={sessionUser === undefined}
+            >
+              <span suppressHydrationWarning>{resolvedInitial}</span>
+            </button>
+            {menuOpen ? (
+              <div className="hub-account-menu__panel">
+                {username ? (
+                  <div className="hub-account-menu__profile">
+                    <div className="hub-account-menu__name">{displayName ?? username}</div>
+                    <div className="hub-account-menu__handle">@{username}</div>
+                  </div>
+                ) : null}
+                {username ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        handleMyCabina();
+                      }}
+                    >
+                      Mi estudio
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        handleMyCabina();
+                      }}
+                    >
+                      Ajustes
+                    </button>
+                  </>
+                ) : null}
+                {sessionUser ? (
+                  <>
+                    <button type="button" onClick={handleSwitchAccount}>
+                      Cambiar cuenta
+                    </button>
+                    <button type="button" onClick={handleSignOut}>
+                      Cerrar sesion
+                    </button>
+                  </>
+                ) : (
+                  <Link href="/visuales/auth" onClick={() => setMenuOpen(false)}>
+                    Acceder
+                  </Link>
+                )}
+              </div>
+            ) : null}
           </div>
         </div>
-      </section>
+      </div>
 
-      <section className="visuales-panel" aria-label="Claves visuales">
-        <div className="visuales-panel__inner">
-          {visualesHighlights.map((item) => (
-            <div key={item.title} className="visuales-card">
-              <h2>{item.title}</h2>
-              <p>{item.detail}</p>
-            </div>
-          ))}
+      <aside className="hub-sidebar">
+        <div className="hub-logo">
+          <span>Visuales</span>
         </div>
-      </section>
+        <nav className="hub-nav">
+          <Link href="/visuales">Inicio</Link>
+          <button type="button" className="active">
+            Visuales Hub
+          </button>
+          <button type="button">Explorar</button>
+          <button type="button">Cabinas</button>
+          <button type="button">Suscripciones</button>
+          <button type="button">Directos</button>
+          <button type="button">Historial</button>
+        </nav>
+        <div className="hub-types">
+          <p>Tipos de contenido</p>
+          <div className="hub-chip-row">
+            <span>Imagen</span>
+            <span>Video</span>
+            <span>Animacion</span>
+            <span>Interactivo</span>
+          </div>
+        </div>
+      </aside>
+
+      <main className="hub-main">
+        <header className="hub-header">
+          <div>
+            <p className="hub-eyebrow">Mesa de trabajo</p>
+            <h1>Explora el universo Visuales</h1>
+            <p>Descubre proyectos, recorre cabinas creativas y conecta con creadores cuando quieras dar el siguiente paso.</p>
+          </div>
+        </header>
+        {showUpload ? (
+          <section className="hub-upload-inline">
+            <div className="hub-section__header">
+              <h2>Subir proyecto</h2>
+              <button type="button" onClick={() => setShowUpload(false)}>
+                Cerrar
+              </button>
+            </div>
+            {canUpload ? (
+              <form onSubmit={handleUpload}>
+                <label>
+                  Titulo
+                  <input value={title} onChange={(event) => setTitle(event.target.value)} required />
+                </label>
+                <label>
+                  Descripcion
+                  <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} />
+                </label>
+                <label>
+                  Tipo
+                  <select value={type} onChange={(event) => setType(event.target.value)}>
+                    <option value="imagen">Imagen</option>
+                    <option value="video">Video</option>
+                    <option value="animacion">Animacion</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </label>
+                <label>
+                  Archivo
+                  <input type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} required />
+                </label>
+                <button type="submit" disabled={uploading}>
+                  {uploading ? "Subiendo..." : "Publicar"}
+                </button>
+              </form>
+            ) : (
+              <div className="hub-locked">
+                <p>Necesitas una cuenta para publicar.</p>
+                <button type="button" onClick={handleRequireAuth}>
+                  Iniciar sesion para publicar
+                </button>
+              </div>
+            )}
+            {error ? <p className="hub-error">{error}</p> : null}
+          </section>
+        ) : null}
+        <section className="hub-creators">
+          <div className="hub-section__header">
+            <h2>Cabinas de creadores</h2>
+          </div>
+          <div className="hub-feed__empty">
+            <p>No hay creadores activos aun.</p>
+          </div>
+        </section>
+        <section className="hub-feed">
+          <div className="hub-section__header">
+            <h2>Proyectos recientes</h2>
+          </div>
+          <div className="hub-feed__empty">
+            <p>No hay proyectos publicados aun.</p>
+          </div>
+        </section>
+      </main>
     </SiteShell>
   );
 }
