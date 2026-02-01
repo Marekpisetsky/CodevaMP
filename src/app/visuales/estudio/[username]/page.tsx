@@ -408,11 +408,15 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
           .select("id, title, description, type, media_url, created_at")
           .eq("user_id", sessionId)
           .order("created_at", { ascending: false })
-          .then(({ data }) => {
+          .then(({ data, error }) => {
+            if (error) {
+              setProjects([]);
+              setProjectsLoading(false);
+              return;
+            }
             setProjects((data as typeof projects) ?? []);
             setProjectsLoading(false);
-          })
-          .catch(() => setProjectsLoading(false));
+          });
       }
     } finally {
       setUploading(false);
