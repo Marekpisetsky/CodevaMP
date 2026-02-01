@@ -146,14 +146,15 @@ export default function VisualesAuthPage() {
           .select("username")
           .eq("id", userId)
           .single()
-          .then(({ data: profile }) => {
+          .then(({ data: profile, error }) => {
             if (profile?.username) {
               router.replace("/visuales/app");
               return;
             }
-            setNeedsUsername(true);
-          })
-          .catch(() => {
+            if (error) {
+              setNeedsUsername(true);
+              return;
+            }
             setNeedsUsername(true);
           });
         return;
