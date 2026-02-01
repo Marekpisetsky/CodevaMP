@@ -138,6 +138,9 @@ export default function VisualesAuthPage() {
       if (data.session) {
         const userId = data.session.user.id;
         setSessionId(userId);
+        if (!supabase) {
+          return;
+        }
         supabase
           .from("profiles")
           .select("username")
