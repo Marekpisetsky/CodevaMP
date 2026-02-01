@@ -143,8 +143,13 @@ export default function VisualesHubPage() {
       .select("username, display_name")
       .eq("id", sessionUser)
       .single()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (!isActive) {
+          return;
+        }
+        if (error) {
+          setUsername(null);
+          setDisplayName(null);
           return;
         }
         const nextUsername = data?.username ?? null;
@@ -158,13 +163,6 @@ export default function VisualesHubPage() {
             // ignore
           }
         }
-      })
-      .catch(() => {
-        if (!isActive) {
-          return;
-        }
-        setUsername(null);
-        setDisplayName(null);
       });
     return () => {
       isActive = false;
