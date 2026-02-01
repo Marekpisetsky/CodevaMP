@@ -821,7 +821,7 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                           }
                           setEditSaving(true);
                           setEditMessage(null);
-                          const { data, error } = await supabase
+                          const { error } = await supabase
                             .from("projects")
                             .update({
                               title: editTitle,
@@ -832,11 +832,6 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                             .eq("user_id", sessionId);
                           if (error) {
                             setEditMessage(error.message);
-                            setEditSaving(false);
-                            return;
-                          }
-                          if (!data || data.length === 0) {
-                            setEditMessage("No se pudo guardar. Verifica permisos.");
                             setEditSaving(false);
                             return;
                           }
