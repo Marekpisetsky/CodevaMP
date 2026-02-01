@@ -13,6 +13,7 @@ export default function CabinaScene({ className, connected = false, partnerLabel
   const containerRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<number | null>(null);
   const [locked, setLocked] = useState(false);
+  const lockedRef = useRef(false);
   const [hudHint, setHudHint] = useState("Click para entrar en la cabina");
   const [appearanceMode, setAppearanceMode] = useState(false);
   const [appearance, setAppearance] = useState({
@@ -27,6 +28,10 @@ export default function CabinaScene({ className, connected = false, partnerLabel
   const heightRef = useRef(heightCm);
   const nearBoothRef = useRef(false);
   const matrixRef = useRef(matrixMode);
+
+  useEffect(() => {
+    lockedRef.current = locked;
+  }, [locked]);
   const nearPaperRef = useRef(false);
   const pendingLockRef = useRef(false);
   const teleportRef = useRef<THREE.Vector3 | null>(null);
@@ -100,7 +105,7 @@ export default function CabinaScene({ className, connected = false, partnerLabel
     camera.rotation.order = "YXZ";
 
     const isMobile = window.matchMedia("(max-width: 900px)").matches;
-    const prefersReduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // prefers-reduced-motion not used yet.
     const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, alpha: false, powerPreference: "high-performance" });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 1.1));
     renderer.setSize(container.clientWidth, container.clientHeight);
@@ -466,7 +471,7 @@ export default function CabinaScene({ className, connected = false, partnerLabel
     const exitAppearance = () => {
       appearanceRef.current = false;
       setAppearanceMode(false);
-      setHudHint(locked ? "WASD para moverte - Mouse para mirar" : "Click para entrar en la cabina");
+      setHudHint(lockedRef.current ? "WASD para moverte - Mouse para mirar" : "Click para entrar en la cabina");
       teleportRef.current = boothPosition.clone();
       targetYaw = -Math.PI / 2;
       targetPitch = 0;
@@ -725,7 +730,7 @@ export default function CabinaScene({ className, connected = false, partnerLabel
           if (nearBooth) {
             setHudHint("Pulsa E para entrar a la cabina");
           } else {
-            setHudHint(locked ? "WASD para moverte - Mouse para mirar" : "Click para entrar en la cabina");
+            setHudHint(lockedRef.current ? "WASD para moverte - Mouse para mirar" : "Click para entrar en la cabina");
           }
         }
       } else if (plateLabel) {

@@ -130,7 +130,6 @@ export default function VisualesSphereIntro({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const completedRef = useRef(false);
-  const [debugMessage, setDebugMessage] = useState("");
   const [initAttempt, setInitAttempt] = useState(0);
 
   useEffect(() => {

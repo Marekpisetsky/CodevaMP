@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -31,7 +32,6 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
   const [settingsBusy, setSettingsBusy] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [showUpload, setShowUpload] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -173,7 +173,7 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
           setIsOwner(profileSlug === normalizedSlug);
         });
     });
-  }, []);
+  }, [normalizedSlug]);
 
   useEffect(() => {
     if (!supabase || !sessionId || !isOwner) {
@@ -396,7 +396,6 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
       uploadPreviewRef.current = null;
       setUploadPreview(null);
       setNeedsTypeChoice(false);
-      setShowUpload(false);
       setUploadProgress(null);
       if (isOwner) {
         setProjectsLoading(true);
@@ -428,7 +427,6 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
       return;
     }
     setUploadError(null);
-    setShowUpload(true);
     setUploadFile(file);
     setVideoReady(false);
     if (uploadPreviewRef.current) {
@@ -490,7 +488,6 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                 className="cabina-dashboard__action cabina-dashboard__action--ghost"
                 onClick={() => {
                   setActiveSection("subidas");
-                  setShowUpload(true);
                   handlePickFile();
                 }}
                 disabled={!isOwner}
@@ -591,7 +588,6 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                       setUploadError("Solo el propietario puede subir proyectos.");
                       return;
                     }
-                    setShowUpload(true);
                     handlePickFile();
                   }}
                 >

@@ -44,6 +44,8 @@ export default function VisualesHubPage() {
     }
   });
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const usernameRef = useRef(username);
+  const avatarRef = useRef(avatarInitial);
   const resolvedInitial = (() => {
     if (username) {
       return username.slice(0, 1).toUpperCase();
@@ -56,6 +58,11 @@ export default function VisualesHubPage() {
     }
     return "U";
   })();
+
+  useEffect(() => {
+    usernameRef.current = username;
+    avatarRef.current = avatarInitial;
+  }, [username, avatarInitial]);
 
   useEffect(() => {
     if (!supabase) {
@@ -76,9 +83,9 @@ export default function VisualesHubPage() {
           } catch {
             // ignore
           }
-        } else if (!username) {
+        } else if (!usernameRef.current) {
           const emailInitial = user.email?.slice(0, 1)?.toUpperCase();
-          if (emailInitial && !avatarInitial) {
+          if (emailInitial && !avatarRef.current) {
             setAvatarInitial(emailInitial);
             try {
               sessionStorage.setItem("visuales-avatar", emailInitial);
@@ -104,9 +111,9 @@ export default function VisualesHubPage() {
           } catch {
             // ignore
           }
-        } else if (!username) {
+        } else if (!usernameRef.current) {
           const emailInitial = user.email?.slice(0, 1)?.toUpperCase();
-          if (emailInitial && !avatarInitial) {
+          if (emailInitial && !avatarRef.current) {
             setAvatarInitial(emailInitial);
             try {
               sessionStorage.setItem("visuales-avatar", emailInitial);
