@@ -156,6 +156,9 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
       if (!userId) {
         return;
       }
+      if (!supabase) {
+        return;
+      }
       supabase
         .from("profiles")
         .select("username, display_name, bio, username_updated_at")
