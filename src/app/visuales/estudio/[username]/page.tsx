@@ -410,8 +410,9 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
           .order("created_at", { ascending: false })
           .then(({ data }) => {
             setProjects((data as typeof projects) ?? []);
+            setProjectsLoading(false);
           })
-          .finally(() => setProjectsLoading(false));
+          .catch(() => setProjectsLoading(false));
       }
     } finally {
       setUploading(false);
