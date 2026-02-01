@@ -191,11 +191,12 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
       .then(({ data, error }) => {
         if (error) {
           setProjects([]);
+          setProjectsLoading(false);
           return;
         }
         setProjects((data as typeof projects) ?? []);
-      })
-      .finally(() => setProjectsLoading(false));
+        setProjectsLoading(false);
+      });
   }, [sessionId, isOwner]);
 
   useEffect(() => {
