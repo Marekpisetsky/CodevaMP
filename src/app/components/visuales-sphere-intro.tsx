@@ -136,21 +136,15 @@ export default function VisualesSphereIntro({
     if (!active || !portalTarget) {
       return;
     }
-    if (debug) {
-      setDebugMessage("init");
-    }
+    // debug markers removed
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      if (debug) {
-        setDebugMessage("reduced-motion");
-      }
+      // debug markers removed
       onComplete();
       return;
     }
     const container = containerRef.current;
     if (!container) {
-      if (debug) {
-        setDebugMessage("no-container");
-      }
+      // debug markers removed
       const retryId = window.setTimeout(() => {
         setInitAttempt((value) => value + 1);
       }, 50);
@@ -617,9 +611,7 @@ export default function VisualesSphereIntro({
     };
 
     const run = async () => {
-      if (debug) {
-        setDebugMessage("run");
-      }
+      // debug markers removed
       try {
         webgl = await initWebGL();
       } catch {
@@ -628,19 +620,13 @@ export default function VisualesSphereIntro({
       if (!webgl) {
         fallback = initCanvas();
         if (!fallback) {
-          if (debug) {
-            setDebugMessage("no-canvas");
-          }
+          // debug markers removed
           finish();
           return;
         }
-        if (debug) {
-          setDebugMessage("canvas");
-        }
+        // debug markers removed
       } else {
-        if (debug) {
-          setDebugMessage("webgl");
-        }
+        // debug markers removed
       }
       removePreoverlay();
       startIntro();
