@@ -1,25 +1,30 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SiteShell from "../components/site-shell";
 import { supabase } from "../lib/supabase";
+import { useVisualesIdentity } from "./use-visuales-identity";
 
 export default function VisualesHubPage() {
   const router = useRouter();
-  const [sessionUser, setSessionUser] = useState<string | null | undefined>(undefined);
-  const [username, setUsername] = useState<string | null>(() => {
-    if (typeof window === "undefined") {
-      return null;
-    }
-    try {
-      return sessionStorage.getItem("visuales-username");
-    } catch {
-      return null;
-    }
-  });
-  const [displayName, setDisplayName] = useState<string | null>(null);
+  const { sessionUser, username, displayName, displayAvatarLetter, applyIdentity } = useVisualesIdentity();
+
+  const getInitial = (value: string | null) => {
+    const cleaned = (value ?? "").trim().replace(/^@+/, "");
+    const match = cleaned.match(/[A-Za-z0-9]/);
+    return match ? match[0].toUpperCase() : "";
+  };
+  type ProjectItem = {
+    id: string;
+    title: string | null;
+    description: string | null;
+    type: string | null;
+    media_url: string | null;
+    user_id: string | null;
+    profiles: { username: string | null; display_name: string | null } | null;
+  };
   const [uploading, setUploading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,167 +33,20 @@ export default function VisualesHubPage() {
   const [type, setType] = useState("imagen");
   const [file, setFile] = useState<File | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [avatarInitial, setAvatarInitial] = useState<string>(() => {
-    if (typeof window === "undefined") {
-      return "";
-    }
-    try {
-      const stored = sessionStorage.getItem("visuales-avatar");
-      if (stored) {
-        return stored;
-      }
-      const storedUsername = sessionStorage.getItem("visuales-username");
-      return storedUsername ? storedUsername.slice(0, 1).toUpperCase() : "";
-    } catch {
-      return "";
-    }
-  });
+  const [activeNav, setActiveNav] = useState("hub");
+  const [activeType, setActiveType] = useState<string | null>(null);
+  const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectsPage, setProjectsPage] = useState(0);
+  const [projectsHasMore, setProjectsHasMore] = useState(true);
+  const [initialLoaded, setInitialLoaded] = useState(false);
+  const feedSentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingRef = useRef(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const usernameRef = useRef(username);
-  const avatarRef = useRef(avatarInitial);
-  const resolvedInitial = (() => {
-    if (username) {
-      return username.slice(0, 1).toUpperCase();
-    }
-    if (sessionUser === null) {
-      return "G";
-    }
-    if (avatarInitial) {
-      return avatarInitial.slice(0, 1).toUpperCase();
-    }
-    return "U";
-  })();
-
-  useEffect(() => {
-    usernameRef.current = username;
-    avatarRef.current = avatarInitial;
-  }, [username, avatarInitial]);
-
-  useEffect(() => {
-    if (!supabase) {
-      return;
-    }
-    supabase.auth.getSession().then(({ data }) => {
-      const user = data.session?.user ?? null;
-      setSessionUser(user?.id ?? null);
-      if (user) {
-        const metaUsername = (user.user_metadata?.username as string | undefined)?.trim();
-        if (metaUsername) {
-          setUsername(metaUsername);
-          const nextInitial = metaUsername.slice(0, 1).toUpperCase();
-          setAvatarInitial(nextInitial);
-          try {
-            sessionStorage.setItem("visuales-username", metaUsername);
-            sessionStorage.setItem("visuales-avatar", nextInitial);
-          } catch {
-            // ignore
-          }
-        } else if (!usernameRef.current) {
-          const emailInitial = user.email?.slice(0, 1)?.toUpperCase();
-          if (emailInitial && !avatarRef.current) {
-            setAvatarInitial(emailInitial);
-            try {
-              sessionStorage.setItem("visuales-avatar", emailInitial);
-            } catch {
-              // ignore
-            }
-          }
-        }
-      }
-    });
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      const user = session?.user ?? null;
-      setSessionUser(user?.id ?? null);
-      if (user) {
-        const metaUsername = (user.user_metadata?.username as string | undefined)?.trim();
-        if (metaUsername) {
-          setUsername(metaUsername);
-          const nextInitial = metaUsername.slice(0, 1).toUpperCase();
-          setAvatarInitial(nextInitial);
-          try {
-            sessionStorage.setItem("visuales-username", metaUsername);
-            sessionStorage.setItem("visuales-avatar", nextInitial);
-          } catch {
-            // ignore
-          }
-        } else if (!usernameRef.current) {
-          const emailInitial = user.email?.slice(0, 1)?.toUpperCase();
-          if (emailInitial && !avatarRef.current) {
-            setAvatarInitial(emailInitial);
-            try {
-              sessionStorage.setItem("visuales-avatar", emailInitial);
-            } catch {
-              // ignore
-            }
-          }
-        }
-      }
-    });
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!supabase || sessionUser === undefined) {
-      return;
-    }
-    if (!sessionUser) {
-      setUsername(null);
-      return;
-    }
-    let isActive = true;
-    supabase
-      .from("profiles")
-      .select("username, display_name")
-      .eq("id", sessionUser)
-      .single()
-      .then(({ data, error }) => {
-        if (!isActive) {
-          return;
-        }
-        if (error) {
-          setUsername(null);
-          setDisplayName(null);
-          return;
-        }
-        const nextUsername = data?.username ?? null;
-        const nextDisplayName = data?.display_name ?? null;
-        setUsername(nextUsername);
-        setDisplayName(nextDisplayName);
-        if (nextUsername) {
-          try {
-            sessionStorage.setItem("visuales-username", nextUsername);
-          } catch {
-            // ignore
-          }
-        }
-      });
-    return () => {
-      isActive = false;
-    };
-  }, [sessionUser]);
-
-  useEffect(() => {
-    if (username) {
-      const nextInitial = username.slice(0, 1).toUpperCase();
-      setAvatarInitial(nextInitial);
-      try {
-        sessionStorage.setItem("visuales-avatar", nextInitial);
-      } catch {
-        // ignore
-      }
-      return;
-    }
-    if (sessionUser === null) {
-      setAvatarInitial("G");
-      try {
-        sessionStorage.setItem("visuales-avatar", "G");
-      } catch {
-        // ignore
-      }
-    }
-  }, [username, sessionUser]);
+  const navScrollRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const inicioRef = useRef<HTMLDivElement | null>(null);
+  const feedRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!menuOpen) {
@@ -207,6 +65,142 @@ export default function VisualesHubPage() {
       window.removeEventListener("mousedown", handleOutside);
     };
   }, [menuOpen]);
+
+  useEffect(() => {
+    if (!sessionUser || username) {
+      return;
+    }
+    const owned = projects.find((project) => project.user_id === sessionUser && project.profiles?.username);
+    if (!owned?.profiles?.username) {
+      return;
+    }
+    const nextUsername = owned.profiles.username;
+    const nextInitial = getInitial(nextUsername);
+    applyIdentity({ username: nextUsername, avatarInitial: nextInitial, storedAvatarLetter: nextInitial });
+  }, [applyIdentity, projects, sessionUser, username]);
+
+  const loadProjects = useCallback(
+    async (page: number) => {
+      if (!supabase || loadingRef.current) {
+        return;
+      }
+      const pageSize = 12;
+      loadingRef.current = true;
+      setProjectsLoading(true);
+      try {
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
+        const { data, error } = await supabase
+          .from("projects")
+          .select("id, title, description, type, media_url, user_id")
+          .order("created_at", { ascending: false })
+          .range(from, to);
+        if (error) {
+          return;
+        }
+        const baseProjects = (data as ProjectItem[]) ?? [];
+        const ids = Array.from(new Set(baseProjects.map((item) => item.user_id).filter(Boolean))) as string[];
+        let profileMap = new Map<string, { username: string | null; display_name: string | null }>();
+        if (ids.length) {
+          const { data: profilesData } = await supabase
+            .from("profiles")
+            .select("id, username, display_name")
+            .in("id", ids);
+          (profilesData ?? []).forEach((profile) => {
+            profileMap.set(profile.id, {
+              username: profile.username ?? null,
+              display_name: profile.display_name ?? null,
+            });
+          });
+        }
+        const merged = baseProjects.map((item) => ({
+          ...item,
+          profiles: item.user_id ? profileMap.get(item.user_id) ?? null : null,
+        }));
+        setProjects((prev) => (page === 0 ? (merged as ProjectItem[]) : [...prev, ...(merged as ProjectItem[])]));
+        setProjectsHasMore(baseProjects.length === pageSize);
+      } finally {
+        setProjectsLoading(false);
+        loadingRef.current = false;
+        if (page === 0) {
+          setInitialLoaded(true);
+        }
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    loadProjects(0);
+  }, [loadProjects]);
+
+  const filteredProjects = useMemo(() => {
+    if (!activeType) {
+      return projects;
+    }
+    return projects.filter((project) => project.type === activeType);
+  }, [activeType, projects]);
+
+  const handleNavClick = (next: string) => {
+    setActiveNav(next);
+    if (next === "directos") {
+      setActiveType("video");
+      feedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (next === "cabinas") {
+      setActiveType("interactivo");
+      feedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (next === "suscripciones") {
+      setActiveType("animacion");
+      feedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (next === "historial") {
+      setActiveType("imagen");
+      feedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (next === "explorar") {
+      setActiveType(null);
+      feedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+      return;
+    }
+    if (next === "hub") {
+      setActiveType(null);
+      feedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (next === "inicio") {
+      setActiveType(null);
+      inicioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    inicioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  useEffect(() => {
+    if (!feedSentinelRef.current) {
+      return;
+    }
+    const sentinel = feedSentinelRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && projectsHasMore && !projectsLoading) {
+          const nextPage = projectsPage + 1;
+          setProjectsPage(nextPage);
+          loadProjects(nextPage);
+        }
+      },
+      { rootMargin: "600px 0px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadProjects, projectsHasMore, projectsLoading, projectsPage]);
 
   const canUpload = Boolean(sessionUser);
 
@@ -299,9 +293,40 @@ export default function VisualesHubPage() {
           </Link>
         </div>
         <div className="hub-search">
-          <input type="search" placeholder="Buscar proyectos, creadores, tags..." />
+          <input
+            ref={searchInputRef}
+            type="search"
+            placeholder="Buscar proyectos, creadores, tags..."
+            aria-label="Buscar proyectos"
+          />
         </div>
         <div className="hub-topbar__actions">
+          <button type="button" className="hub-search-toggle" aria-label="Buscar">
+            <svg viewBox="0 0 256 256" aria-hidden="true">
+              <rect width="256" height="256" fill="none" />
+              <circle
+                cx="116"
+                cy="116"
+                r="84"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="16"
+              />
+              <line
+                x1="175.39356"
+                y1="175.40039"
+                x2="223.99414"
+                y2="224.00098"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="16"
+              />
+            </svg>
+          </button>
           <button type="button" className="hub-upload-button" onClick={() => setShowUpload((prev) => !prev)}>
             Subir proyecto
           </button>
@@ -313,10 +338,13 @@ export default function VisualesHubPage() {
               onClick={() => setMenuOpen((prev) => !prev)}
               disabled={sessionUser === undefined}
             >
-              <span suppressHydrationWarning>{resolvedInitial}</span>
+              <span suppressHydrationWarning>{displayAvatarLetter}</span>
             </button>
             {menuOpen ? (
               <div className="hub-account-menu__panel">
+                <div className="hub-account-menu__status">
+                  Estado sesion: {sessionUser ? "Activa" : "No sesion"}
+                </div>
                 {username ? (
                   <div className="hub-account-menu__profile">
                     <div className="hub-account-menu__name">{displayName ?? username}</div>
@@ -366,39 +394,99 @@ export default function VisualesHubPage() {
       </div>
 
       <aside className="hub-sidebar">
-        <div className="hub-logo">
-          <span>Visuales</span>
-        </div>
-        <nav className="hub-nav">
-          <Link href="/visuales">Inicio</Link>
-          <button type="button" className="active">
-            Visuales Hub
+        <div className="hub-nav-row">
+          <button
+            type="button"
+            className="hub-nav-scroll hub-nav-scroll--left"
+            aria-label="Desplazar navegacion a la izquierda"
+            onClick={() => navScrollRef.current?.scrollBy({ left: -180, behavior: "smooth" })}
+          >
+            <span aria-hidden>{"<"}</span>
           </button>
-          <button type="button">Explorar</button>
-          <button type="button">Cabinas</button>
-          <button type="button">Suscripciones</button>
-          <button type="button">Directos</button>
-          <button type="button">Historial</button>
-        </nav>
+          <nav className="hub-nav" ref={navScrollRef}>
+            <button
+              type="button"
+              className={activeNav === "inicio" ? "active" : ""}
+              onClick={() => handleNavClick("inicio")}
+            >
+              Inicio
+            </button>
+            <button
+              type="button"
+              className={activeNav === "hub" ? "active" : ""}
+              onClick={() => handleNavClick("hub")}
+            >
+              Visuales Hub
+            </button>
+            <button
+              type="button"
+              className={activeNav === "explorar" ? "active" : ""}
+              onClick={() => handleNavClick("explorar")}
+            >
+              Explorar
+            </button>
+            <button
+              type="button"
+              className={activeNav === "cabinas" ? "active" : ""}
+              onClick={() => handleNavClick("cabinas")}
+            >
+              Cabinas
+            </button>
+            <button
+              type="button"
+              className={activeNav === "suscripciones" ? "active" : ""}
+              onClick={() => handleNavClick("suscripciones")}
+            >
+              Suscripciones
+            </button>
+            <button
+              type="button"
+              className={activeNav === "directos" ? "active" : ""}
+              onClick={() => handleNavClick("directos")}
+            >
+              Directos
+            </button>
+            <button
+              type="button"
+              className={activeNav === "historial" ? "active" : ""}
+              onClick={() => handleNavClick("historial")}
+            >
+              Historial
+            </button>
+          </nav>
+          <button
+            type="button"
+            className="hub-nav-scroll hub-nav-scroll--right"
+            aria-label="Desplazar navegacion a la derecha"
+            onClick={() => navScrollRef.current?.scrollBy({ left: 180, behavior: "smooth" })}
+          >
+            <span aria-hidden>{">"}</span>
+          </button>
+        </div>
         <div className="hub-types">
           <p>Tipos de contenido</p>
           <div className="hub-chip-row">
-            <span>Imagen</span>
-            <span>Video</span>
-            <span>Animacion</span>
-            <span>Interactivo</span>
+            {[
+              { id: "imagen", label: "Imagen" },
+              { id: "video", label: "Video" },
+              { id: "animacion", label: "Animacion" },
+              { id: "interactivo", label: "Interactivo" },
+            ].map((chip) => (
+              <button
+                type="button"
+                key={chip.id}
+                className={activeType === chip.id ? "active" : ""}
+                onClick={() => setActiveType(activeType === chip.id ? null : chip.id)}
+              >
+                {chip.label}
+              </button>
+            ))}
           </div>
         </div>
       </aside>
 
       <main className="hub-main">
-        <header className="hub-header">
-          <div>
-            <p className="hub-eyebrow">Mesa de trabajo</p>
-            <h1>Explora el universo Visuales</h1>
-            <p>Descubre proyectos, recorre cabinas creativas y conecta con creadores cuando quieras dar el siguiente paso.</p>
-          </div>
-        </header>
+        <div ref={inicioRef} className="hub-anchor" />
         {showUpload ? (
           <section className="hub-upload-inline">
             <div className="hub-section__header">
@@ -445,21 +533,116 @@ export default function VisualesHubPage() {
             {error ? <p className="hub-error">{error}</p> : null}
           </section>
         ) : null}
-        <section className="hub-creators">
-          <div className="hub-section__header">
-            <h2>Cabinas de creadores</h2>
-          </div>
-          <div className="hub-feed__empty">
-            <p>No hay creadores activos aun.</p>
-          </div>
-        </section>
-        <section className="hub-feed">
-          <div className="hub-section__header">
-            <h2>Proyectos recientes</h2>
-          </div>
-          <div className="hub-feed__empty">
-            <p>No hay proyectos publicados aun.</p>
-          </div>
+        <section className="hub-feed" ref={feedRef}>
+          {projectsLoading && projects.length === 0 ? (
+            <div className="hub-feed__grid hub-feed__grid--skeleton" aria-hidden>
+              {Array.from({ length: 9 }).map((_, index) => (
+                <div key={`skeleton-${index}`} className="hub-card hub-card--skeleton">
+                  <div className="hub-card__media" />
+                  <div className="hub-card__meta">
+                    <div className="hub-card__title">
+                      <span className="hub-card__avatar" />
+                      <div>
+                        <div className="hub-card__line" />
+                        <div className="hub-card__line hub-card__line--short" />
+                      </div>
+                    </div>
+                    <div className="hub-card__line hub-card__line--wide" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {initialLoaded && !projectsLoading && projects.length === 0 ? (
+            <div className="hub-feed__empty">
+              <p>No hay proyectos publicados aun.</p>
+            </div>
+          ) : null}
+          {!projectsLoading && filteredProjects.length > 0 ? (
+            <div className="hub-feed__grid">
+              {filteredProjects.map((project, index) => (
+                <Link
+                  key={project.id}
+                  href={`/visuales/proyecto/${project.id}`}
+                  className="hub-card"
+                  aria-label={`Abrir ${project.title ?? "proyecto"}`}
+                  draggable={false}
+                  onDragStart={(event) => event.preventDefault()}
+                >
+                  <div
+                    className="hub-card__media"
+                    onMouseEnter={(event) => {
+                      const vid = event.currentTarget.querySelector("video");
+                      if (vid) {
+                        try {
+                          const playPromise = vid.play();
+                          if (playPromise && typeof playPromise.catch === "function") {
+                            playPromise.catch(() => undefined);
+                          }
+                        } catch {
+                          // ignore autoplay restrictions
+                        }
+                      }
+                    }}
+                    onMouseLeave={(event) => {
+                      const vid = event.currentTarget.querySelector("video");
+                      if (vid) {
+                        vid.pause();
+                        vid.currentTime = 0;
+                      }
+                    }}
+                    onDragStart={(event) => event.preventDefault()}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => event.preventDefault()}
+                  >
+                    {project.type === "video" ? (
+                      <video
+                        src={project.media_url ?? ""}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        controls={false}
+                        disablePictureInPicture
+                        disableRemotePlayback
+                        controlsList="nodownload noplaybackrate noremoteplayback"
+                        tabIndex={-1}
+                        draggable={false}
+                        onDragStart={(event) => event.preventDefault()}
+                      />
+                    ) : (
+                      <img
+                        src={project.media_url ?? ""}
+                        alt={project.title ?? "Proyecto"}
+                        loading={index < 6 ? "eager" : "lazy"}
+                        fetchPriority={index < 6 ? "high" : "auto"}
+                        decoding="async"
+                        draggable={false}
+                        onDragStart={(event) => event.preventDefault()}
+                      />
+                    )}
+                  </div>
+                    <div className="hub-card__meta">
+                      <div className="hub-card__title">
+                        <span className="hub-card__avatar">
+                          {getInitial(project.profiles?.username ?? project.profiles?.display_name) || "<"}
+                        </span>
+                        <div>
+                          <h3>{project.title ?? "Proyecto"}</h3>
+                          <p>@{(project.profiles?.username ?? "creador").replace(/^@+/, "")} - 2.1k vistas</p>
+                        </div>
+                      </div>
+                      <p>{project.description ?? ""}</p>
+                    </div>
+                </Link>
+              ))}
+            </div>
+          ) : null}
+          {!projectsLoading && filteredProjects.length === 0 && projects.length > 0 ? (
+            <div className="hub-feed__empty">
+              <p>No hay proyectos para este filtro.</p>
+            </div>
+          ) : null}
+          <div ref={feedSentinelRef} className="hub-feed__sentinel" />
         </section>
       </main>
     </SiteShell>

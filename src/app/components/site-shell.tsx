@@ -103,9 +103,50 @@ export default function SiteShell({
       pendingDrag: false,
       startY: 0,
       startScroll: 0,
+      captured: false,
+      pointerId: null as number | null,
+    };
+
+    const safeSetCapture = (pointerId: number) => {
+      if (state.captured) {
+        return;
+      }
+      try {
+        root.setPointerCapture(pointerId);
+        state.captured = true;
+        state.pointerId = pointerId;
+      } catch {
+        state.captured = false;
+        state.pointerId = null;
+      }
+    };
+
+    const safeReleaseCapture = (pointerId?: number) => {
+      const id = pointerId ?? state.pointerId;
+      if (id === null || id === undefined) {
+        state.captured = false;
+        state.pointerId = null;
+        return;
+      }
+      if (!state.captured) {
+        return;
+      }
+      try {
+        if (root.hasPointerCapture(id)) {
+          root.releasePointerCapture(id);
+        }
+      } catch {
+        // ignore invalid pointer id errors
+      } finally {
+        state.captured = false;
+        state.pointerId = null;
+      }
     };
 
     const handlePointerDown = (event: PointerEvent) => {
+      if (event.pointerType === "mouse") {
+        return;
+      }
       if (event.button !== 0) {
         event.preventDefault();
         return;
@@ -117,13 +158,13 @@ export default function SiteShell({
       if (enableHeroTransition && root.scrollTop <= 2) {
         state.heroDrag = true;
         state.startY = event.clientY;
-        root.setPointerCapture(event.pointerId);
+        safeSetCapture(event.pointerId);
         return;
       }
       state.pendingDrag = true;
       state.startY = event.clientY;
       state.startScroll = root.scrollTop;
-      root.setPointerCapture(event.pointerId);
+      safeSetCapture(event.pointerId);
     };
 
     const handlePointerMove = (event: PointerEvent) => {
@@ -154,20 +195,29 @@ export default function SiteShell({
     const endDrag = (event: PointerEvent) => {
       if (state.heroDrag) {
         state.heroDrag = false;
-        root.releasePointerCapture(event.pointerId);
-        return;
       }
       if (state.pendingDrag) {
         state.pendingDrag = false;
-        root.releasePointerCapture(event.pointerId);
-        return;
       }
-      if (!state.dragging) {
-        return;
+      if (state.dragging) {
+        state.dragging = false;
+        root.classList.remove("is-dragging");
       }
-      state.dragging = false;
-      root.classList.remove("is-dragging");
-      root.releasePointerCapture(event.pointerId);
+      safeReleaseCapture(event.pointerId);
+    };
+
+    const resetDrag = () => {
+      if (state.heroDrag) {
+        state.heroDrag = false;
+      }
+      if (state.pendingDrag) {
+        state.pendingDrag = false;
+      }
+      if (state.dragging) {
+        state.dragging = false;
+        root.classList.remove("is-dragging");
+      }
+      safeReleaseCapture();
     };
 
     const handleContextMenu = (event: Event) => {
@@ -202,8 +252,12 @@ export default function SiteShell({
     root.addEventListener("pointermove", handlePointerMove);
     root.addEventListener("pointerup", endDrag);
     root.addEventListener("pointercancel", endDrag);
+    root.addEventListener("lostpointercapture", endDrag);
     root.addEventListener("contextmenu", handleContextMenu);
     root.addEventListener("auxclick", handleContextMenu);
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+    window.addEventListener("blur", resetDrag);
 
     return () => {
       root.removeEventListener("scroll", scheduleUpdate);
@@ -211,8 +265,12 @@ export default function SiteShell({
       root.removeEventListener("pointermove", handlePointerMove);
       root.removeEventListener("pointerup", endDrag);
       root.removeEventListener("pointercancel", endDrag);
+      root.removeEventListener("lostpointercapture", endDrag);
       root.removeEventListener("contextmenu", handleContextMenu);
       root.removeEventListener("auxclick", handleContextMenu);
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
+      window.removeEventListener("blur", resetDrag);
       if (rafId) {
         window.cancelAnimationFrame(rafId);
       }

@@ -19,6 +19,26 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
   const studioName = decodeURIComponent(username);
   const normalizeSlug = (value: string) => value.trim().replace(/^@/, "").toLowerCase();
   const avatarInitial = studioName.replace(/^@/, "").slice(0, 1).toUpperCase() || "U";
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const normalized = studioName.replace(/^@+/, "").trim();
+    if (!normalized) {
+      return;
+    }
+    const initial = normalized.slice(0, 1).toUpperCase();
+    try {
+      sessionStorage.setItem("visuales-username", normalized);
+      sessionStorage.setItem("visuales-avatar", initial);
+      localStorage.setItem("visuales-username", normalized);
+      localStorage.setItem("visuales-avatar", initial);
+      localStorage.setItem("visuales-avatar-letter", initial);
+    } catch {
+      // ignore
+    }
+  }, [studioName]);
   const [activeSection, setActiveSection] = useState<
     "subidas" | "proyectos" | "pagos" | "acuerdos" | "preferencias" | "personalizar"
   >("subidas");
@@ -69,6 +89,9 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
   const [editType, setEditType] = useState("imagen");
   const [editSaving, setEditSaving] = useState(false);
   const [editMessage, setEditMessage] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const copyTimeoutRef = useRef<number | null>(null);
+  const projectPanelRef = useRef<HTMLDivElement | null>(null);
   const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
   const menuRef = useRef<HTMLDivElement | null>(null);
   const sectionCopy = useMemo(
@@ -207,6 +230,37 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
     setEditDescription(selectedProject.description ?? "");
     setEditType((selectedProject.type ?? "imagen").toLowerCase());
     setEditMessage(null);
+    setLinkCopied(false);
+    if (copyTimeoutRef.current) {
+      window.clearTimeout(copyTimeoutRef.current);
+      copyTimeoutRef.current = null;
+    }
+  }, [selectedProject]);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        window.clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProject) {
+      return;
+    }
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!projectPanelRef.current || !event.target) {
+        return;
+      }
+      if (!projectPanelRef.current.contains(event.target as Node)) {
+        setSelectedProject(null);
+      }
+    };
+    window.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      window.removeEventListener("mousedown", handleOutsideClick);
+    };
   }, [selectedProject]);
 
   useEffect(() => {
@@ -264,12 +318,8 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
       setSettingsMessage("Usuario invalido. Usa 3-24 caracteres y solo letras, numeros, - o _.");
       return;
     }
-    if (normalizedUser !== normalizedSlug && usernameUpdatedAt) {
-      const days = daysBetween(usernameUpdatedAt);
-      if (days !== null && days < 30) {
-        setSettingsMessage(`Solo puedes cambiar tu usuario cada 30 dias. Faltan ${30 - days} dias.`);
-        return;
-      }
+    if (false) {
+      // username cooldown disabled
     }
     setSettingsBusy(true);
     setSettingsMessage(null);
@@ -308,6 +358,15 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
       });
       setUsernameUpdatedAt(updatePayload.username_updated_at ?? null);
       setSettingsMessage("Cambios guardados.");
+      try {
+        sessionStorage.setItem("visuales-username", normalizedUser);
+        sessionStorage.setItem("visuales-avatar", normalizedUser.slice(0, 1).toUpperCase());
+        localStorage.setItem("visuales-username", normalizedUser);
+        localStorage.setItem("visuales-avatar", normalizedUser.slice(0, 1).toUpperCase());
+        localStorage.setItem("visuales-avatar-letter", normalizedUser.slice(0, 1).toUpperCase());
+      } catch {
+        // ignore
+      }
       if (normalizedUser !== normalizedSlug) {
         router.replace(`/visuales/estudio/@${normalizedUser}`);
       }
@@ -722,11 +781,15 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                   <p className="cabina-settings__message">{uploadError}</p>
                 ) : null}
               </section>
-            ) : (
+            ) : null}
+            {activeSection !== "subidas" &&
+            activeSection !== "proyectos" &&
+            activeSection !== "personalizar" &&
+            activeSection !== "preferencias" ? (
               <div className="cabina-projects-empty">
                 <p>{currentSection.empty}</p>
               </div>
-            )}
+            ) : null}
             {activeSection === "proyectos" ? (
               <section className="cabina-projects__list">
                 <div className="cabina-projects__header">
@@ -749,18 +812,22 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                             <article
                               key={project.id}
                               className="cabina-projects__card"
-                              onClick={() => {
-                                setSelectedProject(project);
-                              }}
+                              onClick={() => setSelectedProject(project)}
                             >
-                              <div className="cabina-projects__media">
+                              <button
+                                type="button"
+                                className="cabina-projects__card-hitbox"
+                                aria-label="Abrir detalles del proyecto"
+                                onClick={() => setSelectedProject(project)}
+                              />
+                              <div className="cabina-projects__media" onClick={() => setSelectedProject(project)}>
                                 {project.type === "video" ? (
                                   <video src={project.media_url ?? ""} muted playsInline />
                                 ) : (
                                   <img src={project.media_url ?? ""} alt={project.title ?? "Proyecto"} />
                                 )}
                               </div>
-                              <div className="cabina-projects__meta">
+                              <div className="cabina-projects__meta" onClick={() => setSelectedProject(project)}>
                                 <h5>{project.title ?? "Proyecto sin titulo"}</h5>
                                 <p>{project.description ?? "Sin descripcion"}</p>
                               </div>
@@ -775,7 +842,7 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
             ) : null}
             {selectedProject ? (
               <div className="cabina-projects__overlay" onClick={() => setSelectedProject(null)}>
-                <div className="cabina-projects__drawer" onClick={(event) => event.stopPropagation()}>
+                <div className="cabina-projects__drawer" ref={projectPanelRef} onClick={(event) => event.stopPropagation()}>
                   <div className="cabina-projects__drawer-head">
                     <div>
                       <h3>{selectedProject.title ?? "Proyecto"}</h3>
@@ -785,8 +852,33 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                       Cerrar
                     </button>
                   </div>
+                  <div className="cabina-projects__preview">
+                    {selectedProject.type === "video" ? (
+                      <video src={selectedProject.media_url ?? ""} controls playsInline />
+                    ) : (
+                      <img src={selectedProject.media_url ?? ""} alt={selectedProject.title ?? "Proyecto"} />
+                    )}
+                  </div>
                   {isOwner ? (
                     <div className="cabina-projects__edit">
+                      <div className="cabina-projects__edit-preview">
+                        <span>Vista previa</span>
+                        {selectedProject.type === "video" ? (
+                          <video src={selectedProject.media_url ?? ""} controls playsInline />
+                        ) : (
+                          <img src={selectedProject.media_url ?? ""} alt={selectedProject.title ?? "Proyecto"} />
+                        )}
+                        <button
+                          type="button"
+                          className="cabina-projects__open"
+                          onClick={() => {
+                            const base = typeof window !== "undefined" ? window.location.origin : "";
+                            window.open(`${base}/visuales/proyecto/${selectedProject.id}`, "_blank", "noopener,noreferrer");
+                          }}
+                        >
+                          Abrir pagina del proyecto
+                        </button>
+                      </div>
                       <label>
                         Titulo
                         <input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} />
@@ -851,6 +943,18 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                       </button>
                     </div>
                   ) : null}
+                  <div className="cabina-projects__actions">
+                    <button
+                      type="button"
+                      className="cabina-dashboard__action cabina-dashboard__action--ghost"
+                      onClick={() => {
+                        const base = typeof window !== "undefined" ? window.location.origin : "";
+                        window.open(`${base}/visuales/proyecto/${selectedProject.id}`, "_blank", "noopener,noreferrer");
+                      }}
+                    >
+                      Ver pagina del proyecto
+                    </button>
+                  </div>
                   <div className="cabina-projects__stats">
                     <div>
                       <span>Likes</span>
@@ -860,6 +964,12 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                       <span>Vistas</span>
                       <strong>0</strong>
                     </div>
+                    {selectedProject.type === "video" ? (
+                      <div>
+                        <span>Horas de reproduccion</span>
+                        <strong>0 h</strong>
+                      </div>
+                    ) : null}
                     <div>
                       <span>Compartidos</span>
                       <strong>0</strong>
@@ -872,7 +982,26 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                       value={`${typeof window !== "undefined" ? window.location.origin : ""}/visuales/proyecto/${
                         selectedProject.id
                       }`}
+                      onClick={(event) => {
+                        const linkValue = (event.currentTarget as HTMLInputElement).value;
+                        if (navigator?.clipboard?.writeText) {
+                          navigator.clipboard.writeText(linkValue);
+                        } else {
+                          document.execCommand("copy");
+                        }
+                        setLinkCopied(true);
+                        if (copyTimeoutRef.current) {
+                          window.clearTimeout(copyTimeoutRef.current);
+                        }
+                        copyTimeoutRef.current = window.setTimeout(() => {
+                          setLinkCopied(false);
+                        }, 1800);
+                      }}
+                      className={linkCopied ? "is-copied" : ""}
                     />
+                    <span className={`cabina-projects__share-hint${linkCopied ? " is-visible" : ""}`}>
+                      Link copiado
+                    </span>
                   </div>
                 </div>
               </div>
@@ -970,9 +1099,7 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                     <h3>Preferencias</h3>
                     <p>Opciones generales del estudio.</p>
                   </div>
-                  <div className="cabina-projects-empty">
-                    <p>Pronto podras configurar notificaciones y privacidad.</p>
-                  </div>
+                  <p className="cabina-projects__hint">Configura tus preferencias cuando quieras.</p>
                 </div>
               </section>
             ) : null}

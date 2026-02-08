@@ -936,7 +936,7 @@ export default function ForestScene() {
         } catch {
           // Ignore storage errors (private mode / blocked storage).
         }
-        router.push("/visuales?intro=1");
+        router.push("/visuales");
       }, portalNavigateDelay);
     }
   };
