@@ -625,7 +625,7 @@ export default function VisualesHubPage() {
                     <div className="hub-card__meta">
                       <div className="hub-card__title">
                         <span className="hub-card__avatar">
-                          {getInitial(project.profiles?.username ?? project.profiles?.display_name) || "<"}
+                          {getInitial(project.profiles?.username ?? project.profiles?.display_name ?? null) || "<"}
                         </span>
                         <div>
                           <h3>{project.title ?? "Proyecto"}</h3>
