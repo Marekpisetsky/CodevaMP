@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -100,7 +101,7 @@ export default function VisualesHubPage() {
         }
         const baseProjects = (data as ProjectItem[]) ?? [];
         const ids = Array.from(new Set(baseProjects.map((item) => item.user_id).filter(Boolean))) as string[];
-        let profileMap = new Map<string, { username: string | null; display_name: string | null }>();
+        const profileMap = new Map<string, { username: string | null; display_name: string | null }>();
         if (ids.length) {
           const { data: profilesData } = await supabase
             .from("profiles")

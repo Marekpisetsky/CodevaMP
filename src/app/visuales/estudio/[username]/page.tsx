@@ -290,15 +290,6 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
     return normalized.length >= 2 && normalized.length <= 40;
   };
 
-  const daysBetween = (from: string) => {
-    const fromDate = new Date(from);
-    if (Number.isNaN(fromDate.getTime())) {
-      return null;
-    }
-    const diffMs = Date.now() - fromDate.getTime();
-    return Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  };
-
   const handleSaveSettings = async () => {
     if (!supabase || !sessionId) {
       setSettingsMessage("Inicia sesion para editar tu cuenta.");
