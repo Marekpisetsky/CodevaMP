@@ -24,6 +24,11 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
     if (typeof window === "undefined") {
       return;
     }
+    try {
+      setIsGuest(sessionStorage.getItem("visuales-guest") === "1");
+    } catch {
+      setIsGuest(false);
+    }
     const normalized = studioName.replace(/^@+/, "").trim();
     if (!normalized) {
       return;
@@ -43,7 +48,9 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
     "subidas" | "proyectos" | "pagos" | "acuerdos" | "preferencias" | "personalizar"
   >("subidas");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null | undefined>(undefined);
+  const [isGuest, setIsGuest] = useState(false);
   const [settingsName, setSettingsName] = useState("");
   const [settingsUsername, setSettingsUsername] = useState(studioName.replace(/^@/, ""));
   const [settingsBio, setSettingsBio] = useState("");
@@ -89,11 +96,14 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
   const [editType, setEditType] = useState("imagen");
   const [editSaving, setEditSaving] = useState(false);
   const [editMessage, setEditMessage] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const copyTimeoutRef = useRef<number | null>(null);
   const projectPanelRef = useRef<HTMLDivElement | null>(null);
   const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const uploadMenuRef = useRef<HTMLDivElement | null>(null);
   const sectionCopy = useMemo(
     () => ({
       subidas: {
@@ -102,8 +112,8 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
         empty: "Sube tu primer proyecto para que aparezca aqui.",
       },
       proyectos: {
-        title: "Proyectos",
-        subtitle: "Todo lo que has publicado, ordenado por categoria.",
+        title: null,
+        subtitle: null,
         empty: "Aun no tienes proyectos publicados.",
       },
       pagos: {
@@ -134,22 +144,28 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
   const normalizedSlug = normalizeSlug(studioName);
 
   useEffect(() => {
-    if (!menuOpen) {
+    if (!menuOpen && !uploadMenuOpen) {
       return;
     }
     const handleOutsideClick = (event: MouseEvent) => {
-      if (!menuRef.current || !event.target) {
+      if (!event.target) {
         return;
       }
-      if (!menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
+      const target = event.target as Node;
+      if (menuRef.current && menuRef.current.contains(target)) {
+        return;
       }
+      if (uploadMenuRef.current && uploadMenuRef.current.contains(target)) {
+        return;
+      }
+      setMenuOpen(false);
+      setUploadMenuOpen(false);
     };
     window.addEventListener("mousedown", handleOutsideClick);
     return () => {
       window.removeEventListener("mousedown", handleOutsideClick);
     };
-  }, [menuOpen]);
+  }, [menuOpen, uploadMenuOpen]);
 
   useEffect(() => {
     if (!supabase) {
@@ -165,16 +181,6 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
         setIsOwner(true);
         setSettingsUsername(metaUsername);
         setSettingsName((data.session?.user.user_metadata?.display_name as string | undefined) ?? "");
-      }
-      if (!metaUsername) {
-        try {
-          const storedUsername = normalizeSlug(sessionStorage.getItem("visuales-username") ?? "");
-          if (storedUsername && storedUsername === normalizedSlug) {
-            setIsOwner(true);
-          }
-        } catch {
-          // ignore
-        }
       }
       if (!userId) {
         return;
@@ -200,6 +206,13 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
         });
     });
   }, [normalizedSlug]);
+
+  useEffect(() => {
+    if (sessionId === null && !isGuest) {
+      setIsOwner(false);
+      router.replace("/visuales/auth");
+    }
+  }, [router, sessionId, isGuest]);
 
   useEffect(() => {
     if (!supabase || !sessionId || !isOwner) {
@@ -230,6 +243,7 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
     setEditDescription(selectedProject.description ?? "");
     setEditType((selectedProject.type ?? "imagen").toLowerCase());
     setEditMessage(null);
+    setDeleteCandidateId(null);
     setLinkCopied(false);
     if (copyTimeoutRef.current) {
       window.clearTimeout(copyTimeoutRef.current);
@@ -309,8 +323,16 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
       setSettingsMessage("Usuario invalido. Usa 3-24 caracteres y solo letras, numeros, - o _.");
       return;
     }
-    if (false) {
-      // username cooldown disabled
+    if (normalizedUser !== normalizedSlug && usernameUpdatedAt) {
+      const lastUpdate = new Date(usernameUpdatedAt);
+      if (!Number.isNaN(lastUpdate.getTime())) {
+        const nextAllowed = new Date(lastUpdate.getTime());
+        nextAllowed.setDate(nextAllowed.getDate() + 30);
+        if (Date.now() < nextAllowed.getTime()) {
+          setSettingsMessage("Solo puedes cambiar tu usuario una vez al mes.");
+          return;
+        }
+      }
     }
     setSettingsBusy(true);
     setSettingsMessage(null);
@@ -515,11 +537,11 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
 
   const handleSignOut = async () => {
     if (!supabase) {
-      router.push("/visuales/auth");
+      router.push("/visuales");
       return;
     }
     await supabase.auth.signOut();
-    router.push("/visuales/auth");
+    router.push("/visuales");
   };
 
   const handleSwitchAccount = async () => {
@@ -533,59 +555,117 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
       className="visuales-cabina cabina-dashboard-page"
       brandHref="/visuales"
     >
-      <main className="cabina-dashboard">
-        <header className="cabina-dashboard__topbar">
-          <div className="cabina-dashboard__brand">
-            <div className="cabina-dashboard__brand-row">
-              <div>
-                <p className="cabina-eyebrow">Visuales Estudio</p>
-                <h1>Tu espacio creativo</h1>
-                <p className="cabina-dashboard__code">Estudio: {studioName}</p>
+      <div className="hub-topbar">
+        <div className="hub-brand">
+          <Link href="/visuales">
+            <span className="hub-brand__badge">VS</span>
+            <span className="hub-brand__text">
+              <span className="hub-brand__title">Visuales</span>
+              <span className="hub-brand__subtitle">Estudio creativo</span>
+            </span>
+          </Link>
+        </div>
+        <div className="hub-search">
+          <input type="search" placeholder="Buscar en tu estudio..." aria-label="Buscar en tu estudio" />
+        </div>
+        <div className="hub-topbar__actions">
+          <button type="button" className="hub-search-toggle" aria-label="Buscar">
+            <svg viewBox="0 0 256 256" aria-hidden="true">
+              <rect width="256" height="256" fill="none" />
+              <circle
+                cx="116"
+                cy="116"
+                r="84"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="16"
+              />
+              <line
+                x1="175.39356"
+                y1="175.40039"
+                x2="223.99414"
+                y2="224.00098"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="16"
+              />
+            </svg>
+          </button>
+          <div className="hub-upload-menu" ref={uploadMenuRef}>
+            <button
+              type="button"
+              className="hub-upload-button"
+              aria-expanded={uploadMenuOpen}
+              aria-haspopup="true"
+              onClick={() => {
+                setUploadMenuOpen((prev) => !prev);
+                setMenuOpen(false);
+              }}
+            >
+              Subir proyecto
+            </button>
+            {uploadMenuOpen ? (
+              <div className="hub-upload-menu__panel">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUploadMenuOpen(false);
+                    setActiveSection("subidas");
+                    setTimeout(() => handlePickFile(), 0);
+                  }}
+                >
+                  Subir archivo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUploadMenuOpen(false);
+                    setActiveSection("subidas");
+                  }}
+                >
+                  Crear publicacion
+                </button>
               </div>
-              <button
-                type="button"
-                className="cabina-dashboard__action cabina-dashboard__action--ghost"
-                onClick={() => {
-                  setActiveSection("subidas");
-                  handlePickFile();
-                }}
-                disabled={!isOwner}
-              >
-                Subir proyecto
-              </button>
-            </div>
+            ) : null}
           </div>
-          <div className="cabina-dashboard__user">
-            <span className="cabina-dashboard__status is-active">Activo</span>
-            <div className="cabina-dashboard__menu" ref={menuRef}>
-              <button
-                type="button"
-                className="visuales-avatar visuales-avatar--button"
-                aria-label="Abrir menu de cuenta"
-                onClick={() => setMenuOpen((prev) => !prev)}
-              >
-                {avatarInitial}
-              </button>
-              {menuOpen ? (
-                <div className="cabina-dashboard__menu-panel">
-                  <div className="cabina-dashboard__menu-profile">
-                    <div className="cabina-dashboard__menu-name">{settingsName || studioName.replace(/^@/, "")}</div>
-                    <div className="cabina-dashboard__menu-handle">@{normalizeSlug(studioName)}</div>
-                  </div>
-                  <Link href="/visuales" onClick={() => setMenuOpen(false)}>
-                    Ir al hub
-                  </Link>
-                  <button type="button" onClick={handleSwitchAccount}>
-                    Cambiar cuenta
-                  </button>
-                  <button type="button" onClick={handleSignOut}>
-                    Cerrar sesion
-                  </button>
+          <div className="hub-account-menu" ref={menuRef}>
+            <button
+              type="button"
+              className="visuales-avatar visuales-avatar--button"
+              aria-label="Abrir menu de cuenta"
+              onClick={() => {
+                setMenuOpen((prev) => !prev);
+                setUploadMenuOpen(false);
+              }}
+            >
+              <span>{avatarInitial}</span>
+            </button>
+            {menuOpen ? (
+              <div className="hub-account-menu__panel">
+                <div className="hub-account-menu__status">Estado sesion: {isGuest ? "Invitado" : "Activa"}</div>
+                <div className="hub-account-menu__profile">
+                  <div className="hub-account-menu__name">{settingsName || studioName.replace(/^@/, "")}</div>
+                  <div className="hub-account-menu__handle">@{normalizeSlug(studioName)}</div>
                 </div>
-              ) : null}
-            </div>
+                <Link href="/visuales" onClick={() => setMenuOpen(false)}>
+                  Ir al hub
+                </Link>
+                <button type="button" onClick={handleSwitchAccount}>
+                  Cambiar cuenta
+                </button>
+                <button type="button" onClick={handleSignOut}>
+                  Cerrar sesion
+                </button>
+              </div>
+            ) : null}
           </div>
-        </header>
+        </div>
+      </div>
+      <main className="cabina-dashboard">
         <section className="cabina-dashboard__content">
           <aside className="cabina-dashboard__nav">
             <h3>Secciones</h3>
@@ -633,27 +713,16 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
             </button>
           </aside>
           <div className="cabina-dashboard__main">
-            <div className="cabina-dashboard__section-head">
-              <div>
-                <h2>{currentSection.title}</h2>
-                <p>{currentSection.subtitle}</p>
+            {currentSection.title || currentSection.subtitle ? (
+              <div className="cabina-dashboard__section-head">
+                {currentSection.title || currentSection.subtitle ? (
+                  <div>
+                    {currentSection.title ? <h2>{currentSection.title}</h2> : null}
+                    {currentSection.subtitle ? <p>{currentSection.subtitle}</p> : null}
+                  </div>
+                ) : null}
               </div>
-              {activeSection === "subidas" ? (
-                <button
-                  type="button"
-                  className="cabina-dashboard__action"
-                  onClick={() => {
-                    if (!isOwner) {
-                      setUploadError("Solo el propietario puede subir proyectos.");
-                      return;
-                    }
-                    handlePickFile();
-                  }}
-                >
-                  Subir proyecto
-                </button>
-              ) : null}
-            </div>
+            ) : null}
             {activeSection === "subidas" ? (
               <section className="cabina-projects">
                 <div
@@ -784,7 +853,6 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
             {activeSection === "proyectos" ? (
               <section className="cabina-projects__list">
                 <div className="cabina-projects__header">
-                  <h3>Proyectos por categoria</h3>
                   {projectsLoading ? <span>Cargando...</span> : null}
                 </div>
                 {projects.length === 0 && !projectsLoading ? (
@@ -896,7 +964,7 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                       <button
                         type="button"
                         className="cabina-dashboard__action"
-                        disabled={editSaving}
+                        disabled={editSaving || deleteBusy}
                         onClick={async () => {
                           if (!supabase || !sessionId || !selectedProject) {
                             setEditMessage("Inicia sesion para editar.");
@@ -932,6 +1000,76 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                       >
                         {editSaving ? "Guardando..." : "Guardar cambios"}
                       </button>
+                      <button
+                        type="button"
+                        className="cabina-dashboard__action cabina-dashboard__action--ghost"
+                        disabled={editSaving || deleteBusy}
+                        onClick={() => {
+                          if (!selectedProject) {
+                            return;
+                          }
+                          setEditMessage(null);
+                          setDeleteCandidateId(selectedProject.id);
+                        }}
+                      >
+                        Eliminar proyecto
+                      </button>
+                      {deleteCandidateId === selectedProject.id ? (
+                        <div className="cabina-settings__message">
+                          Vas a eliminar este proyecto definitivamente.
+                          <div className="cabina-projects__actions">
+                            <button
+                              type="button"
+                              className="cabina-dashboard__action"
+                              disabled={deleteBusy || editSaving}
+                              onClick={async () => {
+                                if (!supabase || !sessionId || !selectedProject) {
+                                  setEditMessage("Inicia sesion para editar.");
+                                  return;
+                                }
+                                setDeleteBusy(true);
+                                setEditMessage(null);
+                                try {
+                                  const mediaUrl = selectedProject.media_url ?? "";
+                                  if (mediaUrl.includes("/storage/v1/object/public/projects/")) {
+                                    const [, path] = mediaUrl.split("/storage/v1/object/public/projects/");
+                                    if (path) {
+                                      const { error: storageError } = await supabase.storage.from("projects").remove([path]);
+                                      if (storageError) {
+                                        setEditMessage(storageError.message);
+                                      }
+                                    }
+                                  }
+                                  const { error } = await supabase
+                                    .from("projects")
+                                    .delete()
+                                    .eq("id", selectedProject.id)
+                                    .eq("user_id", sessionId);
+                                  if (error) {
+                                    setEditMessage(error.message);
+                                    return;
+                                  }
+                                  setProjects((prev) => prev.filter((p) => p.id !== selectedProject.id));
+                                  setSelectedProject(null);
+                                  setDeleteCandidateId(null);
+                                } finally {
+                                  setDeleteBusy(false);
+                                }
+                              }}
+                            >
+                              {deleteBusy ? "Eliminando..." : "Confirmar eliminacion"}
+                            </button>
+                            <button
+                              type="button"
+                              className="cabina-dashboard__action cabina-dashboard__action--ghost"
+                              disabled={deleteBusy}
+                              onClick={() => setDeleteCandidateId(null)}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                   <div className="cabina-projects__actions">
@@ -998,7 +1136,7 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
               </div>
             ) : null}
             {activeSection === "personalizar" ? (
-              <section className="cabina-settings">
+              <section className="cabina-settings" id="ajustes">
                 <div className="cabina-settings__card">
                   <div className="cabina-settings__header">
                     <h3>Ajustes de la cuenta</h3>

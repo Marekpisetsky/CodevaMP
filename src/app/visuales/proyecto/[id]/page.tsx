@@ -133,7 +133,7 @@ export default function VisualesProyectoPage({ params }: { params: { id: string 
       return;
     }
     await supabase.auth.signOut();
-    router.push("/visuales/auth");
+    router.push("/visuales");
   };
 
   const handleSwitchAccount = async () => {
@@ -144,8 +144,29 @@ export default function VisualesProyectoPage({ params }: { params: { id: string 
     if (sessionUser === undefined) {
       return;
     }
+    if (!sessionUser) {
+      const target = username ? `/visuales/estudio/@${username}` : "/visuales/app";
+      router.push(`/visuales/auth?returnTo=${encodeURIComponent(target)}`);
+      return;
+    }
     if (username) {
       router.push(`/visuales/estudio/@${username}`);
+      return;
+    }
+    router.push("/visuales/auth");
+  };
+
+  const handleSettings = () => {
+    if (sessionUser === undefined) {
+      return;
+    }
+    if (!sessionUser) {
+      const target = username ? `/visuales/estudio/@${username}#ajustes` : "/visuales/app";
+      router.push(`/visuales/auth?returnTo=${encodeURIComponent(target)}`);
+      return;
+    }
+    if (username) {
+      router.push(`/visuales/estudio/@${username}#ajustes`);
       return;
     }
     router.push("/visuales/auth");
@@ -240,7 +261,7 @@ export default function VisualesProyectoPage({ params }: { params: { id: string 
                       type="button"
                       onClick={() => {
                         setMenuOpen(false);
-                        handleMyCabina();
+                        handleSettings();
                       }}
                     >
                       Ajustes

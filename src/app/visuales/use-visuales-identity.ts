@@ -127,6 +127,35 @@ const safeSessionSet = (key: string, value: string) => {
   }
 };
 
+const getGuestIdentity = () => {
+  if (typeof window === "undefined") {
+    return {
+      username: null,
+      displayName: null,
+      emailInitial: "",
+      avatarInitial: "",
+      storedAvatarLetter: "",
+    };
+  }
+  let guestId = "";
+  try {
+    guestId = sessionStorage.getItem("visuales-guest-id") ?? "";
+  } catch {
+    guestId = "";
+  }
+  if (!guestId) {
+    guestId = Math.floor(1000 + Math.random() * 9000).toString();
+    safeSessionSet("visuales-guest-id", guestId);
+  }
+  return {
+    username: `invitado-${guestId}`,
+    displayName: `Invitado ${guestId}`,
+    emailInitial: "",
+    avatarInitial: "I",
+    storedAvatarLetter: "I",
+  };
+};
+
 export function useVisualesIdentity() {
   const [state, setState] = useState<IdentityState>(() => {
     const stored = readStoredIdentity();
@@ -216,7 +245,16 @@ export function useVisualesIdentity() {
         return;
       }
       const user = data.session?.user ?? null;
-      setState((prev) => ({ ...prev, sessionUser: user?.id ?? null }));
+      if (!user) {
+        const guest = getGuestIdentity();
+        setState((prev) => ({
+          ...prev,
+          ...guest,
+          sessionUser: null,
+        }));
+        return;
+      }
+      setState((prev) => ({ ...prev, sessionUser: user.id }));
       if (user) {
         const metaUsername = (user.user_metadata?.username as string | undefined)?.trim() ?? "";
         const emailInit = user.email?.slice(0, 1)?.toUpperCase() ?? "";
@@ -231,18 +269,25 @@ export function useVisualesIdentity() {
     });
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       const user = session?.user ?? null;
-      setState((prev) => ({ ...prev, sessionUser: user?.id ?? null }));
-      if (user) {
-        const metaUsername = (user.user_metadata?.username as string | undefined)?.trim() ?? "";
-        const emailInit = user.email?.slice(0, 1)?.toUpperCase() ?? "";
-        const nextInitial = metaUsername ? getInitial(metaUsername) : emailInit;
-        applyIdentity({
-          username: metaUsername || undefined,
-          emailInitial: emailInit || "",
-          avatarInitial: nextInitial,
-          storedAvatarLetter: nextInitial || "",
-        });
+      if (!user) {
+        const guest = getGuestIdentity();
+        setState((prev) => ({
+          ...prev,
+          ...guest,
+          sessionUser: null,
+        }));
+        return;
       }
+      setState((prev) => ({ ...prev, sessionUser: user.id }));
+      const metaUsername = (user.user_metadata?.username as string | undefined)?.trim() ?? "";
+      const emailInit = user.email?.slice(0, 1)?.toUpperCase() ?? "";
+      const nextInitial = metaUsername ? getInitial(metaUsername) : emailInit;
+      applyIdentity({
+        username: metaUsername || undefined,
+        emailInitial: emailInit || "",
+        avatarInitial: nextInitial,
+        storedAvatarLetter: nextInitial || "",
+      });
     });
     return () => {
       active = false;

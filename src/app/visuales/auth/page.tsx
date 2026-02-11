@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import SiteShell from "../../components/site-shell";
 import { supabase } from "../../lib/supabase";
 
 export default function VisualesAuthPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
+  const safeReturnTo = returnTo && returnTo.startsWith("/visuales") ? returnTo : null;
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,6 +49,42 @@ export default function VisualesAuthPage() {
 
   const normalizeUsername = (value: string) => value.trim().toLowerCase();
   const normalizeDisplayName = (value: string) => value.trim();
+  const formatBirthdate = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 8);
+    const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean);
+    return parts.join("/");
+  };
+  const suggestUsernameFromEmail = (value: string) => {
+    const local = value.split("@")[0] ?? "";
+    const cleaned = local.toLowerCase().replace(/[^a-z0-9-_]/g, "");
+    if (cleaned.length >= 3) {
+      return cleaned.slice(0, 24);
+    }
+    return "usuario";
+  };
+
+  const findAvailableUsername = async (base: string) => {
+    const normalizedBase = normalizeUsername(base);
+    if (!isValidUsername(normalizedBase)) {
+      return null;
+    }
+    const baseAvailable = await isUsernameAvailable(normalizedBase);
+    if (baseAvailable) {
+      return normalizedBase;
+    }
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const suffix = Math.floor(100 + Math.random() * 900);
+      const candidate = `${normalizedBase}-${suffix}`.slice(0, 24);
+      if (!isValidUsername(candidate)) {
+        continue;
+      }
+      const available = await isUsernameAvailable(candidate);
+      if (available) {
+        return candidate;
+      }
+    }
+    return null;
+  };
 
   const isValidUsername = (value: string) => {
     const normalized = normalizeUsername(value);
@@ -148,7 +187,7 @@ export default function VisualesAuthPage() {
           .single()
           .then(({ data: profile, error }) => {
             if (profile?.username) {
-              router.replace("/visuales/app");
+              router.replace(safeReturnTo ?? "/visuales");
               return;
             }
             if (error) {
@@ -160,7 +199,17 @@ export default function VisualesAuthPage() {
         return;
       }
     });
-  }, [router]);
+  }, [router, safeReturnTo]);
+
+  useEffect(() => {
+    if (mode !== "signup") {
+      return;
+    }
+    if (!email) {
+      return;
+    }
+    setUsername(suggestUsernameFromEmail(email));
+  }, [email, mode]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -186,7 +235,21 @@ export default function VisualesAuthPage() {
           console.warn("Password policy rejected", { email, issues });
           return;
         }
-        const normalizedUsername = normalizeUsername(username);
+        const precheck = await supabase.auth.signInWithPassword({ email, password });
+        if (!precheck.error && precheck.data.session) {
+          await supabase.auth.signOut();
+          setMessage("Ya existe una cuenta con ese correo.");
+          return;
+        }
+        if (precheck.error) {
+          const lowered = precheck.error.message.toLowerCase();
+          if (!lowered.includes("invalid login") && !lowered.includes("invalid credentials")) {
+            setMessage(precheck.error.message);
+            return;
+          }
+        }
+        const usernameSeed = username || suggestUsernameFromEmail(email);
+        const normalizedUsername = normalizeUsername(usernameSeed);
         const normalizedDisplayName = normalizeDisplayName(displayName);
         const parsedBirthdate = parseBirthdate(birthdate);
         if (!isValidUsername(normalizedUsername)) {
@@ -205,9 +268,9 @@ export default function VisualesAuthPage() {
           setMessage("Fecha invalida. Usa dd/mm/aaaa y solo fechas pasadas o hoy.");
           return;
         }
-        const isAvailable = await isUsernameAvailable(normalizedUsername);
-        if (!isAvailable) {
-          setMessage("Ese usuario ya esta en uso. Elige otro.");
+        const availableUsername = await findAvailableUsername(normalizedUsername);
+        if (!availableUsername) {
+          setMessage("No se pudo encontrar un usuario disponible. Intenta de nuevo.");
           return;
         }
         const { data, error } = await supabase.auth.signUp({
@@ -215,7 +278,7 @@ export default function VisualesAuthPage() {
           password,
           options: {
             data: {
-              username: normalizedUsername,
+              username: availableUsername,
               display_name: normalizedDisplayName,
               birthdate: parsedBirthdate.toISOString().slice(0, 10),
               username_updated_at: new Date().toISOString(),
@@ -223,7 +286,12 @@ export default function VisualesAuthPage() {
           },
         });
         if (error) {
-          setMessage(error.message);
+          const lowered = error.message.toLowerCase();
+          if (lowered.includes("already registered") || lowered.includes("already exists")) {
+            setMessage("Ya existe una cuenta con ese correo.");
+          } else {
+            setMessage(error.message);
+          }
           return;
         }
         if (data.user?.id) {
@@ -232,7 +300,7 @@ export default function VisualesAuthPage() {
             .upsert(
               {
                 id: data.user.id,
-                username: normalizedUsername,
+                username: availableUsername,
                 display_name: normalizedDisplayName,
                 birthdate: parsedBirthdate.toISOString().slice(0, 10),
                 username_updated_at: new Date().toISOString(),
@@ -240,13 +308,19 @@ export default function VisualesAuthPage() {
               { onConflict: "id" }
             );
           if (profileError) {
-            setMessage(profileError.message);
-            return;
+            const lowered = profileError.message.toLowerCase();
+            if (lowered.includes("row-level") || lowered.includes("policy")) {
+              // No bloquear el registro si la politica de RLS impide guardar perfiles.
+              setMessage("Cuenta creada. Completa tu perfil mas tarde.");
+            } else {
+              setMessage(profileError.message);
+              return;
+            }
           }
         }
         setMessage("Cuenta creada. Revisa tu correo si Supabase pide confirmacion.");
       }
-      router.push("/visuales/app");
+      router.push(safeReturnTo ?? "/visuales");
     } finally {
       setBusy(false);
     }
@@ -297,11 +371,23 @@ export default function VisualesAuthPage() {
           { onConflict: "id" }
         );
       if (error) {
-        setMessage(error.message);
-        return;
+        const lowered = error.message.toLowerCase();
+        if (lowered.includes("row-level") || lowered.includes("policy")) {
+          await supabase.auth.updateUser({
+            data: {
+              username: normalizedUsername,
+              display_name: normalizedDisplayName,
+              birthdate: parsedBirthdate.toISOString().slice(0, 10),
+              username_updated_at: new Date().toISOString(),
+            },
+          });
+        } else {
+          setMessage(error.message);
+          return;
+        }
       }
       setNeedsUsername(false);
-      router.push("/visuales/app");
+      router.push(safeReturnTo ?? "/visuales");
     } finally {
       setBusy(false);
     }
@@ -310,10 +396,19 @@ export default function VisualesAuthPage() {
   const handleGuest = () => {
     try {
       sessionStorage.setItem("visuales-guest", "1");
+      sessionStorage.removeItem("visuales-guest-id");
+      sessionStorage.removeItem("visuales-username");
+      sessionStorage.removeItem("visuales-display-name");
+      sessionStorage.removeItem("visuales-avatar");
+      localStorage.removeItem("visuales-username");
+      localStorage.removeItem("visuales-display-name");
+      localStorage.removeItem("visuales-avatar");
+      localStorage.removeItem("visuales-avatar-letter");
+      localStorage.removeItem("visuales-email-initial");
     } catch {
       // ignore
     }
-    router.push("/visuales/app");
+    router.push(safeReturnTo ?? "/visuales");
   };
 
   return (
@@ -323,7 +418,7 @@ export default function VisualesAuthPage() {
           <p className="visuales-auth__eyebrow">CodevaMP Visuales</p>
           <h1>{needsUsername ? "Completar usuario" : mode === "login" ? "Iniciar sesion" : "Crear cuenta"}</h1>
           <p>
-            Un espacio profesional para proyectos visuales: cabinas personales, publicaciones y colaboracion creativa.
+            Comparte y explora proyectos visuales.
           </p>
         </header>
         {needsUsername ? (
@@ -334,7 +429,9 @@ export default function VisualesAuthPage() {
                 type="text"
                 name="username"
                 value={username}
-                onChange={(event) => setUsername(event.target.value)}
+                onChange={(event) => {
+                  setUsername(event.target.value);
+                }}
                 placeholder="tu-nombre"
                 autoComplete="username"
                 required
@@ -357,8 +454,10 @@ export default function VisualesAuthPage() {
                 type="text"
                 name="birthdate"
                 value={birthdate}
-                onChange={(event) => setBirthdate(event.target.value)}
+                onChange={(event) => setBirthdate(formatBirthdate(event.target.value))}
                 placeholder="dd/mm/aaaa"
+                inputMode="numeric"
+                maxLength={10}
                 required
               />
             </label>
@@ -376,24 +475,12 @@ export default function VisualesAuthPage() {
                   type="email"
                   name="email"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                  }}
                   required
                 />
               </label>
-              {mode === "signup" ? (
-                <label>
-                  Usuario (@)
-                  <input
-                    type="text"
-                    name="username"
-                    value={username}
-                    onChange={(event) => setUsername(event.target.value)}
-                    placeholder="tu-nombre"
-                    autoComplete="username"
-                    required
-                  />
-                </label>
-              ) : null}
               {mode === "signup" ? (
                 <label>
                   Nombre completo
@@ -414,8 +501,10 @@ export default function VisualesAuthPage() {
                     type="text"
                     name="birthdate"
                     value={birthdate}
-                    onChange={(event) => setBirthdate(event.target.value)}
+                    onChange={(event) => setBirthdate(formatBirthdate(event.target.value))}
                     placeholder="dd/mm/aaaa"
+                    inputMode="numeric"
+                    maxLength={10}
                     required
                   />
                 </label>

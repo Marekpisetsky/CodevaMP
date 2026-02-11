@@ -34,6 +34,7 @@ export default function VisualesHubPage() {
   const [type, setType] = useState("imagen");
   const [file, setFile] = useState<File | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("hub");
   const [activeType, setActiveType] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
@@ -44,28 +45,35 @@ export default function VisualesHubPage() {
   const feedSentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingRef = useRef(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const uploadMenuRef = useRef<HTMLDivElement | null>(null);
   const navScrollRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const inicioRef = useRef<HTMLDivElement | null>(null);
   const feedRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (!menuOpen) {
+    if (!menuOpen && !uploadMenuOpen) {
       return;
     }
     const handleOutside = (event: MouseEvent) => {
-      if (!menuRef.current || !event.target) {
+      if (!event.target) {
         return;
       }
-      if (!menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
+      const target = event.target as Node;
+      if (menuRef.current && menuRef.current.contains(target)) {
+        return;
       }
+      if (uploadMenuRef.current && uploadMenuRef.current.contains(target)) {
+        return;
+      }
+      setMenuOpen(false);
+      setUploadMenuOpen(false);
     };
     window.addEventListener("mousedown", handleOutside);
     return () => {
       window.removeEventListener("mousedown", handleOutside);
     };
-  }, [menuOpen]);
+  }, [menuOpen, uploadMenuOpen]);
 
   useEffect(() => {
     if (!sessionUser || username) {
@@ -210,7 +218,7 @@ export default function VisualesHubPage() {
       return;
     }
     await supabase.auth.signOut();
-    router.push("/visuales/auth");
+    router.push("/visuales");
   };
 
   const handleSwitchAccount = async () => {
@@ -221,12 +229,45 @@ export default function VisualesHubPage() {
     router.push("/visuales/auth");
   };
 
-  const handleMyCabina = () => {
-    if (sessionUser === undefined) {
+  const handleCreatePost = () => {
+    if (!sessionUser) {
+      handleRequireAuth();
       return;
     }
     if (username) {
       router.push(`/visuales/estudio/@${username}`);
+      return;
+    }
+    router.push("/visuales/auth");
+  };
+
+  const handleMyCabina = () => {
+    if (sessionUser === undefined) {
+      return;
+    }
+    if (!sessionUser) {
+      const target = username ? `/visuales/estudio/@${username}` : "/visuales/app";
+      router.push(`/visuales/auth?returnTo=${encodeURIComponent(target)}`);
+      return;
+    }
+    if (username) {
+      router.push(`/visuales/estudio/@${username}`);
+      return;
+    }
+    router.push("/visuales/auth");
+  };
+
+  const handleSettings = () => {
+    if (sessionUser === undefined) {
+      return;
+    }
+    if (!sessionUser) {
+      const target = username ? `/visuales/estudio/@${username}#ajustes` : "/visuales/app";
+      router.push(`/visuales/auth?returnTo=${encodeURIComponent(target)}`);
+      return;
+    }
+    if (username) {
+      router.push(`/visuales/estudio/@${username}#ajustes`);
       return;
     }
     router.push("/visuales/auth");
@@ -328,15 +369,52 @@ export default function VisualesHubPage() {
               />
             </svg>
           </button>
-          <button type="button" className="hub-upload-button" onClick={() => setShowUpload((prev) => !prev)}>
-            Subir proyecto
-          </button>
+          <div className="hub-upload-menu" ref={uploadMenuRef}>
+            <button
+              type="button"
+              className="hub-upload-button"
+              aria-expanded={uploadMenuOpen}
+              aria-haspopup="true"
+              onClick={() => {
+                setUploadMenuOpen((prev) => !prev);
+                setMenuOpen(false);
+              }}
+            >
+              Subir proyecto
+            </button>
+            {uploadMenuOpen ? (
+              <div className="hub-upload-menu__panel">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUploadMenuOpen(false);
+                    setShowUpload(true);
+                    setTimeout(() => inicioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+                  }}
+                >
+                  Subir archivo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUploadMenuOpen(false);
+                    handleCreatePost();
+                  }}
+                >
+                  Crear publicacion
+                </button>
+              </div>
+            ) : null}
+          </div>
           <div className="hub-account-menu" ref={menuRef}>
             <button
               type="button"
               className="visuales-avatar visuales-avatar--button"
               aria-label="Abrir opciones de cuenta"
-              onClick={() => setMenuOpen((prev) => !prev)}
+              onClick={() => {
+                setMenuOpen((prev) => !prev);
+                setUploadMenuOpen(false);
+              }}
               disabled={sessionUser === undefined}
             >
               <span suppressHydrationWarning>{displayAvatarLetter}</span>
@@ -367,7 +445,7 @@ export default function VisualesHubPage() {
                       type="button"
                       onClick={() => {
                         setMenuOpen(false);
-                        handleMyCabina();
+                        handleSettings();
                       }}
                     >
                       Ajustes
