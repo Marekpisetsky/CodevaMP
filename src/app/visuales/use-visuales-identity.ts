@@ -119,9 +119,25 @@ const safeStorageSet = (key: string, value: string) => {
   }
 };
 
+const safeStorageRemove = (key: string) => {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+};
+
 const safeSessionSet = (key: string, value: string) => {
   try {
     sessionStorage.setItem(key, value);
+  } catch {
+    // ignore
+  }
+};
+
+const safeSessionRemove = (key: string) => {
+  try {
+    sessionStorage.removeItem(key);
   } catch {
     // ignore
   }
@@ -177,11 +193,17 @@ export function useVisualesIdentity() {
     if (typeof window === "undefined") {
       return;
     }
-    if (next.username) {
+    if (next.username === null || next.username === "") {
+      safeSessionRemove("visuales-username");
+      safeStorageRemove("visuales-username");
+    } else if (next.username) {
       safeSessionSet("visuales-username", next.username);
       safeStorageSet("visuales-username", next.username);
     }
-    if (next.displayName) {
+    if (next.displayName === null || next.displayName === "") {
+      safeSessionRemove("visuales-display-name");
+      safeStorageRemove("visuales-display-name");
+    } else if (next.displayName) {
       safeSessionSet("visuales-display-name", next.displayName);
       safeStorageSet("visuales-display-name", next.displayName);
     }
@@ -260,10 +282,10 @@ export function useVisualesIdentity() {
         const emailInit = user.email?.slice(0, 1)?.toUpperCase() ?? "";
         const nextInitial = metaUsername ? getInitial(metaUsername) : emailInit;
         applyIdentity({
-          username: metaUsername || undefined,
-          emailInitial: emailInit || undefined,
-          avatarInitial: nextInitial || undefined,
-          storedAvatarLetter: nextInitial || undefined,
+          username: metaUsername || null,
+          emailInitial: emailInit || "",
+          avatarInitial: nextInitial || "",
+          storedAvatarLetter: nextInitial || "",
         });
       }
     });
@@ -283,9 +305,9 @@ export function useVisualesIdentity() {
       const emailInit = user.email?.slice(0, 1)?.toUpperCase() ?? "";
       const nextInitial = metaUsername ? getInitial(metaUsername) : emailInit;
       applyIdentity({
-        username: metaUsername || undefined,
+        username: metaUsername || null,
         emailInitial: emailInit || "",
-        avatarInitial: nextInitial,
+        avatarInitial: nextInitial || "",
         storedAvatarLetter: nextInitial || "",
       });
     });
