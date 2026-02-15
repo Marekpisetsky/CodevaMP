@@ -44,8 +44,10 @@ export default function VisualesProyectoPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [mediaLoaded, setMediaLoaded] = useState(false);
+  const viewedProjectIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    let active = true;
     if (!projectId) {
       setError("Proyecto invalido.");
       setLoading(false);
@@ -56,12 +58,17 @@ export default function VisualesProyectoPage() {
       setLoading(false);
       return;
     }
+    setError(null);
+    setLoading(true);
     supabase
       .from("projects")
       .select("id, title, description, type, media_url, created_at, user_id")
       .eq("id", projectId)
       .single()
       .then(({ data, error: fetchError }) => {
+        if (!active) {
+          return;
+        }
         if (fetchError) {
           setError(fetchError.message);
           setLoading(false);
@@ -70,6 +77,9 @@ export default function VisualesProyectoPage() {
         setProject(data as ProjectRecord);
         setLoading(false);
       });
+    return () => {
+      active = false;
+    };
   }, [projectId]);
 
   useEffect(() => {
@@ -138,7 +148,21 @@ export default function VisualesProyectoPage() {
     }
     let active = true;
     const loadStats = async () => {
-      await recordProjectView(project.id);
+      if (!viewedProjectIdsRef.current.has(project.id)) {
+        viewedProjectIdsRef.current.add(project.id);
+        try {
+          const seenKey = `visuales:viewed:${project.id}`;
+          const alreadySeen = typeof window !== "undefined" ? sessionStorage.getItem(seenKey) === "1" : false;
+          if (!alreadySeen) {
+            await recordProjectView(project.id);
+            if (typeof window !== "undefined") {
+              sessionStorage.setItem(seenKey, "1");
+            }
+          }
+        } catch {
+          await recordProjectView(project.id);
+        }
+      }
       const map = await fetchProjectStatsMap([project.id]);
       if (!active) {
         return;

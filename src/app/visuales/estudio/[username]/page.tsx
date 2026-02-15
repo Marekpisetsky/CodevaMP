@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import SiteShell from "../../../components/site-shell";
@@ -109,6 +109,7 @@ export default function VisualesEstudioPage() {
   const [linkCopied, setLinkCopied] = useState(false);
   const copyTimeoutRef = useRef<number | null>(null);
   const projectPanelRef = useRef<HTMLDivElement | null>(null);
+  const lastStatsKeyRef = useRef<string>("");
   const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
   const menuRef = useRef<HTMLDivElement | null>(null);
   const uploadMenuRef = useRef<HTMLDivElement | null>(null);
@@ -151,6 +152,28 @@ export default function VisualesEstudioPage() {
   const selectedProjectStats = selectedProject ? getProjectStats(projectStatsMap, selectedProject.id) : null;
 
   const normalizedSlug = normalizeSlug(studioName);
+  const loadOwnedProjects = useCallback(async () => {
+    if (!supabase || !sessionId || !isOwner) {
+      setProjects([]);
+      setProjectStatsMap({});
+      setProjectsLoading(false);
+      return;
+    }
+    setProjectsLoading(true);
+    const { data, error } = await supabase
+      .from("projects")
+      .select("id, title, description, type, media_url, created_at")
+      .eq("user_id", sessionId)
+      .order("created_at", { ascending: false });
+    if (error) {
+      setProjects([]);
+      setProjectStatsMap({});
+      setProjectsLoading(false);
+      return;
+    }
+    setProjects((data as typeof projects) ?? []);
+    setProjectsLoading(false);
+  }, [isOwner, sessionId]);
 
   useEffect(() => {
     if (!menuOpen && !uploadMenuOpen) {
@@ -180,7 +203,8 @@ export default function VisualesEstudioPage() {
     if (!supabase) {
       return;
     }
-    supabase.auth.getSession().then(({ data }) => {
+    const client = supabase;
+    client.auth.getSession().then(({ data }) => {
       const userId = data.session?.user.id ?? null;
       setSessionId(userId);
       const metaUsername = normalizeSlug(
@@ -194,10 +218,7 @@ export default function VisualesEstudioPage() {
       if (!userId) {
         return;
       }
-      if (!supabase) {
-        return;
-      }
-      supabase
+      client
         .from("profiles")
         .select("username, display_name, bio, username_updated_at")
         .eq("id", userId)
@@ -224,34 +245,22 @@ export default function VisualesEstudioPage() {
   }, [router, sessionId, isGuest]);
 
   useEffect(() => {
-    if (!supabase || !sessionId || !isOwner) {
-      return;
-    }
-    setProjectsLoading(true);
-    supabase
-      .from("projects")
-      .select("id, title, description, type, media_url, created_at")
-      .eq("user_id", sessionId)
-      .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          setProjects([]);
-          setProjectStatsMap({});
-          setProjectsLoading(false);
-          return;
-        }
-        setProjects((data as typeof projects) ?? []);
-        setProjectsLoading(false);
-      });
-  }, [sessionId, isOwner]);
+    loadOwnedProjects();
+  }, [loadOwnedProjects]);
 
   useEffect(() => {
     let active = true;
     const projectIds = projects.map((project) => project.id).filter(Boolean);
     if (projectIds.length === 0) {
+      lastStatsKeyRef.current = "";
       setProjectStatsMap({});
       return;
     }
+    const statsKey = projectIds.join(",");
+    if (lastStatsKeyRef.current === statsKey) {
+      return;
+    }
+    lastStatsKeyRef.current = statsKey;
     fetchProjectStatsMap(projectIds).then((stats) => {
       if (!active) {
         return;
@@ -502,21 +511,7 @@ export default function VisualesEstudioPage() {
       setNeedsTypeChoice(false);
       setUploadProgress(null);
       if (isOwner) {
-        setProjectsLoading(true);
-        supabase
-          .from("projects")
-          .select("id, title, description, type, media_url, created_at")
-          .eq("user_id", sessionId)
-          .order("created_at", { ascending: false })
-          .then(({ data, error }) => {
-            if (error) {
-              setProjects([]);
-              setProjectsLoading(false);
-              return;
-            }
-            setProjects((data as typeof projects) ?? []);
-            setProjectsLoading(false);
-          });
+        await loadOwnedProjects();
       }
     } finally {
       setUploading(false);
@@ -535,7 +530,7 @@ export default function VisualesEstudioPage() {
       setActiveSection("subidas");
     }
     if (studioIntent === "upload" && isOwner) {
-      setTimeout(() => handlePickFile(), 0);
+      window.requestAnimationFrame(() => handlePickFile());
     }
   }, [isOwner, studioIntent]);
 
@@ -655,7 +650,7 @@ export default function VisualesEstudioPage() {
                   onClick={() => {
                     setUploadMenuOpen(false);
                     setActiveSection("subidas");
-                    setTimeout(() => handlePickFile(), 0);
+                    window.requestAnimationFrame(() => handlePickFile());
                   }}
                 >
                   Subir archivo

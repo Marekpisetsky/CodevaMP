@@ -12,6 +12,7 @@ import { useVisualesIdentity } from "./use-visuales-identity";
 export default function VisualesHubPage() {
   const FEED_CACHE_KEY = "visuales:feed:v1";
   const FEED_CACHE_TTL_MS = 90_000;
+  const HERO_ONBOARDING_KEY = "visuales:hero-onboarding-seen:v1";
   const router = useRouter();
   const { sessionUser, username, displayName, displayAvatarLetter, applyIdentity } = useVisualesIdentity();
 
@@ -39,6 +40,8 @@ export default function VisualesHubPage() {
   const [projectsPage, setProjectsPage] = useState(0);
   const [projectsHasMore, setProjectsHasMore] = useState(true);
   const [initialLoaded, setInitialLoaded] = useState(false);
+  const [showOnboardingHero, setShowOnboardingHero] = useState(false);
+  const [isDesktopViewport, setIsDesktopViewport] = useState(false);
   const feedSentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingRef = useRef(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -47,6 +50,8 @@ export default function VisualesHubPage() {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const inicioRef = useRef<HTMLDivElement | null>(null);
   const feedRef = useRef<HTMLElement | null>(null);
+  const prefetchedProjectIdsRef = useRef<Set<string>>(new Set());
+  const lastStatsKeyRef = useRef<string>("");
 
   type FeedCache = {
     ts: number;
@@ -78,6 +83,30 @@ export default function VisualesHubPage() {
       window.removeEventListener("mousedown", handleOutside);
     };
   }, [menuOpen, uploadMenuOpen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const media = window.matchMedia("(min-width: 1200px)");
+    const updateViewport = () => setIsDesktopViewport(media.matches);
+    updateViewport();
+    media.addEventListener("change", updateViewport);
+    return () => media.removeEventListener("change", updateViewport);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem(HERO_ONBOARDING_KEY) === "1";
+      if (!seen) {
+        localStorage.setItem(HERO_ONBOARDING_KEY, "1");
+      }
+      setShowOnboardingHero(!seen);
+    } catch {
+      // If storage is unavailable, keep onboarding visible.
+      setShowOnboardingHero(true);
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -195,6 +224,10 @@ export default function VisualesHubPage() {
   useEffect(() => {
     const topProjects = projects.slice(0, 6);
     topProjects.forEach((project) => {
+      if (prefetchedProjectIdsRef.current.has(project.id)) {
+        return;
+      }
+      prefetchedProjectIdsRef.current.add(project.id);
       router.prefetch(`/visuales/proyecto/${project.id}`);
     });
   }, [projects, router]);
@@ -203,9 +236,15 @@ export default function VisualesHubPage() {
     let active = true;
     const ids = projects.map((project) => project.id).filter(Boolean);
     if (ids.length === 0) {
+      lastStatsKeyRef.current = "";
       setProjectStatsMap({});
       return;
     }
+    const statsKey = ids.join(",");
+    if (lastStatsKeyRef.current === statsKey) {
+      return;
+    }
+    lastStatsKeyRef.current = statsKey;
     fetchProjectStatsMap(ids).then((stats) => {
       if (!active) {
         return;
@@ -245,6 +284,7 @@ export default function VisualesHubPage() {
   const isFeedBootLoading = projectsLoading && filteredProjects.length === 0;
   const shouldShowSkeletonGrid = isInitialSkeleton || isFeedBootLoading;
   const shouldShowBootSkeleton = shouldShowSkeletonGrid;
+  const shouldShowHero = isDesktopViewport || showOnboardingHero;
   const hasFeedContent = !projectsLoading && filteredProjects.length > 0;
 
   const handleNavClick = (next: string) => {
@@ -590,38 +630,42 @@ export default function VisualesHubPage() {
         <div ref={inicioRef} className="hub-anchor" />
         {shouldShowBootSkeleton ? (
           <>
-            <section className="hub-hero hub-hero--skeleton hub-enter" aria-hidden>
-              <div className="hub-skel-copy">
-                <span className="hub-skel-line hub-skel-line--eyebrow" />
-                <span className="hub-skel-line hub-skel-line--title" />
-                <span className="hub-skel-line hub-skel-line--sub" />
-                <div className="hub-skel-actions">
-                  <span className="hub-skel-pill" />
-                  <span className="hub-skel-pill hub-skel-pill--ghost" />
+            {shouldShowHero ? (
+              <section className="hub-hero hub-hero--skeleton hub-enter" aria-hidden>
+                <div className="hub-skel-copy">
+                  <span className="hub-skel-line hub-skel-line--eyebrow" />
+                  <span className="hub-skel-line hub-skel-line--title" />
+                  <span className="hub-skel-line hub-skel-line--sub" />
+                  <div className="hub-skel-actions">
+                    <span className="hub-skel-pill" />
+                    <span className="hub-skel-pill hub-skel-pill--ghost" />
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            ) : null}
           </>
         ) : (
           <>
-            <section className="hub-hero hub-enter">
-              <div>
-                <p className="hub-hero__eyebrow">Comunidad Visuales</p>
-                <h1>Comparte tu proyecto con una comunidad que impulsa creadores.</h1>
-                <p className="hub-hero__sub">
-                  Sube en minutos, recibe feedback y conecta con personas que valoran tu trabajo creativo.
-                </p>
-                <div className="hub-hero__actions">
-                  <button type="button" className="hub-hero__cta" onClick={handleCreatePost}>
-                    Subir mi primer proyecto
-                  </button>
-                  <button type="button" className="hub-hero__ghost" onClick={() => handleNavClick("explorar")}>
-                    Ver comunidad
-                  </button>
+            {shouldShowHero ? (
+              <section className="hub-hero hub-enter">
+                <div>
+                  <p className="hub-hero__eyebrow">Comunidad Visuales</p>
+                  <h1>Comparte tu proyecto con una comunidad que impulsa creadores.</h1>
+                  <p className="hub-hero__sub">
+                    Sube en minutos, recibe feedback y conecta con personas que valoran tu trabajo creativo.
+                  </p>
+                  <div className="hub-hero__actions">
+                    <button type="button" className="hub-hero__cta" onClick={handleCreatePost}>
+                      Subir mi primer proyecto
+                    </button>
+                    <button type="button" className="hub-hero__ghost" onClick={() => handleNavClick("explorar")}>
+                      Ver comunidad
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </section>
-            {isFeedEmpty ? (
+              </section>
+            ) : null}
+            {shouldShowHero && isFeedEmpty ? (
               <section className="hub-quick-strip hub-enter hub-enter--2" aria-label="Inicio rapido">
                 <article className="hub-quick-strip__card">
                   <strong>1. Sube tu archivo</strong>
