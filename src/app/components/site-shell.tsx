@@ -375,6 +375,9 @@ export default function SiteShell({
       ref={rootRef}
       className={`scene-root relative min-h-screen bg-black text-slate-100 ${lockScroll ? "scene-root--locked" : ""} ${className}`}
     >
+      <a href="#hero-section" className="scene-skip-link">
+        Ir al contenido principal
+      </a>
       {!disableEffects && (
         <div ref={sceneRef} className="studio-scene" aria-hidden>
           <div className="studio-base" />

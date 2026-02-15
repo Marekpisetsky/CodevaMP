@@ -3,20 +3,27 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import SiteShell from "../../../components/site-shell";
+import {
+  fetchProjectStatsMap,
+  formatCompactMetric,
+  formatWatchHours,
+  getProjectStats,
+  recordProjectShare,
+  type ProjectStats,
+} from "../../../lib/project-stats";
 import { supabase } from "../../../lib/supabase";
 
-type VisualesEstudioPageProps = {
-  params: {
-    username: string;
-  };
-};
-
-export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps) {
+export default function VisualesEstudioPage() {
   const router = useRouter();
-  const { username } = React.use(params as unknown as Promise<{ username: string }>);
-  const studioName = decodeURIComponent(username);
+  const searchParams = useSearchParams();
+  const studioIntent = searchParams.get("intent");
+  const params = useParams<{ username: string | string[] }>();
+  const routeUsername = params?.username;
+  const username = Array.isArray(routeUsername) ? routeUsername[0] : routeUsername;
+  const resolvedUsername = username ?? "";
+  const studioName = decodeURIComponent(resolvedUsername);
   const normalizeSlug = (value: string) => value.trim().replace(/^@/, "").toLowerCase();
   const avatarInitial = studioName.replace(/^@/, "").slice(0, 1).toUpperCase() || "U";
 
@@ -82,6 +89,7 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
       created_at: string | null;
     }>
   >([]);
+  const [projectStatsMap, setProjectStatsMap] = useState<Record<string, ProjectStats>>({});
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [selectedProject, setSelectedProject] = useState<{
     id: string;
@@ -140,6 +148,7 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
     []
   );
   const currentSection = sectionCopy[activeSection];
+  const selectedProjectStats = selectedProject ? getProjectStats(projectStatsMap, selectedProject.id) : null;
 
   const normalizedSlug = normalizeSlug(studioName);
 
@@ -227,6 +236,7 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
       .then(({ data, error }) => {
         if (error) {
           setProjects([]);
+          setProjectStatsMap({});
           setProjectsLoading(false);
           return;
         }
@@ -234,6 +244,24 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
         setProjectsLoading(false);
       });
   }, [sessionId, isOwner]);
+
+  useEffect(() => {
+    let active = true;
+    const projectIds = projects.map((project) => project.id).filter(Boolean);
+    if (projectIds.length === 0) {
+      setProjectStatsMap({});
+      return;
+    }
+    fetchProjectStatsMap(projectIds).then((stats) => {
+      if (!active) {
+        return;
+      }
+      setProjectStatsMap(stats);
+    });
+    return () => {
+      active = false;
+    };
+  }, [projects]);
 
   useEffect(() => {
     if (!selectedProject) {
@@ -498,6 +526,18 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
   const handlePickFile = () => {
     fileInputRef.current?.click();
   };
+
+  useEffect(() => {
+    if (!studioIntent) {
+      return;
+    }
+    if (studioIntent === "upload" || studioIntent === "publish") {
+      setActiveSection("subidas");
+    }
+    if (studioIntent === "upload" && isOwner) {
+      setTimeout(() => handlePickFile(), 0);
+    }
+  }, [isOwner, studioIntent]);
 
   const handleFileSelect = (file: File | null) => {
     if (!file) {
@@ -786,7 +826,6 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                     {uploadFile ? <p className="cabina-dropzone__file">{uploadFile.name}</p> : null}
                   </div>
                 </div>
-                {!isOwner ? <p className="cabina-projects__hint">Solo el propietario puede subir proyectos.</p> : null}
                 {uploadFile ? (
                   <form className="cabina-upload-form" onSubmit={handleUpload}>
                     <label>
@@ -1087,21 +1126,21 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                   <div className="cabina-projects__stats">
                     <div>
                       <span>Likes</span>
-                      <strong>0</strong>
+                      <strong>{formatCompactMetric(selectedProjectStats?.likes_count ?? 0)}</strong>
                     </div>
                     <div>
                       <span>Vistas</span>
-                      <strong>0</strong>
+                      <strong>{formatCompactMetric(selectedProjectStats?.views_count ?? 0)}</strong>
                     </div>
                     {selectedProject.type === "video" ? (
                       <div>
                         <span>Horas de reproduccion</span>
-                        <strong>0 h</strong>
+                        <strong>{formatWatchHours(selectedProjectStats?.watch_seconds ?? 0)}</strong>
                       </div>
                     ) : null}
                     <div>
                       <span>Compartidos</span>
-                      <strong>0</strong>
+                      <strong>{formatCompactMetric(selectedProjectStats?.shares_count ?? 0)}</strong>
                     </div>
                   </div>
                   <div className="cabina-projects__share">
@@ -1125,6 +1164,12 @@ export default function VisualesEstudioPage({ params }: VisualesEstudioPageProps
                         copyTimeoutRef.current = window.setTimeout(() => {
                           setLinkCopied(false);
                         }, 1800);
+                        recordProjectShare(selectedProject.id)
+                          .then(() => fetchProjectStatsMap([selectedProject.id]))
+                          .then((nextStats) => {
+                            setProjectStatsMap((prev) => ({ ...prev, ...nextStats }));
+                          })
+                          .catch(() => undefined);
                       }}
                       className={linkCopied ? "is-copied" : ""}
                     />

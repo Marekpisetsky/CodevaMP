@@ -5,10 +5,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SiteShell from "../components/site-shell";
+import { fetchProjectStatsMap, formatCompactMetric, getProjectStats, type ProjectStats } from "../lib/project-stats";
 import { supabase } from "../lib/supabase";
 import { useVisualesIdentity } from "./use-visuales-identity";
 
 export default function VisualesHubPage() {
+  const FEED_CACHE_KEY = "visuales:feed:v1";
+  const FEED_CACHE_TTL_MS = 90_000;
   const router = useRouter();
   const { sessionUser, username, displayName, displayAvatarLetter, applyIdentity } = useVisualesIdentity();
 
@@ -26,18 +29,12 @@ export default function VisualesHubPage() {
     user_id: string | null;
     profiles: { username: string | null; display_name: string | null } | null;
   };
-  const [uploading, setUploading] = useState(false);
-  const [showUpload, setShowUpload] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [type, setType] = useState("imagen");
-  const [file, setFile] = useState<File | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
-  const [activeNav, setActiveNav] = useState("hub");
+  const [activeNav, setActiveNav] = useState("inicio");
   const [activeType, setActiveType] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const [projectStatsMap, setProjectStatsMap] = useState<Record<string, ProjectStats>>({});
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [projectsPage, setProjectsPage] = useState(0);
   const [projectsHasMore, setProjectsHasMore] = useState(true);
@@ -50,6 +47,13 @@ export default function VisualesHubPage() {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const inicioRef = useRef<HTMLDivElement | null>(null);
   const feedRef = useRef<HTMLElement | null>(null);
+
+  type FeedCache = {
+    ts: number;
+    page: number;
+    hasMore: boolean;
+    projects: ProjectItem[];
+  };
 
   useEffect(() => {
     if (!menuOpen && !uploadMenuOpen) {
@@ -76,6 +80,29 @@ export default function VisualesHubPage() {
   }, [menuOpen, uploadMenuOpen]);
 
   useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(FEED_CACHE_KEY);
+      if (!raw) {
+        return;
+      }
+      const cached = JSON.parse(raw) as FeedCache;
+      if (!cached?.projects?.length) {
+        return;
+      }
+      if (Date.now() - cached.ts > FEED_CACHE_TTL_MS) {
+        sessionStorage.removeItem(FEED_CACHE_KEY);
+        return;
+      }
+      setProjects(cached.projects);
+      setProjectsPage(cached.page);
+      setProjectsHasMore(cached.hasMore);
+      setInitialLoaded(true);
+    } catch {
+      // Ignore cache parse/storage errors.
+    }
+  }, []);
+
+  useEffect(() => {
     if (!sessionUser || username) {
       return;
     }
@@ -90,7 +117,12 @@ export default function VisualesHubPage() {
 
   const loadProjects = useCallback(
     async (page: number) => {
-      if (!supabase || loadingRef.current) {
+      if (!supabase) {
+        setProjectsLoading(false);
+        setInitialLoaded(true);
+        return;
+      }
+      if (loadingRef.current) {
         return;
       }
       const pageSize = 12;
@@ -143,6 +175,48 @@ export default function VisualesHubPage() {
     loadProjects(0);
   }, [loadProjects]);
 
+  useEffect(() => {
+    if (!initialLoaded || projects.length === 0) {
+      return;
+    }
+    try {
+      const cache: FeedCache = {
+        ts: Date.now(),
+        page: projectsPage,
+        hasMore: projectsHasMore,
+        projects,
+      };
+      sessionStorage.setItem(FEED_CACHE_KEY, JSON.stringify(cache));
+    } catch {
+      // Ignore storage write errors.
+    }
+  }, [initialLoaded, projects, projectsHasMore, projectsPage]);
+
+  useEffect(() => {
+    const topProjects = projects.slice(0, 6);
+    topProjects.forEach((project) => {
+      router.prefetch(`/visuales/proyecto/${project.id}`);
+    });
+  }, [projects, router]);
+
+  useEffect(() => {
+    let active = true;
+    const ids = projects.map((project) => project.id).filter(Boolean);
+    if (ids.length === 0) {
+      setProjectStatsMap({});
+      return;
+    }
+    fetchProjectStatsMap(ids).then((stats) => {
+      if (!active) {
+        return;
+      }
+      setProjectStatsMap(stats);
+    });
+    return () => {
+      active = false;
+    };
+  }, [projects]);
+
   const filteredProjects = useMemo(() => {
     if (!activeType) {
       return projects;
@@ -150,15 +224,33 @@ export default function VisualesHubPage() {
     return projects.filter((project) => project.type === activeType);
   }, [activeType, projects]);
 
+  const emptyStateMessage = useMemo(() => {
+    if (activeNav === "explorar") {
+      return "No hay proyectos para explorar aun.";
+    }
+    if (activeNav === "directos") {
+      return "No hay proyectos en video todavia.";
+    }
+    if (activeNav === "suscripciones") {
+      return "No hay animaciones disponibles por ahora.";
+    }
+    if (activeNav === "historial") {
+      return "Aun no tienes proyectos vistos.";
+    }
+    return "No hay proyectos publicados aun.";
+  }, [activeNav]);
+
+  const isFeedEmpty = initialLoaded && !projectsLoading && filteredProjects.length === 0;
+  const isInitialSkeleton = !initialLoaded && projects.length === 0;
+  const isFeedBootLoading = projectsLoading && filteredProjects.length === 0;
+  const shouldShowSkeletonGrid = isInitialSkeleton || isFeedBootLoading;
+  const shouldShowBootSkeleton = shouldShowSkeletonGrid;
+  const hasFeedContent = !projectsLoading && filteredProjects.length > 0;
+
   const handleNavClick = (next: string) => {
     setActiveNav(next);
     if (next === "directos") {
       setActiveType("video");
-      feedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-    if (next === "cabinas") {
-      setActiveType("interactivo");
       feedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
@@ -177,11 +269,6 @@ export default function VisualesHubPage() {
       feedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       searchInputRef.current?.focus();
       searchInputRef.current?.select();
-      return;
-    }
-    if (next === "hub") {
-      setActiveType(null);
-      feedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
     if (next === "inicio") {
@@ -211,8 +298,6 @@ export default function VisualesHubPage() {
     return () => observer.disconnect();
   }, [loadProjects, projectsHasMore, projectsLoading, projectsPage]);
 
-  const canUpload = Boolean(sessionUser);
-
   const handleSignOut = async () => {
     if (!supabase) {
       return;
@@ -225,20 +310,21 @@ export default function VisualesHubPage() {
     await handleSignOut();
   };
 
-  const handleRequireAuth = () => {
-    router.push("/visuales/auth");
+  const goToStudioIntent = (intent: "upload" | "publish") => {
+    const target = username ? `/visuales/estudio/@${username}?intent=${intent}` : "/visuales/app";
+    if (!sessionUser) {
+      router.push(`/visuales/auth?returnTo=${encodeURIComponent(target)}`);
+      return;
+    }
+    if (!username) {
+      router.push("/visuales/auth");
+      return;
+    }
+    router.push(target);
   };
 
   const handleCreatePost = () => {
-    if (!sessionUser) {
-      handleRequireAuth();
-      return;
-    }
-    if (username) {
-      router.push(`/visuales/estudio/@${username}`);
-      return;
-    }
-    router.push("/visuales/auth");
+    goToStudioIntent("publish");
   };
 
   const handleMyCabina = () => {
@@ -271,55 +357,6 @@ export default function VisualesHubPage() {
       return;
     }
     router.push("/visuales/auth");
-  };
-
-  const handleUpload = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!sessionUser) {
-      setError("Necesitas iniciar sesion para subir proyectos.");
-      return;
-    }
-    if (!file) {
-      setError("Selecciona un archivo.");
-      return;
-    }
-    if (!supabase) {
-      setError("Supabase no esta configurado.");
-      return;
-    }
-    setUploading(true);
-    setError(null);
-    try {
-      const extension = file.name.split(".").pop() || "file";
-      const filePath = `${sessionUser}/${Date.now()}.${extension}`;
-      const { error: uploadError } = await supabase.storage.from("projects").upload(filePath, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-      if (uploadError) {
-        setError(uploadError.message);
-        return;
-      }
-      const { data: publicData } = supabase.storage.from("projects").getPublicUrl(filePath);
-      const mediaUrl = publicData.publicUrl;
-      const { error: insertError } = await supabase.from("projects").insert({
-        user_id: sessionUser,
-        title,
-        description,
-        type,
-        media_url: mediaUrl,
-      });
-      if (insertError) {
-        setError(insertError.message);
-        return;
-      }
-      setTitle("");
-      setDescription("");
-      setType("imagen");
-      setFile(null);
-    } finally {
-      setUploading(false);
-    }
   };
 
   return (
@@ -388,8 +425,7 @@ export default function VisualesHubPage() {
                   type="button"
                   onClick={() => {
                     setUploadMenuOpen(false);
-                    setShowUpload(true);
-                    setTimeout(() => inicioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+                    goToStudioIntent("upload");
                   }}
                 >
                   Subir archivo
@@ -398,7 +434,7 @@ export default function VisualesHubPage() {
                   type="button"
                   onClick={() => {
                     setUploadMenuOpen(false);
-                    handleCreatePost();
+                    goToStudioIntent("publish");
                   }}
                 >
                   Crear publicacion
@@ -492,24 +528,10 @@ export default function VisualesHubPage() {
             </button>
             <button
               type="button"
-              className={activeNav === "hub" ? "active" : ""}
-              onClick={() => handleNavClick("hub")}
-            >
-              Visuales Hub
-            </button>
-            <button
-              type="button"
               className={activeNav === "explorar" ? "active" : ""}
               onClick={() => handleNavClick("explorar")}
             >
               Explorar
-            </button>
-            <button
-              type="button"
-              className={activeNav === "cabinas" ? "active" : ""}
-              onClick={() => handleNavClick("cabinas")}
-            >
-              Cabinas
             </button>
             <button
               type="button"
@@ -543,7 +565,7 @@ export default function VisualesHubPage() {
           </button>
         </div>
         <div className="hub-types">
-          <p>Tipos de contenido</p>
+          <p>Filtrar por tipo</p>
           <div className="hub-chip-row">
             {[
               { id: "imagen", label: "Imagen" },
@@ -564,58 +586,63 @@ export default function VisualesHubPage() {
         </div>
       </aside>
 
-      <main className="hub-main">
+      <main className={`hub-main ${hasFeedContent ? "hub-main--content-live" : ""}`}>
         <div ref={inicioRef} className="hub-anchor" />
-        {showUpload ? (
-          <section className="hub-upload-inline">
-            <div className="hub-section__header">
-              <h2>Subir proyecto</h2>
-              <button type="button" onClick={() => setShowUpload(false)}>
-                Cerrar
-              </button>
-            </div>
-            {canUpload ? (
-              <form onSubmit={handleUpload}>
-                <label>
-                  Titulo
-                  <input value={title} onChange={(event) => setTitle(event.target.value)} required />
-                </label>
-                <label>
-                  Descripcion
-                  <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} />
-                </label>
-                <label>
-                  Tipo
-                  <select value={type} onChange={(event) => setType(event.target.value)}>
-                    <option value="imagen">Imagen</option>
-                    <option value="video">Video</option>
-                    <option value="animacion">Animacion</option>
-                    <option value="otro">Otro</option>
-                  </select>
-                </label>
-                <label>
-                  Archivo
-                  <input type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} required />
-                </label>
-                <button type="submit" disabled={uploading}>
-                  {uploading ? "Subiendo..." : "Publicar"}
-                </button>
-              </form>
-            ) : (
-              <div className="hub-locked">
-                <p>Necesitas una cuenta para publicar.</p>
-                <button type="button" onClick={handleRequireAuth}>
-                  Iniciar sesion para publicar
-                </button>
+        {shouldShowBootSkeleton ? (
+          <>
+            <section className="hub-hero hub-hero--skeleton hub-enter" aria-hidden>
+              <div className="hub-skel-copy">
+                <span className="hub-skel-line hub-skel-line--eyebrow" />
+                <span className="hub-skel-line hub-skel-line--title" />
+                <span className="hub-skel-line hub-skel-line--sub" />
+                <div className="hub-skel-actions">
+                  <span className="hub-skel-pill" />
+                  <span className="hub-skel-pill hub-skel-pill--ghost" />
+                </div>
               </div>
-            )}
-            {error ? <p className="hub-error">{error}</p> : null}
-          </section>
-        ) : null}
-        <section className="hub-feed" ref={feedRef}>
-          {projectsLoading && projects.length === 0 ? (
+            </section>
+          </>
+        ) : (
+          <>
+            <section className="hub-hero hub-enter">
+              <div>
+                <p className="hub-hero__eyebrow">Comunidad Visuales</p>
+                <h1>Comparte tu proyecto con una comunidad que impulsa creadores.</h1>
+                <p className="hub-hero__sub">
+                  Sube en minutos, recibe feedback y conecta con personas que valoran tu trabajo creativo.
+                </p>
+                <div className="hub-hero__actions">
+                  <button type="button" className="hub-hero__cta" onClick={handleCreatePost}>
+                    Subir mi primer proyecto
+                  </button>
+                  <button type="button" className="hub-hero__ghost" onClick={() => handleNavClick("explorar")}>
+                    Ver comunidad
+                  </button>
+                </div>
+              </div>
+            </section>
+            {isFeedEmpty ? (
+              <section className="hub-quick-strip hub-enter hub-enter--2" aria-label="Inicio rapido">
+                <article className="hub-quick-strip__card">
+                  <strong>1. Sube tu archivo</strong>
+                  <span>Imagen o video en segundos.</span>
+                </article>
+                <article className="hub-quick-strip__card">
+                  <strong>2. Ajusta metadata</strong>
+                  <span>Titulo, descripcion y categoria.</span>
+                </article>
+                <article className="hub-quick-strip__card">
+                  <strong>3. Publica y comparte</strong>
+                  <span>Distribucion inmediata desde tu estudio.</span>
+                </article>
+              </section>
+            ) : null}
+          </>
+        )}
+        <section className={`hub-feed ${shouldShowSkeletonGrid ? "is-loading" : ""}`} ref={feedRef}>
+          {shouldShowSkeletonGrid ? (
             <div className="hub-feed__grid hub-feed__grid--skeleton" aria-hidden>
-              {Array.from({ length: 9 }).map((_, index) => (
+              {Array.from({ length: 12 }).map((_, index) => (
                 <div key={`skeleton-${index}`} className="hub-card hub-card--skeleton">
                   <div className="hub-card__media" />
                   <div className="hub-card__meta">
@@ -632,18 +659,16 @@ export default function VisualesHubPage() {
               ))}
             </div>
           ) : null}
-          {initialLoaded && !projectsLoading && projects.length === 0 ? (
-            <div className="hub-feed__empty">
-              <p>No hay proyectos publicados aun.</p>
-            </div>
-          ) : null}
           {!projectsLoading && filteredProjects.length > 0 ? (
-            <div className="hub-feed__grid">
-              {filteredProjects.map((project, index) => (
+            <div className="hub-feed__grid hub-enter hub-enter--2">
+              {filteredProjects.map((project, index) => {
+                const stats = getProjectStats(projectStatsMap, project.id);
+                return (
                 <Link
                   key={project.id}
                   href={`/visuales/proyecto/${project.id}`}
-                  className="hub-card"
+                  className="hub-card hub-enter hub-feed-card"
+                  style={{ animationDelay: `${Math.min(index * 24, 220)}ms` }}
                   aria-label={`Abrir ${project.title ?? "proyecto"}`}
                   draggable={false}
                   onDragStart={(event) => event.preventDefault()}
@@ -707,18 +732,50 @@ export default function VisualesHubPage() {
                         </span>
                         <div>
                           <h3>{project.title ?? "Proyecto"}</h3>
-                          <p>@{(project.profiles?.username ?? "creador").replace(/^@+/, "")} - 2.1k vistas</p>
+                          <p>
+                            @{(project.profiles?.username ?? "creador").replace(/^@+/, "")} -{" "}
+                            {formatCompactMetric(stats.views_count)} vistas
+                          </p>
                         </div>
                       </div>
                       <p>{project.description ?? ""}</p>
                     </div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           ) : null}
-          {!projectsLoading && filteredProjects.length === 0 && projects.length > 0 ? (
-            <div className="hub-feed__empty">
-              <p>No hay proyectos para este filtro.</p>
+          {isFeedEmpty ? (
+            <div className="hub-feed-empty hub-enter hub-enter--2">
+              <div className="hub-feed-empty__icon" aria-hidden>
+                VS
+              </div>
+              <h3>Aun no hay contenido publicado</h3>
+              <p>{emptyStateMessage}</p>
+              <div className="hub-feed-empty__actions">
+                <button type="button" onClick={handleCreatePost}>
+                  Subir primer proyecto
+                </button>
+                <button type="button" className="hub-feed-empty__ghost" onClick={() => handleNavClick("explorar")}>
+                  Ver secciones
+                </button>
+              </div>
+              <div className="hub-feed-empty__samples" aria-hidden>
+                <article className="hub-feed-empty__sample">
+                  <div className="hub-feed-empty__sample-media" />
+                  <div className="hub-feed-empty__sample-copy">
+                    <strong>Demo Visual 01</strong>
+                    <span>Portada, trailer y metadata</span>
+                  </div>
+                </article>
+                <article className="hub-feed-empty__sample">
+                  <div className="hub-feed-empty__sample-media" />
+                  <div className="hub-feed-empty__sample-copy">
+                    <strong>Demo Visual 02</strong>
+                    <span>Publicacion lista para compartir</span>
+                  </div>
+                </article>
+              </div>
             </div>
           ) : null}
           <div ref={feedSentinelRef} className="hub-feed__sentinel" />

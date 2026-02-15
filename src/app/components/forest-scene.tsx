@@ -3,6 +3,7 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { SwarmMode } from "../lib/experience-swarm";
 
 type BaseTile = {
   id: string;
@@ -43,7 +44,12 @@ const BASE_TILES: BaseTile[] = [
 ];
 
 const SIZE_PRESET = { width: "clamp(260px, 26vmin, 450px)", height: "clamp(180px, 18vmin, 320px)", size: 1.1 };
-const PLATE_COUNT = 14;
+
+const QUALITY_PROFILE: Record<SwarmMode, { plates: number; lat: number; lon: number; steps: number; fragments: number }> = {
+  cinematic: { plates: 16, lat: 7, lon: 12, steps: 44, fragments: 42 },
+  balanced: { plates: 14, lat: 6, lon: 10, steps: 40, fragments: 36 },
+  efficient: { plates: 10, lat: 4, lon: 7, steps: 28, fragments: 20 },
+};
 
 const seeded = (seed: number) => {
   const value = Math.sin(seed * 12.9898) * 43758.5453;
@@ -92,11 +98,8 @@ const generatePoints = (count: number) => {
   return points;
 };
 
-const createWireRings = () => {
+const createWireRings = (latCount: number, lonCount: number, steps: number) => {
   const rings: Array<Array<[number, number, number]>> = [];
-  const latCount = 6;
-  const lonCount = 10;
-  const steps = 40;
 
   for (let i = 1; i <= latCount; i += 1) {
     const phi = (i / (latCount + 1) - 0.5) * Math.PI;
@@ -121,11 +124,11 @@ const createWireRings = () => {
   return rings;
 };
 
-const createPlates = () => {
+const createPlates = (plateCount: number) => {
   const plates: Plate[] = [];
   const baseCounts: Record<string, number> = {};
-  const points = generatePoints(PLATE_COUNT);
-  for (let i = 0; i < PLATE_COUNT; i += 1) {
+  const points = generatePoints(plateCount);
+  for (let i = 0; i < plateCount; i += 1) {
     const pos = points[i];
     const base = BASE_TILES[i % BASE_TILES.length];
     const currentCount = baseCounts[base.id] ?? 0;
@@ -155,7 +158,13 @@ const createPlates = () => {
   return plates;
 };
 
-export default function ForestScene() {
+export default function ForestScene({
+  qualityMode = "balanced",
+  routeMap = {},
+}: {
+  qualityMode?: SwarmMode;
+  routeMap?: Record<string, string>;
+}) {
   const router = useRouter();
   const fieldRef = useRef<HTMLDivElement | null>(null);
   const tileRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -221,9 +230,13 @@ export default function ForestScene() {
   });
   const [visionStage, setVisionStage] = useState<null | "center" | "dock" | "expandx" | "expandy">(null);
   const visionStageRef = useRef<null | "center" | "dock" | "expandx" | "expandy">(null);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const prefersReducedMotionRef = useRef(false);
+  const profile = QUALITY_PROFILE[qualityMode];
+  const effectiveProfile = prefersReducedMotion ? QUALITY_PROFILE.efficient : profile;
 
-  if (platesRef.current.length === 0) {
-    platesRef.current = createPlates();
+  if (platesRef.current.length !== effectiveProfile.plates) {
+    platesRef.current = createPlates(effectiveProfile.plates);
   }
   if (baseSizeRef.current.length !== platesRef.current.length) {
     baseSizeRef.current = platesRef.current.map(() => null);
@@ -231,8 +244,9 @@ export default function ForestScene() {
   if (platePoseRef.current.length !== platesRef.current.length) {
     platePoseRef.current = platesRef.current.map(() => null);
   }
-  if (ringsRef.current.length === 0) {
-    ringsRef.current = createWireRings();
+  const targetRingCount = effectiveProfile.lat + effectiveProfile.lon;
+  if (ringsRef.current.length !== targetRingCount) {
+    ringsRef.current = createWireRings(effectiveProfile.lat, effectiveProfile.lon, effectiveProfile.steps);
   }
 
   useEffect(() => {
@@ -250,6 +264,22 @@ export default function ForestScene() {
   useEffect(() => {
     visionStageRef.current = visionStage;
   }, [visionStage]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => {
+      setPrefersReducedMotion(media.matches);
+    };
+    sync();
+    media.addEventListener("change", sync);
+    return () => {
+      media.removeEventListener("change", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    prefersReducedMotionRef.current = prefersReducedMotion;
+  }, [prefersReducedMotion]);
 
   useEffect(() => {
     return () => {
@@ -282,7 +312,7 @@ export default function ForestScene() {
     }
     portal.innerHTML = "";
     const rect = tile.getBoundingClientRect();
-    const fragmentCount = 36;
+    const fragmentCount = effectiveProfile.fragments;
     const centerY = rect.top + rect.height / 2;
     const viewW = window.innerWidth;
     const viewH = window.innerHeight;
@@ -406,8 +436,6 @@ export default function ForestScene() {
       return;
     }
 
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
     let rafId = 0;
     let rect = field.getBoundingClientRect();
     let centerX = rect.width / 2;
@@ -478,11 +506,12 @@ export default function ForestScene() {
     };
 
     const updateScene = (time: number) => {
+      const shouldReduceMotion = prefersReducedMotionRef.current;
       const dt = time - state.lastTime;
       const clampedDt = Math.min(dt, 50);
       state.lastTime = time;
       state.frame += 1;
-      const frameStride = 1;
+      const frameStride = shouldReduceMotion ? 4 : 1;
       const vmin = Math.min(rect.width, rect.height) / 100;
       const baseTileW = Math.min(450, Math.max(260, 26 * vmin));
       const baseTileH = Math.min(320, Math.max(180, 18 * vmin));
@@ -504,7 +533,7 @@ export default function ForestScene() {
         isVisionActive && !closingVisionRef.current && shiftReady ? -rect.width * 0.12 : 0;
       state.fieldShift += (fieldShift - state.fieldShift) * 0.035;
 
-      if (!prefersReducedMotion) {
+      if (!shouldReduceMotion) {
         const dragState = dragStateRef.current;
         const yawDirection = Math.cos(state.baseRotX) >= 0 ? 1 : -1;
         const autoYaw = clampedDt * 0.00006 * yawDirection;
@@ -682,10 +711,10 @@ export default function ForestScene() {
         const tilt = item.plate.tilt;
         const isVisionPrimary = item.plate.baseId === "vision" && item.plate.isPrimary;
         const wobbleScale = activePanelRef.current === "vision" && isVisionPrimary ? 0 : 1;
-        const wobbleX = Math.sin(time * 0.0017 + item.plate.wobbleSeed * 1.7) * 3.5 * wobbleScale;
-        const wobbleY = Math.cos(time * 0.0013 + item.plate.wobbleSeed * 1.1) * 3.5 * wobbleScale;
-        const wobbleZ = Math.sin(time * 0.0021 + item.plate.wobbleSeed * 0.9) * 6 * wobbleScale;
-        const idleWobble = Math.sin(time * 0.0011 + item.plate.wobbleSeed) * 2.5 * wobbleScale;
+        const wobbleX = shouldReduceMotion ? 0 : Math.sin(time * 0.0017 + item.plate.wobbleSeed * 1.7) * 3.5 * wobbleScale;
+        const wobbleY = shouldReduceMotion ? 0 : Math.cos(time * 0.0013 + item.plate.wobbleSeed * 1.1) * 3.5 * wobbleScale;
+        const wobbleZ = shouldReduceMotion ? 0 : Math.sin(time * 0.0021 + item.plate.wobbleSeed * 0.9) * 6 * wobbleScale;
+        const idleWobble = shouldReduceMotion ? 0 : Math.sin(time * 0.0011 + item.plate.wobbleSeed) * 2.5 * wobbleScale;
 
         if (!activePanelRef.current) {
           const rectSize = tile.getBoundingClientRect();
@@ -736,6 +765,9 @@ export default function ForestScene() {
     };
 
     const handleMove = (event: PointerEvent) => {
+      if (prefersReducedMotionRef.current) {
+        return;
+      }
       state.pointerTargetX = event.clientX - rect.left - centerX;
       state.pointerTargetY = event.clientY - rect.top - centerY;
       state.pointerActive = dragStateRef.current.isDragging;
@@ -782,6 +814,9 @@ export default function ForestScene() {
     };
 
     const handlePointerDown = (event: PointerEvent) => {
+      if (prefersReducedMotionRef.current) {
+        return;
+      }
       dragStateRef.current.isPointerDown = true;
       dragStateRef.current.isDragging = false;
       dragStateRef.current.hasCapture = false;
@@ -794,6 +829,9 @@ export default function ForestScene() {
     };
 
     const handlePointerUp = (event: PointerEvent) => {
+      if (prefersReducedMotionRef.current) {
+        return;
+      }
       dragStateRef.current.isPointerDown = false;
       dragStateRef.current.isDragging = false;
       if (dragStateRef.current.hasCapture) {
@@ -864,6 +902,11 @@ export default function ForestScene() {
       if (activePanelRef.current === "vision") {
         return;
       }
+      if (prefersReducedMotionRef.current) {
+        setActivePanel("vision");
+        setVisionStage("expandy");
+        return;
+      }
       closingAnimRef.current.active = false;
       closingAnimRef.current.mode = "closing";
       setIsClosingVision(false);
@@ -882,6 +925,15 @@ export default function ForestScene() {
       return;
     }
     if (plate.baseId === "visuales") {
+      if (prefersReducedMotionRef.current) {
+        try {
+          sessionStorage.setItem("visuales-enter-from-home", "1");
+        } catch {
+          // Ignore storage errors (private mode / blocked storage).
+        }
+        router.push("/visuales");
+        return;
+      }
       const transitionDelay = 80;
       const portalArriveDelay = 1400 + transitionDelay;
       const portalDepartDelay = 2250 + transitionDelay;
@@ -938,11 +990,23 @@ export default function ForestScene() {
         }
         router.push("/visuales");
       }, portalNavigateDelay);
+      return;
+    }
+
+    const targetRoute = routeMap[plate.baseId];
+    if (targetRoute) {
+      router.push(targetRoute);
     }
   };
 
   const handleVisionClose = () => {
     if (isClosingVision || closingAnimRef.current.active) {
+      return;
+    }
+    if (prefersReducedMotionRef.current) {
+      setActivePanel(null);
+      setVisionStage(null);
+      setIsClosingVision(false);
       return;
     }
     if (visionTimeoutsRef.current.length) {

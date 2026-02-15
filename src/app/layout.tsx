@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Space_Grotesk } from "next/font/google";
+import { getBrandConfig } from "@/brands";
 import "./globals.css";
 
 const display = Fraunces({
@@ -16,13 +17,21 @@ const sans = Space_Grotesk({
   preload: false,
 });
 
+const rootBrand = getBrandConfig("codevamp");
+
 export const metadata: Metadata = {
-  title: "CodevaMP Studio - laboratorio de sistemas interactivos",
-  description:
-    "Universo en construccion: mini-apps, prototipos jugables, herramientas, juegos y experiencias modulares.",
+  title: `${rootBrand.name} - ${rootBrand.tagline}`,
+  description: rootBrand.description,
   metadataBase: new URL("https://codevamp.studio"),
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   openGraph: {
-    title: "CodevaMP Studio - laboratorio de sistemas interactivos",
+    title: `${rootBrand.name} - ${rootBrand.tagline}`,
     description:
       "Explora proyectos experimentales, interfaces vivas y colecciones curadas por el estudio.",
     url: "https://codevamp.studio",
@@ -31,7 +40,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "CodevaMP Studio - laboratorio de sistemas interactivos",
+    title: `${rootBrand.name} - ${rootBrand.tagline}`,
     description:
       "Explora proyectos experimentales, interfaces vivas y colecciones curadas por el estudio.",
     images: ["/og-image.svg"],
@@ -44,6 +53,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#0b1220",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({

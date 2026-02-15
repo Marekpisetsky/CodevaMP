@@ -3,8 +3,9 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import SiteShell from "../../../components/site-shell";
+import { fetchProjectStatsMap, formatCompactMetric, getProjectStats, recordProjectView, type ProjectStats } from "../../../lib/project-stats";
 import { supabase } from "../../../lib/supabase";
 import { useVisualesIdentity } from "../../use-visuales-identity";
 
@@ -27,23 +28,29 @@ type RelatedProject = {
   user_id?: string | null;
 };
 
-export default function VisualesProyectoPage({ params }: { params: { id: string } }) {
+export default function VisualesProyectoPage() {
   const router = useRouter();
+  const params = useParams<{ id: string | string[] }>();
   const { sessionUser, username, displayName, displayAvatarLetter } = useVisualesIdentity();
-  const { id: projectId } = (typeof React !== "undefined"
-    ? React.use(params as unknown as Promise<{ id: string }>)
-    : params) as { id: string };
+  const routeId = params?.id;
+  const projectId = Array.isArray(routeId) ? routeId[0] : routeId;
   const [project, setProject] = useState<ProjectRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creatorProjects, setCreatorProjects] = useState<RelatedProject[]>([]);
   const [discoverProjects, setDiscoverProjects] = useState<RelatedProject[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
+  const [projectStats, setProjectStats] = useState<ProjectStats | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [mediaLoaded, setMediaLoaded] = useState(false);
 
   useEffect(() => {
+    if (!projectId) {
+      setError("Proyecto invalido.");
+      setLoading(false);
+      return;
+    }
     if (!supabase) {
       setError("Supabase no esta configurado.");
       setLoading(false);
@@ -123,6 +130,26 @@ export default function VisualesProyectoPage({ params }: { params: { id: string 
       active = false;
     };
   }, [project?.id, project?.user_id]);
+
+  useEffect(() => {
+    if (!project?.id) {
+      setProjectStats(null);
+      return;
+    }
+    let active = true;
+    const loadStats = async () => {
+      await recordProjectView(project.id);
+      const map = await fetchProjectStatsMap([project.id]);
+      if (!active) {
+        return;
+      }
+      setProjectStats(getProjectStats(map, project.id));
+    };
+    loadStats();
+    return () => {
+      active = false;
+    };
+  }, [project?.id]);
 
   useEffect(() => {
     setMediaLoaded(false);
@@ -324,6 +351,7 @@ export default function VisualesProyectoPage({ params }: { params: { id: string 
                 <h1>{project.title ?? "Proyecto"}</h1>
                 <div className="hub-project-view__meta">
                   <span>{project.type ?? "contenido"}</span>
+                  {projectStats ? <span>{formatCompactMetric(projectStats.views_count)} vistas</span> : null}
                   {createdLabel ? <span>{createdLabel}</span> : null}
                 </div>
                 {project.description ? <p>{project.description}</p> : <p>Sin descripcion.</p>}
@@ -343,7 +371,7 @@ export default function VisualesProyectoPage({ params }: { params: { id: string 
                   {creatorProjects.length > 0 ? (
                     <div className="hub-project-view__grid">
                       {creatorProjects.map((item) => (
-                        <a key={item.id} className="hub-project-view__card" href={`/visuales/proyecto/${item.id}`}>
+                        <Link key={item.id} className="hub-project-view__card" href={`/visuales/proyecto/${item.id}`} prefetch>
                           <div className="hub-project-view__thumb">
                             {item.type === "video" ? (
                               <video
@@ -363,7 +391,7 @@ export default function VisualesProyectoPage({ params }: { params: { id: string 
                           <div className="hub-project-view__card-meta">
                             <h3>{item.title ?? "Proyecto"}</h3>
                           </div>
-                        </a>
+                        </Link>
                       ))}
                     </div>
                   ) : null}
@@ -382,7 +410,7 @@ export default function VisualesProyectoPage({ params }: { params: { id: string 
                   {discoverProjects.length > 0 ? (
                     <div className="hub-project-view__grid">
                       {discoverProjects.map((item) => (
-                        <a key={item.id} className="hub-project-view__card" href={`/visuales/proyecto/${item.id}`}>
+                        <Link key={item.id} className="hub-project-view__card" href={`/visuales/proyecto/${item.id}`} prefetch>
                           <div className="hub-project-view__thumb">
                             {item.type === "video" ? (
                               <video
@@ -402,7 +430,7 @@ export default function VisualesProyectoPage({ params }: { params: { id: string 
                           <div className="hub-project-view__card-meta">
                             <h3>{item.title ?? "Proyecto"}</h3>
                           </div>
-                        </a>
+                        </Link>
                       ))}
                     </div>
                   ) : null}
