@@ -320,13 +320,6 @@ export default function VisualesHubPage() {
     inicioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const handleNavPointerDown = (next: string) => {
-    if (next !== "explorar") {
-      searchInputRef.current?.blur();
-    }
-    setActiveNav(next);
-  };
-
   useEffect(() => {
     if (!feedSentinelRef.current) {
       return;
@@ -570,7 +563,6 @@ export default function VisualesHubPage() {
             <button
               type="button"
               className={activeNav === "inicio" ? "active" : ""}
-              onPointerDown={() => handleNavPointerDown("inicio")}
               onClick={() => handleNavClick("inicio")}
             >
               Inicio
@@ -578,7 +570,6 @@ export default function VisualesHubPage() {
             <button
               type="button"
               className={activeNav === "explorar" ? "active" : ""}
-              onPointerDown={() => handleNavPointerDown("explorar")}
               onClick={() => handleNavClick("explorar")}
             >
               Explorar
@@ -586,7 +577,6 @@ export default function VisualesHubPage() {
             <button
               type="button"
               className={activeNav === "suscripciones" ? "active" : ""}
-              onPointerDown={() => handleNavPointerDown("suscripciones")}
               onClick={() => handleNavClick("suscripciones")}
             >
               Suscripciones
@@ -594,7 +584,6 @@ export default function VisualesHubPage() {
             <button
               type="button"
               className={activeNav === "directos" ? "active" : ""}
-              onPointerDown={() => handleNavPointerDown("directos")}
               onClick={() => handleNavClick("directos")}
             >
               Directos
@@ -602,7 +591,6 @@ export default function VisualesHubPage() {
             <button
               type="button"
               className={activeNav === "historial" ? "active" : ""}
-              onPointerDown={() => handleNavPointerDown("historial")}
               onClick={() => handleNavClick("historial")}
             >
               Historial

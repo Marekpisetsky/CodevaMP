@@ -4673,8 +4673,38 @@ height: 100%;
   grid-auto-rows: min-content;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   background: var(--visuales-cream);
   cursor: default;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .visuales-hub .scene-root {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
+  .visuales-hub .scene-content {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .hub-main {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    padding-bottom: 1.2rem;
+  }
+
+  .hub-topbar,
+  .hub-sidebar,
+  .hub-nav-row,
+  .hub-nav {
+    touch-action: pan-y;
+  }
 }
 
 .hub-main--content-live .hub-hero {
@@ -7327,6 +7357,13 @@ height: 100%;
 
   .hub-card__meta p {
     font-size: 0.64rem;
+  }
+
+  .hub-feed,
+  .hub-feed__grid,
+  .hub-card {
+    width: 100%;
+    max-width: none;
   }
 }
 
