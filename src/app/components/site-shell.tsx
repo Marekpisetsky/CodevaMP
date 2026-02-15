@@ -89,7 +89,7 @@ export default function SiteShell({
   }, [disableEffects]);
 
   useEffect(() => {
-    if (lockScroll) {
+    if (lockScroll || disableEffects) {
       return;
     }
     const root = rootRef.current;
@@ -275,7 +275,7 @@ export default function SiteShell({
         window.cancelAnimationFrame(rafId);
       }
     };
-  }, [enableHeroTransition, lockScroll]);
+  }, [enableHeroTransition, lockScroll, disableEffects]);
 
   useEffect(() => {
     if (lockScroll) {
