@@ -7272,6 +7272,42 @@ height: 100%;
 }
 
 @media (max-width: 420px) {
+  .hub-topbar {
+    padding: 0.55rem 0.6rem;
+    gap: 0.45rem;
+  }
+
+  .hub-search input {
+    padding: 0.45rem 0.62rem;
+    font-size: 0.76rem;
+  }
+
+  .hub-upload-button {
+    padding: 0.45rem 0.58rem;
+    font-size: 0.56rem;
+    letter-spacing: 0.08em;
+  }
+
+  .hub-nav {
+    gap: 0.32rem;
+    padding: 0.22rem 0.28rem;
+  }
+
+  .hub-nav button,
+  .hub-nav a {
+    font-size: 0.72rem;
+    padding: 0.28rem 0.5rem;
+  }
+
+  .hub-card__media {
+    aspect-ratio: 16 / 9;
+  }
+
+  .hub-card__media img {
+    object-fit: contain;
+    background: #f2f3f5;
+  }
+
   .hub-card__meta {
     padding: 0.5rem 0.6rem 0.65rem;
   }
