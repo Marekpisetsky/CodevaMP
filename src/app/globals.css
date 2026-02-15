@@ -6288,11 +6288,13 @@ height: 100%;
 }
 
 .hub-card--skeleton .hub-card__title {
-  align-items: center;
+  align-items: flex-start;
+  gap: 0.62rem;
 }
 
 .hub-card--skeleton .hub-card__avatar {
   background: rgba(148, 163, 184, 0.25);
+  margin-top: 0.1rem;
 }
 
 .hub-card__line {
@@ -6300,6 +6302,10 @@ height: 100%;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.25);
   margin-top: 0.35rem;
+}
+
+.hub-card--skeleton .hub-card__title .hub-card__line:first-child {
+  margin-top: 0;
 }
 
 .hub-card__line--short {

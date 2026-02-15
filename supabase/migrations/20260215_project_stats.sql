@@ -17,19 +17,10 @@ to anon, authenticated
 using (true);
 
 drop policy if exists "project_stats_update_authenticated" on public.project_stats;
-create policy "project_stats_update_authenticated"
-on public.project_stats
-for update
-to authenticated
-using (true)
-with check (true);
-
 drop policy if exists "project_stats_insert_authenticated" on public.project_stats;
-create policy "project_stats_insert_authenticated"
-on public.project_stats
-for insert
-to authenticated
-with check (true);
+drop policy if exists "project_stats_delete_authenticated" on public.project_stats;
+
+revoke insert, update, delete on table public.project_stats from anon, authenticated;
 
 create or replace function public.touch_project_stats_updated_at()
 returns trigger
