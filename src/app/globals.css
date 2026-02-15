@@ -6988,6 +6988,8 @@ height: 100%;
     width: auto;
     white-space: nowrap;
     padding: 0.35rem 0.65rem;
+    justify-content: center;
+    text-align: center;
   }
 
   .hub-types {
@@ -7216,6 +7218,8 @@ height: 100%;
     width: auto;
     white-space: nowrap;
     padding: 0.3rem 0.55rem;
+    justify-content: center;
+    text-align: center;
   }
 
   .hub-types {

@@ -288,6 +288,9 @@ export default function VisualesHubPage() {
   const hasFeedContent = !projectsLoading && filteredProjects.length > 0;
 
   const handleNavClick = (next: string) => {
+    if (next !== "explorar") {
+      searchInputRef.current?.blur();
+    }
     setActiveNav(next);
     if (next === "directos") {
       setActiveType("video");
@@ -307,8 +310,6 @@ export default function VisualesHubPage() {
     if (next === "explorar") {
       setActiveType(null);
       feedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      searchInputRef.current?.focus();
-      searchInputRef.current?.select();
       return;
     }
     if (next === "inicio") {
@@ -317,6 +318,13 @@ export default function VisualesHubPage() {
       return;
     }
     inicioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleNavPointerDown = (next: string) => {
+    if (next !== "explorar") {
+      searchInputRef.current?.blur();
+    }
+    setActiveNav(next);
   };
 
   useEffect(() => {
@@ -562,6 +570,7 @@ export default function VisualesHubPage() {
             <button
               type="button"
               className={activeNav === "inicio" ? "active" : ""}
+              onPointerDown={() => handleNavPointerDown("inicio")}
               onClick={() => handleNavClick("inicio")}
             >
               Inicio
@@ -569,6 +578,7 @@ export default function VisualesHubPage() {
             <button
               type="button"
               className={activeNav === "explorar" ? "active" : ""}
+              onPointerDown={() => handleNavPointerDown("explorar")}
               onClick={() => handleNavClick("explorar")}
             >
               Explorar
@@ -576,6 +586,7 @@ export default function VisualesHubPage() {
             <button
               type="button"
               className={activeNav === "suscripciones" ? "active" : ""}
+              onPointerDown={() => handleNavPointerDown("suscripciones")}
               onClick={() => handleNavClick("suscripciones")}
             >
               Suscripciones
@@ -583,6 +594,7 @@ export default function VisualesHubPage() {
             <button
               type="button"
               className={activeNav === "directos" ? "active" : ""}
+              onPointerDown={() => handleNavPointerDown("directos")}
               onClick={() => handleNavClick("directos")}
             >
               Directos
@@ -590,6 +602,7 @@ export default function VisualesHubPage() {
             <button
               type="button"
               className={activeNav === "historial" ? "active" : ""}
+              onPointerDown={() => handleNavPointerDown("historial")}
               onClick={() => handleNavClick("historial")}
             >
               Historial
