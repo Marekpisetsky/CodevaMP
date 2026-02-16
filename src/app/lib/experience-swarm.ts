@@ -69,8 +69,7 @@ export function useExperienceSwarm() {
       quickLinks: ROOT_BRAND.quickLinks,
       tileRouteMap: {
         ...ROOT_BRAND.homeTileRoutes,
-        // During rollout, audio still points to visuales app until /audio is implemented.
-        audio: APP_ROUTES.visualesApp,
+        audio: APP_ROUTES.audio,
       },
     };
   }, [mode]);

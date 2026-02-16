@@ -9,7 +9,7 @@ export default function HomeExperience() {
   const swarm = useExperienceSwarm();
 
   return (
-    <SiteShell currentPath="/" disableEffects lockScroll className="home-premium-shell">
+    <SiteShell currentPath="/" disableEffects className="home-premium-shell">
       <section id="hero-section" className="scene-panel scene-panel--visual" aria-label="Escena interactiva">
         <ForestScene qualityMode={swarm.mode} routeMap={swarm.tileRouteMap} />
 
@@ -35,6 +35,46 @@ export default function HomeExperience() {
           <Link href="/legal" className="home-trust-shell__cta">
             Ver politicas y terminos
           </Link>
+        </div>
+      </section>
+
+      <section className="home-root-deck" id="intro-section" aria-label="Rutas principales de CodevaMP">
+        <div className="home-root-deck__inner">
+          <header className="home-root-deck__header">
+            <p className="home-root-deck__kicker">CodevaMP raiz</p>
+            <h2>Un solo ecosistema, multiples frentes creativos y tecnicos.</h2>
+            <p>
+              Debajo del planeta consolidamos las rutas clave del estudio para que la exploracion tenga continuidad y no
+              termine en una sola escena.
+            </p>
+          </header>
+
+          <div className="home-root-deck__grid">
+            <Link href="/acerca" className="home-root-deck__card">
+              <span>Acerca</span>
+              <strong>Vision, principios y ritmo del estudio.</strong>
+            </Link>
+            <Link href="/explorar" className="home-root-deck__card">
+              <span>Explorar</span>
+              <strong>Mapa activo de experiencias y laboratorios.</strong>
+            </Link>
+            <Link href="/proyectos" className="home-root-deck__card">
+              <span>Proyectos</span>
+              <strong>Colecciones y convocatorias de colaboracion.</strong>
+            </Link>
+            <Link href="/audio" className="home-root-deck__card">
+              <span>Audio</span>
+              <strong>Nueva unidad para experiencias sonoras interactivas.</strong>
+            </Link>
+            <Link href="/donaciones" className="home-root-deck__card">
+              <span>Donaciones</span>
+              <strong>Modelo de apoyo para sostener desarrollo continuo.</strong>
+            </Link>
+            <Link href="/legal" className="home-root-deck__card">
+              <span>Legal</span>
+              <strong>Marco de seguridad, privacidad y cumplimiento.</strong>
+            </Link>
+          </div>
         </div>
       </section>
     </SiteShell>

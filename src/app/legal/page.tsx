@@ -39,52 +39,64 @@ const compliance = [
 export default function LegalPage() {
   return (
     <SiteShell currentPath="/legal">
-      <header className="space-y-6">
-        <span className="inline-flex items-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-          Legal y confianza
-        </span>
-        <h1 className="text-3xl font-semibold text-white sm:text-4xl">Reglas claras para un laboratorio abierto</h1>
-        <p className="text-sm leading-relaxed text-slate-300 sm:text-base">
-          Queremos construir un espacio seguro para la exploracion creativa. Estas politicas mantienen el cuidado y la
-          transparencia del estudio.
-        </p>
-      </header>
-
-      <section className="mt-12 grid gap-6">
-        <h2 className="text-2xl font-semibold text-white">Documentos principales</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          {legalSections.map((section) => (
-            <div key={section.title} className="border-t border-white/10 pt-6">
-              <h3 className="text-lg font-semibold text-white">{section.title}</h3>
-              <p className="mt-2 text-sm text-slate-300">{section.content}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-12 grid gap-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2 className="text-2xl font-semibold text-white">Compromisos adicionales</h2>
-          <p className="max-w-xl text-sm text-slate-300">
-            Estas pautas complementan las condiciones de uso y se actualizan conforme el laboratorio crece.
+      <div className="root-page">
+        <header className="root-hero">
+          <span className="root-eyebrow">Legal y confianza</span>
+          <h1 className="root-title">Reglas claras para un laboratorio abierto</h1>
+          <p className="root-subtitle">
+            Queremos construir un espacio seguro para la exploracion creativa. Estas politicas mantienen el cuidado y la
+            transparencia del estudio.
           </p>
-        </div>
-        <ul className="space-y-3 text-sm text-slate-300">
-          {compliance.map((item) => (
-            <li key={item.heading} className="border-t border-white/10 pt-6">
-              <h3 className="text-lg font-semibold text-white">{item.heading}</h3>
-              <p className="mt-2 text-sm text-slate-300">{item.detail}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
+        </header>
 
-      <section className="mt-12 grid gap-4">
-        <h2 className="text-2xl font-semibold text-white">Canales oficiales</h2>
-        <p className="text-sm text-slate-300">
-          Puedes escribirnos desde el grupo de WhatsApp o comentar en YouTube para soporte y solicitudes formales.
-        </p>
-      </section>
+        <section className="root-section">
+          <div className="root-section-header">
+            <h2>Documentos principales</h2>
+          </div>
+          <div className="root-grid root-grid--three">
+            {legalSections.map((section) => (
+              <article key={section.title} className="root-card root-card--compact">
+                <h3>{section.title}</h3>
+                <p>{section.content}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="root-section">
+          <div className="root-split">
+            <h2>Compromisos adicionales</h2>
+            <p>
+            Estas pautas complementan las condiciones de uso y se actualizan conforme el laboratorio crece.
+            </p>
+          </div>
+          <ul className="root-list-block">
+            {compliance.map((item) => (
+              <li key={item.heading}>
+                <h3>{item.heading}</h3>
+                <p>{item.detail}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="root-section">
+          <div className="root-split">
+            <div>
+              <h2>Canales oficiales</h2>
+              <p>Puedes escribirnos por WhatsApp o YouTube para soporte y solicitudes formales.</p>
+            </div>
+            <a
+              href="https://chat.whatsapp.com/L8MGmH5dIzYLGpVOTxnHNT"
+              target="_blank"
+              rel="noreferrer"
+              className="root-action-button"
+            >
+              Contactar soporte
+            </a>
+          </div>
+        </section>
+      </div>
     </SiteShell>
   );
 }

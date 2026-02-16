@@ -716,7 +716,6 @@ export default function VisualesHubPage() {
                   style={{ animationDelay: `${Math.min(index * 24, 220)}ms` }}
                   aria-label={`Abrir ${project.title ?? "proyecto"}`}
                   draggable={false}
-                  onDragStart={(event) => event.preventDefault()}
                 >
                   <div
                     className="hub-card__media"
@@ -741,8 +740,6 @@ export default function VisualesHubPage() {
                       }
                     }}
                     onDragStart={(event) => event.preventDefault()}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={(event) => event.preventDefault()}
                   >
                     {project.type === "video" ? (
                       <video
@@ -756,7 +753,6 @@ export default function VisualesHubPage() {
                         controlsList="nodownload noplaybackrate noremoteplayback"
                         tabIndex={-1}
                         draggable={false}
-                        onDragStart={(event) => event.preventDefault()}
                       />
                     ) : (
                       <img
@@ -766,7 +762,6 @@ export default function VisualesHubPage() {
                         fetchPriority={index < 6 ? "high" : "auto"}
                         decoding="async"
                         draggable={false}
-                        onDragStart={(event) => event.preventDefault()}
                       />
                     )}
                   </div>

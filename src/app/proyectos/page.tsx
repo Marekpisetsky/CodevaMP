@@ -47,79 +47,77 @@ const calls = [
 export default function ProyectosPage() {
   return (
     <SiteShell currentPath="/proyectos">
-      <header className="space-y-6">
-        <span className="inline-flex items-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-          Proyectos y colecciones
-        </span>
-        <h1 className="text-3xl font-semibold text-white sm:text-4xl">Colecciones explorables en expansion</h1>
-        <p className="text-sm leading-relaxed text-slate-300 sm:text-base">
-          CodevaMP Studio publica proyectos propios y de otras personas. No es un portafolio, es un archivo vivo de
-          exploraciones interactivas, arte y sistemas en movimiento.
-        </p>
-        <Link
-          href="/explorar"
-          prefetch
-          className="inline-flex items-center gap-2 border border-white/20 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/60"
-        >
-          Ir al laboratorio
-        </Link>
-      </header>
-
-      <section className="mt-12 grid gap-6">
-        <h2 className="text-2xl font-semibold text-white">Colecciones principales</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          {projectCollections.map((category) => (
-            <div key={category.name} className="border-t border-white/10 pt-6">
-              <h3 className="text-lg font-semibold text-white">{category.name}</h3>
-              <p className="mt-2 text-sm text-slate-300">{category.description}</p>
-              <ul className="mt-4 space-y-2 text-sm text-slate-300">
-                {category.initiatives.map((initiative) => (
-                  <li key={initiative.title} className="border-l border-white/10 pl-3">
-                    <span className="font-semibold text-white">{initiative.title}</span>
-                    <p className="text-xs text-slate-300">{initiative.detail}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-12 grid gap-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2 className="text-2xl font-semibold text-white">Convocatorias abiertas</h2>
-          <p className="max-w-xl text-sm text-slate-300">
-            Queremos sumar exploraciones de distintas disciplinas. Comparte tu pieza y la curamos en el archivo vivo.
+      <div className="root-page">
+        <header className="root-hero">
+          <span className="root-eyebrow">Proyectos y colecciones</span>
+          <h1 className="root-title">Colecciones explorables en expansion</h1>
+          <p className="root-subtitle">
+            CodevaMP Studio publica proyectos propios y de otras personas. No es un portafolio, es un archivo vivo de
+            exploraciones interactivas, arte y sistemas en movimiento.
           </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          {calls.map((call) => (
-            <div key={call.title} className="border-t border-white/10 pt-6">
-              <h3 className="text-lg font-semibold text-white">{call.title}</h3>
-              <p className="mt-2 text-sm text-slate-300">{call.detail}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+          <Link href="/explorar" prefetch className="root-action-button">
+            Ir al laboratorio
+          </Link>
+        </header>
 
-      <section className="mt-12 grid gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-semibold text-white">Quieres participar?</h2>
-            <p className="text-sm text-slate-300">
-              Envia tu propuesta y la hacemos parte del universo CodevaMP Studio.
+        <section className="root-section">
+          <div className="root-section-header">
+            <h2>Colecciones principales</h2>
+          </div>
+          <div className="root-grid root-grid--three">
+            {projectCollections.map((category) => (
+              <article key={category.name} className="root-card">
+                <h3>{category.name}</h3>
+                <p>{category.description}</p>
+                <ul className="root-list">
+                  {category.initiatives.map((initiative) => (
+                    <li key={initiative.title}>
+                      <strong>{initiative.title}</strong>
+                      <span>{initiative.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="root-section">
+          <div className="root-split">
+            <h2>Convocatorias abiertas</h2>
+            <p>
+            Queremos sumar exploraciones de distintas disciplinas. Comparte tu pieza y la curamos en el archivo vivo.
             </p>
           </div>
-          <a
-            href="https://chat.whatsapp.com/L8MGmH5dIzYLGpVOTxnHNT"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 border border-white/20 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/60"
-          >
-            Compartir proyecto
-          </a>
-        </div>
-      </section>
+          <div className="root-grid root-grid--three">
+            {calls.map((call) => (
+              <article key={call.title} className="root-card root-card--compact">
+                <h3>{call.title}</h3>
+                <p>{call.detail}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="root-section">
+          <div className="root-split">
+            <div>
+              <h2>Quieres participar?</h2>
+              <p>
+              Envia tu propuesta y la hacemos parte del universo CodevaMP Studio.
+              </p>
+            </div>
+            <a
+              href="https://chat.whatsapp.com/L8MGmH5dIzYLGpVOTxnHNT"
+              target="_blank"
+              rel="noreferrer"
+              className="root-action-button"
+            >
+              Compartir proyecto
+            </a>
+          </div>
+        </section>
+      </div>
     </SiteShell>
   );
 }

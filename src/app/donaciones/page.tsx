@@ -47,73 +47,84 @@ const transparency = [
 export default function DonacionesPage() {
   return (
     <SiteShell currentPath="/donaciones">
-      <header className="space-y-6">
-        <span className="inline-flex items-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-          Apoyo al laboratorio
-        </span>
-        <h1 className="text-3xl font-semibold text-white sm:text-4xl">Cada aporte abre nuevas exploraciones</h1>
-        <p className="text-sm leading-relaxed text-slate-300 sm:text-base">
-          Tu apoyo sostiene la creacion de sistemas interactivos, piezas artisticas y colecciones abiertas. Todo se invierte
-          en el crecimiento del universo CodevaMP Studio.
-        </p>
-      </header>
+      <div className="root-page">
+        <header className="root-hero">
+          <span className="root-eyebrow">Apoyo al laboratorio</span>
+          <h1 className="root-title">Cada aporte abre nuevas exploraciones</h1>
+          <p className="root-subtitle">
+            Tu apoyo sostiene la creacion de sistemas interactivos, piezas artisticas y colecciones abiertas. Todo se
+            invierte en el crecimiento del universo CodevaMP Studio.
+          </p>
+        </header>
 
-      <section className="mt-12 grid gap-6">
-        <h2 className="text-2xl font-semibold text-white">Formas de apoyar</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          {donationOptions.map((option) => (
-            <a
-              key={option.name}
-              href={option.link}
-              target="_blank"
-              rel="noreferrer"
-              className="group flex h-full flex-col justify-between border-t border-white/10 pt-6 transition hover:border-white/40"
-            >
-              <div>
-                <h3 className="text-lg font-semibold text-white">{option.name}</h3>
-                <p className="mt-2 text-sm text-slate-300">{option.description}</p>
-                <ul className="mt-4 space-y-2 text-xs text-slate-300">
+        <section className="root-section">
+          <div className="root-section-header">
+            <h2>Formas de apoyar</h2>
+          </div>
+          <div className="root-grid root-grid--three">
+            {donationOptions.map((option) => (
+              <a
+                key={option.name}
+                href={option.link}
+                target="_blank"
+                rel="noreferrer"
+                className="root-card root-card--link"
+              >
+                <h3>{option.name}</h3>
+                <p>{option.description}</p>
+                <ul className="root-list">
                   {option.perks.map((perk) => (
-                    <li key={perk} className="border-l border-white/10 pl-3">
-                      - {perk}
+                    <li key={perk}>
+                      <strong>Incluye</strong>
+                      <span>{perk}</span>
                     </li>
                   ))}
                 </ul>
-              </div>
-              <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-emerald-200 transition group-hover:translate-x-1">
-                Apoyar ahora -
-              </span>
-            </a>
-          ))}
-        </div>
-      </section>
+                <span className="root-inline-accent">Apoyar ahora</span>
+              </a>
+            ))}
+          </div>
+        </section>
 
-      <section className="mt-12 grid gap-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2 className="text-2xl font-semibold text-white">Transparencia</h2>
-          <p className="max-w-xl text-sm text-slate-300">
+        <section className="root-section">
+          <div className="root-split">
+            <h2>Transparencia</h2>
+            <p>
             Compartimos como usamos los aportes para mantener el laboratorio activo y abierto.
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {transparency.map((item) => (
-            <div key={item.label} className="border-t border-white/10 pt-6">
-              <div className="flex items-baseline justify-between gap-2">
-                <h3 className="text-lg font-semibold text-white">{item.label}</h3>
-                <span className="text-sm font-semibold text-emerald-200">{item.percentage}</span>
-              </div>
-              <p className="mt-2 text-sm text-slate-300">{item.detail}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+            </p>
+          </div>
+          <div className="root-grid root-grid--two">
+            {transparency.map((item) => (
+              <article key={item.label} className="root-card root-card--compact">
+                <div className="root-card-head">
+                  <h3>{item.label}</h3>
+                  <span className="root-inline-accent">{item.percentage}</span>
+                </div>
+                <p>{item.detail}</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
-      <section className="mt-12 grid gap-4">
-        <h2 className="text-2xl font-semibold text-white">Otra forma de apoyar</h2>
-        <p className="text-sm text-slate-300">
-          Comparte proyectos, sugiere piezas o difunde el laboratorio. La energia colectiva mantiene vivo el universo.
-        </p>
-      </section>
+        <section className="root-section">
+          <div className="root-split">
+            <div>
+              <h2>Otra forma de apoyar</h2>
+              <p>
+                Comparte proyectos, sugiere piezas o difunde el laboratorio. La energia colectiva mantiene vivo el universo.
+              </p>
+            </div>
+            <a
+              href="https://chat.whatsapp.com/L8MGmH5dIzYLGpVOTxnHNT"
+              target="_blank"
+              rel="noreferrer"
+              className="root-action-button"
+            >
+              Unirme a la comunidad
+            </a>
+          </div>
+        </section>
+      </div>
     </SiteShell>
   );
 }
