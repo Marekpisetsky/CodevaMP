@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+# CodevaMP secret safety gate.
+# Blocks accidental public pushes unless explicitly enabled per command.
+
+if [ "$CODEVAMP_ALLOW_PUSH" != "1" ]; then
+  echo "[safe-push] Push blocked."
+  echo "[safe-push] This repository is in private mode."
+  echo "[safe-push] To push intentionally, run:"
+  echo "  CODEVAMP_ALLOW_PUSH=1 git push"
+  exit 1
+fi
+
+# Lightweight secret pattern scan on tracked files before push.
+if command -v rg >/dev/null 2>&1; then
+  PATTERN='(SUPABASE_SERVICE_ROLE_KEY|OPENAI_API_KEY|AUTONOMY_API_TOKEN=|sb_secret_|sk-[A-Za-z0-9]{20,})'
+  if git ls-files | rg -N -v '(^|/)\.env(\..*)?$' | xargs rg -n -I -e "$PATTERN" >/dev/null 2>&1; then
+    echo "[safe-push] Potential secret detected in tracked files."
+    echo "[safe-push] Remove or rotate secrets before push."
+    exit 1
+  fi
+fi
+
+echo "[safe-push] Push allowed."
+exit 0
+

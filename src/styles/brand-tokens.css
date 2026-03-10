@@ -1,0 +1,31 @@
+:root {
+  --brand-accent: #ff5a1f;
+  --brand-accent-strong: #ff3d00;
+  --brand-surface: #060606;
+  --brand-text: #f8fafc;
+}
+
+[data-brand="codevamp"] {
+  --brand-accent: #ff5a1f;
+  --brand-accent-strong: #ff3d00;
+  --brand-surface: #060606;
+  --brand-text: #f8fafc;
+}
+
+[data-brand="visuales"] {
+  --brand-accent: #ff5a1f;
+  --brand-accent-strong: #ff3d00;
+  --brand-surface: #121215;
+  --brand-text: #f7f8fa;
+  --visuales-accent: #ff5a1f;
+  --visuales-accent-dark: #c45524;
+}
+
+[data-brand="dev"] {
+  --brand-accent: #22c55e;
+  --brand-accent-strong: #16a34a;
+  --brand-surface: #040605;
+  --brand-text: #f3f4f6;
+  --ux-accent-a: #16a34a;
+  --ux-accent-b: #22c55e;
+}
