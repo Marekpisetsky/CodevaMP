@@ -1,4 +1,4 @@
-export type BrandId = "codevamp" | "dev" | "visuales" | "audio" | "prototipos";
+export type BrandId = "codevamp" | "dev" | "visuales" | "audio";
 
 export type BrandPalette = {
   primary: string;

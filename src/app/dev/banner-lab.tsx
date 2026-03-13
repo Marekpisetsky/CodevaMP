@@ -91,29 +91,33 @@ export default function BannerLab({ isEs, metrics, kicker, initialTitle, initial
   const [codeError, setCodeError] = useState<string | null>(null);
   const [cursor, setCursor] = useState({ x: 50, y: 24 });
   const [showControls, setShowControls] = useState(false);
+  const [themeResolved, setThemeResolved] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw) as { theme?: unknown; cssCode?: unknown; mode?: unknown };
-      if (parsed.theme) {
-        const parsedTheme = tryParseTheme(JSON.stringify(parsed.theme));
-        if (parsedTheme) {
-          setTheme(parsedTheme);
-          setThemeCode(JSON.stringify(parsedTheme, null, 2));
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as { theme?: unknown; cssCode?: unknown; mode?: unknown };
+        if (parsed.theme) {
+          const parsedTheme = tryParseTheme(JSON.stringify(parsed.theme));
+          if (parsedTheme) {
+            setTheme(parsedTheme);
+            setThemeCode(JSON.stringify(parsedTheme, null, 2));
+          }
         }
+        if (typeof parsed.cssCode === "string") {
+          setCssCode(parsed.cssCode);
+        }
+        if (parsed.mode === "easy" || parsed.mode === "pro") {
+          setMode(parsed.mode);
+        }
+      } catch {
+        // ignore invalid stored payload
       }
-      if (typeof parsed.cssCode === "string") {
-        setCssCode(parsed.cssCode);
-      }
-      if (parsed.mode === "easy" || parsed.mode === "pro") {
-        setMode(parsed.mode);
-      }
-    } catch {
-      // ignore invalid stored payload
     }
+    const complete = window.requestAnimationFrame(() => setThemeResolved(true));
+    return () => window.cancelAnimationFrame(complete);
   }, []);
 
   useEffect(() => {
@@ -207,7 +211,7 @@ export default function BannerLab({ isEs, metrics, kicker, initialTitle, initial
   return (
     <section className="dev-banner-lab" aria-label="Dev banner lab">
       <style>{cssCode}</style>
-      <div className={`dev-banner-lab__preview${theme.animate ? " is-animated" : ""}${theme.showGrid ? " has-grid" : ""}`} style={previewStyle}
+      <div className={`dev-banner-lab__preview${theme.animate ? " is-animated" : ""}${theme.showGrid ? " has-grid" : ""}${themeResolved ? " is-resolved" : " is-resolving-theme"}`} style={previewStyle}
         onPointerMove={(event) => {
           const box = event.currentTarget.getBoundingClientRect();
           const x = ((event.clientX - box.left) / box.width) * 100;

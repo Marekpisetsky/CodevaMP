@@ -27,8 +27,7 @@ export default function HomeExperience() {
   const accountLabel = t("account");
   const navDescriptions: Record<string, string> = {
     "/explorar": tx("Mapa interactivo del laboratorio", "Interactive lab map"),
-    "/proyectos": tx("Archivo y convocatorias abiertas", "Archive and open calls"),
-    "/dev": tx("Entrada a herramientas y prototipos", "Entry to tools and prototypes"),
+    "/dev": tx("Herramientas, studio y productos publicados", "Tools, studio, and published products"),
     "/visuales": tx("Comunidad y publicaciones visuales", "Community and visual publishing"),
     "/dashboard": tx("Resumen ejecutivo entre subempresas", "Executive summary across subcompanies"),
     "/estrategia": tx("Plan de valor, crecimiento y sostenibilidad", "Value, growth, and sustainability plan"),
@@ -78,7 +77,7 @@ export default function HomeExperience() {
           <div className="home-swarm-nav__list">
             {swarm.quickLinks.map((item) => (
               <Link
-                key={item.href}
+                key={`${item.href}-${item.label}`}
                 href={item.href}
                 className="home-swarm-nav__link"
                 data-desc={navDescriptions[item.href] ?? tx("Ruta principal", "Main route")}
@@ -145,9 +144,9 @@ export default function HomeExperience() {
               <span>{tx("Explorar", "Explore")}</span>
               <strong>{tx("Mapa activo de experiencias y laboratorios.", "Active map of experiences and labs.")}</strong>
             </Link>
-            <Link href="/proyectos" className="home-root-deck__card">
-              <span>{tx("Proyectos", "Projects")}</span>
-              <strong>{tx("Colecciones y convocatorias de colaboracion.", "Collections and collaboration calls.")}</strong>
+            <Link href="/dev" className="home-root-deck__card">
+              <span>Dev</span>
+              <strong>{tx("Productos, studio y proyectos publicados.", "Products, studio, and published projects.")}</strong>
             </Link>
             <Link href="/audio" className="home-root-deck__card">
               <span>Audio</span>

@@ -3,11 +3,10 @@ import type { BrandId } from "@/brands";
 export const APP_ROUTES = {
   home: "/",
   explorar: "/explorar",
-  proyectos: "/proyectos",
+  proyectos: "/dev",
   dev: "/dev",
   dashboard: "/dashboard",
   estrategia: "/estrategia",
-  prototipos: "/dev",
   legal: "/legal",
   donaciones: "/donaciones",
   visuales: "/visuales",
@@ -25,9 +24,6 @@ export function getBrandBasePath(brandId: BrandId): string {
   }
   if (brandId === "audio") {
     return APP_ROUTES.audio;
-  }
-  if (brandId === "prototipos") {
-    return APP_ROUTES.dev;
   }
   return APP_ROUTES.home;
 }

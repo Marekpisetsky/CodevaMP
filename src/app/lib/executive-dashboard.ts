@@ -21,19 +21,13 @@ type DevProject = {
   created_at: string | null;
 };
 
-type Prototype = {
-  id: string;
-  created_by: string | null;
-  created_at: string | null;
-};
-
 type Membership = {
   product_slug: string | null;
   user_id: string | null;
 };
 
 export type BrandExecutiveSnapshot = {
-  brandId: "dev" | "visuales" | "prototipos";
+  brandId: "dev" | "visuales";
   brandName: string;
   tagline: string;
   description: string;
@@ -96,24 +90,18 @@ export async function fetchExecutiveDashboardData(): Promise<ExecutiveDashboardD
     ? devSupabase.from("dev_projects").select("id, created_by, looking_for, created_at").limit(2000)
     : Promise.resolve({ data: null, error: { message: "dev supabase missing" } });
 
-  const prototypesPromise = supabase
-    ? supabase.from("prototypes").select("id, created_by, created_at").limit(2000)
-    : Promise.resolve({ data: null, error: { message: "supabase missing" } });
-
   const membershipsPromise = supabase
-    ? supabase.from("product_memberships").select("product_slug, user_id").in("product_slug", ["dev", "visuales", "prototipos"]).limit(5000)
+    ? supabase.from("product_memberships").select("product_slug, user_id").in("product_slug", ["dev", "visuales"]).limit(5000)
     : Promise.resolve({ data: null, error: { message: "supabase missing" } });
 
-  const [visualesResult, devResult, prototypesResult, membershipsResult] = await Promise.all([
+  const [visualesResult, devResult, membershipsResult] = await Promise.all([
     visualesPromise,
     devPromise,
-    prototypesPromise,
     membershipsPromise,
   ]);
 
   const visualesProjects = (visualesResult.data as VisualesProject[] | null) ?? [];
   const devProjects = (devResult.data as DevProject[] | null) ?? [];
-  const prototypes = (prototypesResult.data as Prototype[] | null) ?? [];
 
   let visualesViews = 0;
   if (supabase && visualesProjects.length > 0) {
@@ -135,21 +123,15 @@ export async function fetchExecutiveDashboardData(): Promise<ExecutiveDashboardD
   const devAudience = membershipsAvailable
     ? membershipIndex.get("dev")?.size ?? 0
     : uniqueCount(devProjects.map((row) => row.created_by));
-  const prototiposAudience = membershipsAvailable
-    ? membershipIndex.get("prototipos")?.size ?? 0
-    : uniqueCount(prototypes.map((row) => row.created_by));
 
   const devContributors = uniqueCount(devProjects.map((row) => row.created_by));
   const visualesContributors = uniqueCount(visualesProjects.map((row) => row.user_id));
-  const prototiposContributors = uniqueCount(prototypes.map((row) => row.created_by));
 
   const devRecent = devProjects.filter((row) => isRecent(row.created_at, cutoff)).length;
   const visualesRecent = visualesProjects.filter((row) => isRecent(row.created_at, cutoff)).length;
-  const prototiposRecent = prototypes.filter((row) => isRecent(row.created_at, cutoff)).length;
 
   const devBrand = getBrandConfig("dev");
   const visualesBrand = getBrandConfig("visuales");
-  const prototiposBrand = getBrandConfig("prototipos");
 
   const snapshots: BrandExecutiveSnapshot[] = [
     {
@@ -186,24 +168,6 @@ export async function fetchExecutiveDashboardData(): Promise<ExecutiveDashboardD
         publishedAssets: visualesProjects.length,
         activeContributors: visualesContributors,
         recentActivity30d: visualesRecent,
-      },
-    },
-    {
-      brandId: "prototipos",
-      brandName: prototiposBrand.name,
-      tagline: prototiposBrand.tagline,
-      description: prototiposBrand.description,
-      funnel: {
-        discover: prototiposAudience,
-        publish: prototypes.length,
-        collaborate: prototiposContributors,
-        retain: prototiposRecent,
-      },
-      comparables: {
-        audience: prototiposAudience,
-        publishedAssets: prototypes.length,
-        activeContributors: prototiposContributors,
-        recentActivity30d: prototiposRecent,
       },
     },
   ];

@@ -64,7 +64,7 @@ export default function AcercaPage() {
           <div className="story-arc" aria-label="Recorrido narrativo principal">
             <Link href="/acerca" prefetch className="story-arc__item is-active">1. Acerca</Link>
             <Link href="/explorar" prefetch className="story-arc__item">2. Explorar</Link>
-            <Link href="/proyectos" prefetch className="story-arc__item">3. Proyectos</Link>
+            <Link href="/dev" prefetch className="story-arc__item">3. Dev</Link>
           </div>
           <div className="story-intro-strip" aria-label="Resumen rapido del estudio">
             <article className="story-intro-item">

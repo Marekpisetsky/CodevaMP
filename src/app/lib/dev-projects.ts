@@ -6,6 +6,7 @@ export type DevProject = {
   repoUrl: string;
   demoUrl: string;
   lookingFor: string;
+  linkedIdeaIds: string[];
   status: "idea" | "building" | "live";
   author: string;
   updated: string;
@@ -38,8 +39,9 @@ export function mapDevProjectRow(row: DevProjectRow): DevProject {
     repoUrl: row.repo_url ?? "",
     demoUrl: row.demo_url ?? "",
     lookingFor: row.looking_for ?? "Open",
+    linkedIdeaIds: [],
     status: row.status,
-    author: row.author_handle ?? "@dev",
+    author: row.author_handle ?? "",
     updated: new Date(row.created_at).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",

@@ -1,16 +1,16 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
+import "./studio.css";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import SiteShell from "../../../components/site-shell";
 import {
   fetchProjectStatsMap,
   formatCompactMetric,
-  formatWatchHours,
   getProjectStats,
-  recordProjectShare,
   type ProjectStats,
 } from "../../../lib/project-stats";
 import { ensureExplorerMembership } from "../../../lib/product-memberships";
@@ -71,6 +71,40 @@ const defaultTermsAcceptance: StudioTermsAcceptance = {
 
 const isStudioSection = (value: string | null): value is StudioSection =>
   !!value && STUDIO_SECTIONS.includes(value as StudioSection);
+
+function StudioSectionLoading({ text }: { text: string }) {
+  return <p className="studio-projects__hint">{text}</p>;
+}
+
+const StudioProjectsPanel = dynamic(
+  () => import("./studio-projects-panel").then((mod) => mod.StudioProjectsPanel),
+  { ssr: false, loading: () => <StudioSectionLoading text="Cargando proyectos..." /> }
+);
+
+const StudioProjectDrawer = dynamic(
+  () => import("./studio-project-drawer").then((mod) => mod.StudioProjectDrawer),
+  { ssr: false, loading: () => <StudioSectionLoading text="Abriendo proyecto..." /> }
+);
+
+const StudioCustomizePanel = dynamic(
+  () => import("./studio-customize-panel").then((mod) => mod.StudioCustomizePanel),
+  { ssr: false, loading: () => <StudioSectionLoading text="Cargando ajustes..." /> }
+);
+
+const StudioPreferencesPanel = dynamic(
+  () => import("./studio-preferences-panel").then((mod) => mod.StudioPreferencesPanel),
+  { ssr: false, loading: () => <StudioSectionLoading text="Cargando preferencias..." /> }
+);
+
+const StudioPayoutsPanel = dynamic(
+  () => import("./studio-payouts-panel").then((mod) => mod.StudioPayoutsPanel),
+  { ssr: false, loading: () => <StudioSectionLoading text="Cargando pagos..." /> }
+);
+
+const StudioAgreementsPanel = dynamic(
+  () => import("./studio-agreements-panel").then((mod) => mod.StudioAgreementsPanel),
+  { ssr: false, loading: () => <StudioSectionLoading text="Cargando contrato..." /> }
+);
 
 export default function VisualesEstudioPage() {
   const router = useRouter();
@@ -1118,7 +1152,7 @@ export default function VisualesEstudioPage() {
     <SiteShell
       currentPath="/visuales"
       disableEffects
-      className="visuales-cabina cabina-dashboard-page"
+      className="visuales-studio studio-dashboard-page"
       brandHref="/visuales"
     >
       <div className="hub-topbar">
@@ -1256,13 +1290,13 @@ export default function VisualesEstudioPage() {
         </div>
       </div>
       {notice ? (
-        <div className={`cabina-notice${notice.tone === "warn" ? " is-warn" : ""}`} role="status" aria-live="polite">
+        <div className={`studio-notice${notice.tone === "warn" ? " is-warn" : ""}`} role="status" aria-live="polite">
           {notice.text}
         </div>
       ) : null}
-      <main className="cabina-dashboard">
-        <section className="cabina-dashboard__content">
-          <aside className="cabina-dashboard__nav">
+      <main className="studio-dashboard">
+        <section className="studio-dashboard__content">
+          <aside className="studio-dashboard__nav">
             <h3>Secciones</h3>
             <button
               type="button"
@@ -1307,9 +1341,9 @@ export default function VisualesEstudioPage() {
               Personalizar
             </button>
           </aside>
-          <div className="cabina-dashboard__main">
+          <div className="studio-dashboard__main">
             {currentSection.title || currentSection.subtitle ? (
-              <div className="cabina-dashboard__section-head">
+              <div className="studio-dashboard__section-head">
                 {currentSection.title || currentSection.subtitle ? (
                   <div>
                     {currentSection.title ? <h2>{currentSection.title}</h2> : null}
@@ -1319,9 +1353,9 @@ export default function VisualesEstudioPage() {
               </div>
             ) : null}
             {activeSection === "subidas" ? (
-              <section className="cabina-projects">
+              <section className="studio-projects">
                 <div
-                  className={`cabina-dropzone${dragActive ? " is-active" : ""}`}
+                  className={`studio-dropzone${dragActive ? " is-active" : ""}`}
                   onDragOver={(event) => {
                     event.preventDefault();
                     setDragActive(true);
@@ -1355,10 +1389,10 @@ export default function VisualesEstudioPage() {
                     <h3>Arrastra tu archivo aqui</h3>
                     <p>O haz click para seleccionar un archivo.</p>
                     {uploadPreview ? (
-                      <div className="cabina-dropzone__preview">
+                      <div className="studio-dropzone__preview">
                         {uploadType === "video" ? (
                           <>
-                            {!videoReady ? <div className="cabina-dropzone__loading">Cargando vista previa...</div> : null}
+                            {!videoReady ? <div className="studio-dropzone__loading">Cargando vista previa...</div> : null}
                             <video
                               key={uploadPreview}
                               src={uploadPreview}
@@ -1378,11 +1412,11 @@ export default function VisualesEstudioPage() {
                         )}
                       </div>
                     ) : null}
-                    {uploadFile ? <p className="cabina-dropzone__file">{uploadFile.name}</p> : null}
+                    {uploadFile ? <p className="studio-dropzone__file">{uploadFile.name}</p> : null}
                   </div>
                 </div>
                 {uploadFile ? (
-                  <form className="cabina-upload-form" onSubmit={handleUpload}>
+                  <form className="studio-upload-form" onSubmit={handleUpload}>
                     <label>
                       Titulo
                       <input value={uploadTitle} onChange={(event) => setUploadTitle(event.target.value)} required />
@@ -1413,26 +1447,26 @@ export default function VisualesEstudioPage() {
                       </select>
                     </label>
                     {uploadProgress !== null ? (
-                      <div className="cabina-upload-progress">
+                      <div className="studio-upload-progress">
                         <div>
                           <span>Subiendo archivo...</span>
                           <span>{uploadProgress}%</span>
                         </div>
-                        <div className="cabina-upload-progress__bar">
+                        <div className="studio-upload-progress__bar">
                           <div style={{ width: `${uploadProgress}%` }} />
                         </div>
                       </div>
                     ) : null}
-                    {uploadError ? <p className="cabina-settings__message">{uploadError}</p> : null}
-                    <button type="submit" className="cabina-dashboard__action" disabled={uploading || !uploadFile}>
+                    {uploadError ? <p className="studio-settings__message">{uploadError}</p> : null}
+                    <button type="submit" className="studio-dashboard__action" disabled={uploading || !uploadFile}>
                       {uploading ? "Subiendo..." : "Publicar"}
                     </button>
                   </form>
                 ) : (
-                  <p className="cabina-projects__hint">{currentSection.empty}</p>
+                  <p className="studio-projects__hint">{currentSection.empty}</p>
                 )}
                 {uploadError && !uploadFile ? (
-                  <p className="cabina-settings__message">{uploadError}</p>
+                  <p className="studio-settings__message">{uploadError}</p>
                 ) : null}
               </section>
             ) : null}
@@ -1442,776 +1476,127 @@ export default function VisualesEstudioPage() {
             activeSection !== "acuerdos" &&
             activeSection !== "personalizar" &&
             activeSection !== "preferencias" ? (
-              <div className="cabina-projects-empty">
+              <div className="studio-projects-empty">
                 <p>{currentSection.empty}</p>
               </div>
             ) : null}
             {activeSection === "proyectos" ? (
-              <section className="cabina-projects__list">
-                <div className="cabina-projects__header">
-                  <div className="cabina-projects__toolbar">
-                    <input
-                      type="search"
-                      placeholder={tx("Filtrar proyectos por titulo, tipo o descripcion...", "Filter projects by title, type, or description...")}
-                      value={projectSearch}
-                      onChange={(event) => setProjectSearch(event.target.value)}
-                      aria-label={tx("Filtrar proyectos", "Filter projects")}
-                    />
-                    <select
-                      value={projectSort}
-                      onChange={(event) => setProjectSort(event.target.value as StudioSort)}
-                      aria-label={tx("Ordenar proyectos", "Sort projects")}
-                    >
-                      <option value="newest">{tx("Mas recientes", "Newest")}</option>
-                      <option value="oldest">{tx("Mas antiguos", "Oldest")}</option>
-                      <option value="title-az">{tx("Titulo A-Z", "Title A-Z")}</option>
-                      <option value="title-za">{tx("Titulo Z-A", "Title Z-A")}</option>
-                    </select>
-                  </div>
-                  <span>{visibleProjects.length} {tx("resultado(s)", "result(s)")}</span>
-                  {projectsLoading ? <span>{tx("Cargando...", "Loading...")}</span> : null}
-                </div>
-                {visibleProjects.length === 0 && !projectsLoading ? (
-                  hasProjectSearch ? (
-                    <p className="cabina-projects__hint">
-                      No encontramos proyectos con &quot;{projectSearch.trim()}&quot;.
-                    </p>
-                  ) : (
-                  <p className="cabina-projects__hint">Aun no has publicado proyectos.</p>
-                  )
-                ) : (
-                  ["imagen", "video", "animacion", "interactivo", "otro"].map((category) => {
-                    const items = visibleProjects.filter((project) => (project.type ?? "otro") === category);
-                    if (!items.length) {
-                      return null;
-                    }
-                    return (
-                      <div key={category} className="cabina-projects__category">
-                        <h4>{category.charAt(0).toUpperCase() + category.slice(1)}</h4>
-                        <div className={`cabina-projects__grid${preferences.compactProjectGrid ? " is-compact" : ""}`}>
-                          {items.map((project) => (
-                            <article
-                              key={project.id}
-                              className="cabina-projects__card"
-                              onClick={() => setSelectedProject(project)}
-                            >
-                              <button
-                                type="button"
-                                className="cabina-projects__card-hitbox"
-                                aria-label={tx("Abrir detalles del proyecto", "Open project details")}
-                                onClick={() => setSelectedProject(project)}
-                              />
-                              <div className="cabina-projects__media" onClick={() => setSelectedProject(project)}>
-                                {(() => {
-                                  const mediaUrl = resolveMediaUrl(project.media_url);
-                                  if (project.type === "video" && mediaUrl) {
-                                    return (
-                                      <video
-                                        src={mediaUrl}
-                                        muted
-                                        playsInline
-                                        autoPlay={preferences.autoplayPreview}
-                                        loop={preferences.autoplayPreview}
-                                      />
-                                    );
-                                  }
-                                  if (mediaUrl) {
-                                    return <img src={mediaUrl} alt={project.title ?? tx("Proyecto", "Project")} />;
-                                  }
-                                  return <div className="cabina-projects__hint">{tx("Sin media", "No media")}</div>;
-                                })()}
-                              </div>
-                              <div className="cabina-projects__meta" onClick={() => setSelectedProject(project)}>
-                                <h5>{project.title ?? tx("Proyecto sin titulo", "Untitled project")}</h5>
-                                <p>{project.description ?? tx("Sin descripcion", "No description")}</p>
-                              </div>
-                            </article>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </section>
+              <StudioProjectsPanel
+                tx={tx}
+                visibleProjects={visibleProjects}
+                projectSearch={projectSearch}
+                setProjectSearch={setProjectSearch}
+                projectSort={projectSort}
+                setProjectSort={setProjectSort}
+                projectsLoading={projectsLoading}
+                hasProjectSearch={hasProjectSearch}
+                compactProjectGrid={preferences.compactProjectGrid}
+                autoplayPreview={preferences.autoplayPreview}
+                onSelectProject={setSelectedProject}
+              />
             ) : null}
             {activeSection === "pagos" ? (
-              <section className="cabina-settings">
-                <div className="cabina-settings__card">
-                  <div className="cabina-settings__header">
-                    <h3>Resumen de pagos</h3>
-                    <p>Estimacion basada en rendimiento de tus proyectos publicados.</p>
-                  </div>
-                  {!wantsMonetization ? (
-                    <div className="cabina-contract-block">
-                      <p>La monetizacion esta desactivada. Activala en Preferencias solo si quieres cobrar por tu contenido.</p>
-                      <button
-                        type="button"
-                        className="cabina-dashboard__action cabina-dashboard__action--ghost"
-                        onClick={() => setActiveSection("preferencias")}
-                      >
-                        Ir a Preferencias
-                      </button>
-                    </div>
-                  ) : !isTermsAccepted ? (
-                    <div className="cabina-contract-block">
-                      <p>Para activar pagos, primero acepta el contrato en la seccion Contrato.</p>
-                      <button
-                        type="button"
-                        className="cabina-dashboard__action cabina-dashboard__action--ghost"
-                        onClick={() => setActiveSection("acuerdos")}
-                      >
-                        Ir a Contrato
-                      </button>
-                    </div>
-                  ) : null}
-                  {wantsMonetization && isTermsAccepted ? (
-                    <>
-                  <div className="cabina-payout-cards">
-                    <article>
-                      <span>Disponible</span>
-                      <strong>US$ {payoutSummary.available.toFixed(2)}</strong>
-                    </article>
-                    <article>
-                      <span>Pendiente</span>
-                      <strong>US$ {payoutSummary.pending.toFixed(2)}</strong>
-                    </article>
-                    <article>
-                      <span>Total estimado</span>
-                      <strong>US$ {payoutSummary.gross.toFixed(2)}</strong>
-                    </article>
-                  </div>
-                  <div className="cabina-settings__grid">
-                    <label className="cabina-settings__field">
-                      <span>Metodo de cobro</span>
-                      <select
-                        value={payoutSettings.method}
-                        disabled={!isOwner}
-                        onChange={(event) =>
-                          setPayoutSettings((prev) => ({
-                            ...prev,
-                            method: event.target.value as StudioPayoutMethod,
-                          }))
-                        }
-                      >
-                        <option value="paypal">PayPal</option>
-                        <option value="bank">Transferencia bancaria</option>
-                        <option value="crypto">Crypto (USDT)</option>
-                      </select>
-                    </label>
-                    <label className="cabina-settings__field">
-                      <span>Destino</span>
-                      <input
-                        value={payoutSettings.destination}
-                        disabled={!isOwner}
-                        placeholder={tx("correo, IBAN o wallet", "email, IBAN, or wallet")}
-                        onChange={(event) =>
-                          setPayoutSettings((prev) => ({ ...prev, destination: event.target.value }))
-                        }
-                      />
-                    </label>
-                    <label className="cabina-settings__field">
-                      <span>Minimo para retiro (USD)</span>
-                      <input
-                        type="number"
-                        min={10}
-                        max={10000}
-                        value={payoutSettings.minPayout}
-                        disabled={!isOwner}
-                        onChange={(event) =>
-                          setPayoutSettings((prev) => ({
-                            ...prev,
-                            minPayout: Number(event.target.value || defaultPayoutSettings.minPayout),
-                          }))
-                        }
-                      />
-                    </label>
-                  </div>
-                  <div className="cabina-payout-actions">
-                    <button
-                      type="button"
-                      className="cabina-dashboard__action"
-                      onClick={handleSavePayoutSettings}
-                      disabled={!isOwner || payoutSaving}
-                    >
-                      {payoutSaving ? "Guardando..." : "Guardar configuracion"}
-                    </button>
-                    <button
-                      type="button"
-                      className="cabina-dashboard__action cabina-dashboard__action--ghost"
-                      disabled={!isOwner || payoutSummary.available < payoutSettings.minPayout}
-                      onClick={() => {
-                        if (payoutSummary.available < payoutSettings.minPayout) {
-                          showNotice("warn", "Aun no llegas al minimo de retiro.");
-                          return;
-                        }
-                        showNotice("ok", "Solicitud de retiro registrada.");
-                      }}
-                    >
-                      Solicitar retiro
-                    </button>
-                  </div>
-                  <div className="cabina-payout-table">
-                    <div className="cabina-payout-table__head">
-                      <strong>Proyecto</strong>
-                      <strong>Vistas</strong>
-                      <strong>Interacciones</strong>
-                      <strong>Estimado</strong>
-                    </div>
-                    {payoutRows.length === 0 ? (
-                      <p className="cabina-projects__hint">Publica proyectos para ver estimaciones de pago.</p>
-                    ) : (
-                      payoutRows.slice(0, 8).map((row) => (
-                        <div key={row.id} className="cabina-payout-table__row">
-                          <span>{row.title}</span>
-                          <span>{formatCompactMetric(row.views)}</span>
-                          <span>{formatCompactMetric(row.likes + row.shares)}</span>
-                          <span>US$ {row.estimate.toFixed(2)}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                    </>
-                  ) : null}
-                </div>
-              </section>
+              <StudioPayoutsPanel
+                tx={tx}
+                wantsMonetization={wantsMonetization}
+                isTermsAccepted={isTermsAccepted}
+                setActiveSection={setActiveSection}
+                payoutSummary={payoutSummary}
+                payoutSettings={payoutSettings}
+                setPayoutSettings={setPayoutSettings}
+                isOwner={isOwner}
+                payoutSaving={payoutSaving}
+                handleSavePayoutSettings={handleSavePayoutSettings}
+                showNotice={showNotice}
+                payoutRows={payoutRows}
+                formatCompactMetric={formatCompactMetric}
+                defaultMinPayout={defaultPayoutSettings.minPayout}
+              />
             ) : null}
             {activeSection === "acuerdos" ? (
-              <section className="cabina-settings">
-                <div className="cabina-settings__card">
-                  <div className="cabina-settings__header">
-                    <h3>Contrato de uso y pagos</h3>
-                    <p>Este contrato solo aplica cuando decides monetizar contenido.</p>
-                  </div>
-                  {!wantsMonetization ? (
-                    <div className="cabina-contract-block">
-                      <p>
-                        Este contrato solo se aplica cuando monetizas. Si solo publicas sin cobrar, no necesitas aceptarlo.
-                      </p>
-                      <button
-                        type="button"
-                        className="cabina-dashboard__action cabina-dashboard__action--ghost"
-                        onClick={() => setActiveSection("preferencias")}
-                      >
-                        Configurar en Preferencias
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="cabina-contract">
-                        <h4>Condiciones principales</h4>
-                        <ul>
-                          <li>Los pagos se habilitan solo para cuentas verificadas y con actividad legitima.</li>
-                          <li>El contenido subido debe respetar derechos de autor y normas de la plataforma.</li>
-                          <li>Las estimaciones de ingresos son orientativas y pueden ajustarse por revision interna.</li>
-                          <li>El estudio acepta cumplir politicas anti-fraude y de uso responsable.</li>
-                        </ul>
-                        <p>
-                          Version del contrato: <strong>{STUDIO_TERMS_VERSION}</strong>
-                        </p>
-                        {termsAcceptance.acceptedAt ? (
-                          <p>
-                            Aceptado el: <strong>{new Date(termsAcceptance.acceptedAt).toLocaleString()}</strong>
-                          </p>
-                        ) : null}
-                      </div>
-                      {termsLoading ? (
-                        <p className="cabina-projects__hint">Verificando estado de contrato...</p>
-                      ) : isTermsAccepted ? (
-                        <p className="cabina-contract__ok">Contrato aceptado. Pagos habilitado.</p>
-                      ) : (
-                        <button
-                          type="button"
-                          className="cabina-dashboard__action"
-                          disabled={!isOwner || termsAccepting}
-                          onClick={handleAcceptTerms}
-                        >
-                          {termsAccepting ? "Aceptando..." : "Aceptar contrato"}
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </section>
+              <StudioAgreementsPanel
+                wantsMonetization={wantsMonetization}
+                setActiveSection={setActiveSection}
+                termsVersion={STUDIO_TERMS_VERSION}
+                termsAcceptance={termsAcceptance}
+                termsLoading={termsLoading}
+                isTermsAccepted={isTermsAccepted}
+                isOwner={isOwner}
+                termsAccepting={termsAccepting}
+                handleAcceptTerms={handleAcceptTerms}
+              />
             ) : null}
             {selectedProject ? (
-              <div className="cabina-projects__overlay" onClick={() => setSelectedProject(null)}>
-                <div className="cabina-projects__drawer" ref={projectPanelRef} onClick={(event) => event.stopPropagation()}>
-                  <div className="cabina-projects__drawer-head">
-                    <div>
-                      <h3>{selectedProject.title ?? "Proyecto"}</h3>
-                      <p>{selectedProject.description ?? "Sin descripcion"}</p>
-                    </div>
-                    <button type="button" onClick={() => setSelectedProject(null)}>
-                      Cerrar
-                    </button>
-                  </div>
-                  <div className="cabina-projects__preview">
-                    {selectedProject.type === "video" && selectedProjectMediaUrl ? (
-                      <video src={selectedProjectMediaUrl} controls playsInline />
-                    ) : selectedProjectMediaUrl ? (
-                      <img src={selectedProjectMediaUrl} alt={selectedProject.title ?? "Proyecto"} />
-                    ) : (
-                      <div className="cabina-projects__hint">{tx("Sin media", "No media")}</div>
-                    )}
-                  </div>
-                  {isOwner ? (
-                    <div className="cabina-projects__edit">
-                      <div className="cabina-projects__edit-preview">
-                        <span>Vista previa</span>
-                        {selectedProject.type === "video" && selectedProjectMediaUrl ? (
-                          <video src={selectedProjectMediaUrl} controls playsInline />
-                        ) : selectedProjectMediaUrl ? (
-                          <img src={selectedProjectMediaUrl} alt={selectedProject.title ?? "Proyecto"} />
-                        ) : (
-                          <div className="cabina-projects__hint">{tx("Sin media", "No media")}</div>
-                        )}
-                        <button
-                          type="button"
-                          className="cabina-projects__open"
-                          onClick={() => {
-                            const base = typeof window !== "undefined" ? window.location.origin : "";
-                            window.open(`${base}/visuales/proyecto/${selectedProject.id}`, "_blank", "noopener,noreferrer");
-                          }}
-                        >
-                          Abrir pagina del proyecto
-                        </button>
-                      </div>
-                      <label>
-                        Titulo
-                        <input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} />
-                      </label>
-                      <label>
-                        Descripcion
-                        <textarea
-                          rows={3}
-                          value={editDescription}
-                          onChange={(event) => setEditDescription(event.target.value)}
-                        />
-                      </label>
-                      <label>
-                        Tipo
-                        <select value={editType} onChange={(event) => setEditType(event.target.value)}>
-                          <option value="imagen">Imagen</option>
-                          <option value="video">Video</option>
-                          <option value="animacion">Animacion</option>
-                          <option value="interactivo">Interactivo</option>
-                          <option value="otro">Otro</option>
-                        </select>
-                      </label>
-                      {editMessage ? <p className="cabina-settings__message">{editMessage}</p> : null}
-                      <button
-                        type="button"
-                        className="cabina-dashboard__action"
-                        disabled={editSaving || deleteBusy}
-                        onClick={async () => {
-                          if (!supabase || !sessionId || !selectedProject) {
-                            setEditMessage("Inicia sesion para editar.");
-                            return;
-                          }
-                          setEditSaving(true);
-                          setEditMessage(null);
-                          const { error } = await supabase
-                            .from("projects")
-                            .update({
-                              title: editTitle,
-                              description: editDescription,
-                              type: editType,
-                            })
-                            .eq("id", selectedProject.id)
-                            .eq("user_id", sessionId);
-                          if (error) {
-                            setEditMessage(error.message);
-                            setEditSaving(false);
-                            return;
-                          }
-                          const updated = {
-                            ...selectedProject,
-                            title: editTitle,
-                            description: editDescription,
-                            type: editType,
-                          };
-                          setSelectedProject(updated);
-                          setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-                          setEditSaving(false);
-                          setEditMessage("Cambios guardados.");
-                        }}
-                      >
-                        {editSaving ? "Guardando..." : "Guardar cambios"}
-                      </button>
-                      <button
-                        type="button"
-                        className="cabina-dashboard__action cabina-dashboard__action--ghost"
-                        disabled={editSaving || deleteBusy}
-                        onClick={() => {
-                          if (!selectedProject) {
-                            return;
-                          }
-                          setEditMessage(null);
-                          setDeleteCandidateId(selectedProject.id);
-                        }}
-                      >
-                        Eliminar proyecto
-                      </button>
-                      {deleteCandidateId === selectedProject.id ? (
-                        <div className="cabina-settings__message">
-                          Vas a eliminar este proyecto definitivamente.
-                          <div className="cabina-projects__actions">
-                            <button
-                              type="button"
-                              className="cabina-dashboard__action"
-                              disabled={deleteBusy || editSaving}
-                              onClick={async () => {
-                                if (!supabase || !sessionId || !selectedProject) {
-                                  setEditMessage("Inicia sesion para editar.");
-                                  return;
-                                }
-                                setDeleteBusy(true);
-                                setEditMessage(null);
-                                try {
-                                  const mediaUrl = selectedProjectMediaUrl;
-                                  if (mediaUrl.includes("/storage/v1/object/public/projects/")) {
-                                    const [, path] = mediaUrl.split("/storage/v1/object/public/projects/");
-                                    if (path) {
-                                      const { error: storageError } = await supabase.storage.from("projects").remove([path]);
-                                      if (storageError) {
-                                        setEditMessage(storageError.message);
-                                      }
-                                    }
-                                  }
-                                  const { error } = await supabase
-                                    .from("projects")
-                                    .delete()
-                                    .eq("id", selectedProject.id)
-                                    .eq("user_id", sessionId);
-                                  if (error) {
-                                    setEditMessage(error.message);
-                                    return;
-                                  }
-                                  setProjects((prev) => prev.filter((p) => p.id !== selectedProject.id));
-                                  setSelectedProject(null);
-                                  setDeleteCandidateId(null);
-                                } finally {
-                                  setDeleteBusy(false);
-                                }
-                              }}
-                            >
-                              {deleteBusy ? "Eliminando..." : "Confirmar eliminacion"}
-                            </button>
-                            <button
-                              type="button"
-                              className="cabina-dashboard__action cabina-dashboard__action--ghost"
-                              disabled={deleteBusy}
-                              onClick={() => setDeleteCandidateId(null)}
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                  <div className="cabina-projects__actions">
-                    <button
-                      type="button"
-                      className="cabina-dashboard__action cabina-dashboard__action--ghost"
-                      onClick={() => {
-                        const base = typeof window !== "undefined" ? window.location.origin : "";
-                        window.open(`${base}/visuales/proyecto/${selectedProject.id}`, "_blank", "noopener,noreferrer");
-                      }}
-                    >
-                      Ver pagina del proyecto
-                    </button>
-                  </div>
-                  <div className="cabina-projects__stats">
-                    <div>
-                      <span>Likes</span>
-                      <strong>{formatCompactMetric(selectedProjectStats?.likes_count ?? 0)}</strong>
-                    </div>
-                    <div>
-                      <span>Vistas</span>
-                      <strong>{formatCompactMetric(selectedProjectStats?.views_count ?? 0)}</strong>
-                    </div>
-                    {selectedProject.type === "video" ? (
-                      <div>
-                        <span>Horas de reproduccion</span>
-                        <strong>{formatWatchHours(selectedProjectStats?.watch_seconds ?? 0)}</strong>
-                      </div>
-                    ) : null}
-                    <div>
-                      <span>Compartidos</span>
-                      <strong>{formatCompactMetric(selectedProjectStats?.shares_count ?? 0)}</strong>
-                    </div>
-                  </div>
-                  <div className="cabina-projects__share">
-                    <span>Link publico</span>
-                    <input
-                      readOnly
-                      value={`${typeof window !== "undefined" ? window.location.origin : ""}/visuales/proyecto/${
-                        selectedProject.id
-                      }`}
-                      onClick={(event) => {
-                        const linkValue = (event.currentTarget as HTMLInputElement).value;
-                        if (navigator?.clipboard?.writeText) {
-                          navigator.clipboard.writeText(linkValue);
-                        } else {
-                          document.execCommand("copy");
-                        }
-                        setLinkCopied(true);
-                        if (copyTimeoutRef.current) {
-                          window.clearTimeout(copyTimeoutRef.current);
-                        }
-                        copyTimeoutRef.current = window.setTimeout(() => {
-                          setLinkCopied(false);
-                        }, 1800);
-                        recordProjectShare(selectedProject.id)
-                          .then(() => fetchProjectStatsMap([selectedProject.id]))
-                          .then((nextStats) => {
-                            setProjectStatsMap((prev) => ({ ...prev, ...nextStats }));
-                          })
-                          .catch(() => undefined);
-                      }}
-                      className={linkCopied ? "is-copied" : ""}
-                    />
-                    <span className={`cabina-projects__share-hint${linkCopied ? " is-visible" : ""}`}>
-                      Link copiado
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <StudioProjectDrawer
+                tx={tx}
+                selectedProject={selectedProject}
+                selectedProjectStats={selectedProjectStats}
+                selectedProjectMediaUrl={selectedProjectMediaUrl}
+                isOwner={isOwner}
+                editTitle={editTitle}
+                setEditTitle={setEditTitle}
+                editDescription={editDescription}
+                setEditDescription={setEditDescription}
+                editType={editType}
+                setEditType={setEditType}
+                editSaving={editSaving}
+                editMessage={editMessage}
+                deleteBusy={deleteBusy}
+                deleteCandidateId={deleteCandidateId}
+                setDeleteCandidateId={setDeleteCandidateId}
+                linkCopied={linkCopied}
+                setLinkCopied={setLinkCopied}
+                copyTimeoutRef={copyTimeoutRef}
+                projectPanelRef={projectPanelRef}
+                sessionId={sessionId}
+                supabaseReady={Boolean(supabase)}
+                setEditMessage={setEditMessage}
+                setEditSaving={setEditSaving}
+                setDeleteBusy={setDeleteBusy}
+                setProjects={setProjects}
+                setSelectedProject={setSelectedProject}
+                setProjectStatsMap={setProjectStatsMap}
+                onClose={() => setSelectedProject(null)}
+              />
             ) : null}
             {activeSection === "personalizar" ? (
-              <section className="cabina-settings" id="ajustes">
-                <div className="cabina-settings__card">
-                  <div className="cabina-settings__header">
-                    <h3>Ajustes de la cuenta</h3>
-                    <p>Actualiza tu logo, nombre y datos del estudio.</p>
-                  </div>
-                  <div className="cabina-settings__grid">
-                    <label className="cabina-settings__field">
-                      <span>Logo</span>
-                      <div className="cabina-settings__logo">
-                        <div className="cabina-settings__logo-preview visuales-avatar visuales-avatar--square">
-                          {logoPreview ? (
-                            <img src={logoPreview} alt="Logo del estudio" />
-                          ) : (
-                            <span>{avatarInitial}</span>
-                          )}
-                        </div>
-                        <label className="cabina-settings__logo-action">
-                          Subir logo
-                          <input
-                            type="file"
-                            accept="image/*"
-                            disabled={!isOwner}
-                            onChange={(event) => {
-                              const file = event.target.files?.[0];
-                              if (!file) {
-                                return;
-                              }
-                              if (logoPreview) {
-                                URL.revokeObjectURL(logoPreview);
-                              }
-                              const nextUrl = URL.createObjectURL(file);
-                              setLogoPreview(nextUrl);
-                            }}
-                          />
-                        </label>
-                      </div>
-                    </label>
-                    <label className="cabina-settings__field">
-                      <span>Nombre completo</span>
-                      <input
-                        type="text"
-                        value={settingsName}
-                        onChange={(event) => setSettingsName(event.target.value)}
-                        disabled={!isOwner}
-                      />
-                    </label>
-                    <label className="cabina-settings__field">
-                      <span>Nombre de usuario</span>
-                      <input
-                        type="text"
-                        value={settingsUsername}
-                        onChange={(event) => {
-                          const nextValue = event.target.value.replace(/\s+/g, "").toLowerCase();
-                          setSettingsUsername(nextValue);
-                        }}
-                        disabled={!isOwner}
-                      />
-                    </label>
-                    <label className="cabina-settings__field cabina-settings__field--full">
-                      <span>Bio</span>
-                      <textarea
-                        rows={4}
-                        placeholder={tx("Cuenta tu historia creativa...", "Tell your creative story...")}
-                        value={settingsBio}
-                        onChange={(event) => setSettingsBio(event.target.value)}
-                        disabled={!isOwner}
-                      />
-                    </label>
-                  </div>
-                  {settingsMessage ? <p className="cabina-settings__message">{settingsMessage}</p> : null}
-                  {!isOwner ? (
-                    <p className="cabina-settings__message">Estas viendo un estudio ajeno.</p>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="cabina-dashboard__action"
-                    onClick={handleSaveSettings}
-                    disabled={!isOwner || settingsBusy}
-                  >
-                    {settingsBusy ? "Guardando..." : "Guardar cambios"}
-                  </button>
-                </div>
-                <div className="cabina-settings__card">
-                  <div className="cabina-settings__header">
-                    <h3>Subcuentas Visuales</h3>
-                    <p>
-                      Crea cuentas adicionales sin cambiar correo. Limites: 10 totales, 3 nuevas cada 6 meses.
-                    </p>
-                  </div>
-                  <div className="cabina-subaccounts__quota">
-                    <span>Total disponible: {totalSubaccountsLeft}</span>
-                    <span>Disponibles este semestre: {recentSubaccountsLeft}</span>
-                  </div>
-                  <div className="cabina-settings__grid">
-                    <label className="cabina-settings__field">
-                      <span>Usuario de subcuenta</span>
-                      <input
-                        value={subaccountUsername}
-                        placeholder={tx("ejemplo-cuenta", "example-account")}
-                        disabled={!isOwner || subaccountBusy}
-                        onChange={(event) => setSubaccountUsername(event.target.value)}
-                      />
-                    </label>
-                    <label className="cabina-settings__field">
-                      <span>Nombre visible</span>
-                      <input
-                        value={subaccountDisplayName}
-                        placeholder={tx("Nombre para mostrar", "Display name")}
-                        disabled={!isOwner || subaccountBusy}
-                        onChange={(event) => setSubaccountDisplayName(event.target.value)}
-                      />
-                    </label>
-                  </div>
-                  <button
-                    type="button"
-                    className="cabina-dashboard__action"
-                    onClick={handleCreateSubaccount}
-                    disabled={!isOwner || subaccountBusy || totalSubaccountsLeft <= 0 || recentSubaccountsLeft <= 0}
-                  >
-                    {subaccountBusy ? "Creando..." : "Crear subcuenta"}
-                  </button>
-                  {subaccountMessage ? <p className="cabina-settings__message">{subaccountMessage}</p> : null}
-                  {subaccountsLoading ? (
-                    <p className="cabina-projects__hint">Cargando subcuentas...</p>
-                  ) : subaccounts.length === 0 ? (
-                    <p className="cabina-projects__hint">No tienes subcuentas creadas.</p>
-                  ) : (
-                    <div className="cabina-subaccounts">
-                      {subaccounts.map((account) => (
-                        <article key={account.id} className="cabina-subaccounts__item">
-                          <div>
-                            <strong>@{account.username}</strong>
-                            <p>{account.display_name || "Sin nombre visible"}</p>
-                          </div>
-                          <span>
-                            {account.created_at
-                              ? new Date(account.created_at).toLocaleDateString()
-                              : "Fecha no disponible"}
-                          </span>
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </section>
+              <StudioCustomizePanel
+                tx={tx}
+                avatarInitial={avatarInitial}
+                logoPreview={logoPreview}
+                setLogoPreview={setLogoPreview}
+                settingsName={settingsName}
+                setSettingsName={setSettingsName}
+                settingsUsername={settingsUsername}
+                setSettingsUsername={setSettingsUsername}
+                settingsBio={settingsBio}
+                setSettingsBio={setSettingsBio}
+                settingsMessage={settingsMessage}
+                settingsBusy={settingsBusy}
+                isOwner={isOwner}
+                handleSaveSettings={handleSaveSettings}
+                totalSubaccountsLeft={totalSubaccountsLeft}
+                recentSubaccountsLeft={recentSubaccountsLeft}
+                subaccountUsername={subaccountUsername}
+                setSubaccountUsername={setSubaccountUsername}
+                subaccountDisplayName={subaccountDisplayName}
+                setSubaccountDisplayName={setSubaccountDisplayName}
+                subaccountBusy={subaccountBusy}
+                handleCreateSubaccount={handleCreateSubaccount}
+                subaccountMessage={subaccountMessage}
+                subaccountsLoading={subaccountsLoading}
+                subaccounts={subaccounts}
+              />
             ) : null}
             {activeSection === "preferencias" ? (
-              <section className="cabina-settings">
-                <div className="cabina-settings__card">
-                  <div className="cabina-settings__header">
-                    <h3>Preferencias</h3>
-                    <p>Opciones generales del estudio.</p>
-                  </div>
-                  <div className="cabina-prefs">
-                    <label className="cabina-prefs__item">
-                      <div>
-                        <strong>Monetizacion</strong>
-                        <p>Activa o desactiva pagos y contrato para este estudio.</p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={wantsMonetization}
-                        disabled={!isOwner}
-                        onChange={(event) => {
-                          const nextValue = event.target.checked;
-                          setWantsMonetization(nextValue);
-                          showNotice(
-                            "ok",
-                            nextValue
-                              ? "Monetizacion activada. Revisa Contrato para habilitar pagos."
-                              : "Monetizacion desactivada. Pagos y contrato quedan en modo informativo."
-                          );
-                        }}
-                      />
-                    </label>
-                    <label className="cabina-prefs__item">
-                      <div>
-                        <strong>Autoplay en previews de video</strong>
-                        <p>Reproduce miniaturas de video automaticamente en Proyectos.</p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={preferences.autoplayPreview}
-                        onChange={(event) =>
-                          setPreferences((prev) => ({ ...prev, autoplayPreview: event.target.checked }))
-                        }
-                      />
-                    </label>
-                    <label className="cabina-prefs__item">
-                      <div>
-                        <strong>Vista compacta de grilla</strong>
-                        <p>Muestra mas tarjetas por fila en la seccion de proyectos.</p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={preferences.compactProjectGrid}
-                        onChange={(event) =>
-                          setPreferences((prev) => ({ ...prev, compactProjectGrid: event.target.checked }))
-                        }
-                      />
-                    </label>
-                    <label className="cabina-prefs__item">
-                      <div>
-                        <strong>Reabrir ultima seccion</strong>
-                        <p>Al volver al estudio, recuerda la seccion activa.</p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={preferences.reopenLastSection}
-                        onChange={(event) =>
-                          setPreferences((prev) => ({ ...prev, reopenLastSection: event.target.checked }))
-                        }
-                      />
-                    </label>
-                    <label className="cabina-prefs__item">
-                      <div>
-                        <strong>Atajos de teclado</strong>
-                        <p>Usa 1-6 para secciones, / para buscar y Esc para cerrar paneles.</p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={preferences.keyboardShortcuts}
-                        onChange={(event) =>
-                          setPreferences((prev) => ({ ...prev, keyboardShortcuts: event.target.checked }))
-                        }
-                      />
-                    </label>
-                  </div>
-                  <p className="cabina-projects__hint">Preferencias guardadas localmente en este navegador.</p>
-                </div>
-              </section>
+              <StudioPreferencesPanel
+                wantsMonetization={wantsMonetization}
+                isOwner={isOwner}
+                setWantsMonetization={setWantsMonetization}
+                preferences={preferences}
+                setPreferences={setPreferences}
+                showNotice={showNotice}
+              />
             ) : null}
           </div>
         </section>
@@ -2219,3 +1604,4 @@ export default function VisualesEstudioPage() {
     </SiteShell>
   );
 }
+

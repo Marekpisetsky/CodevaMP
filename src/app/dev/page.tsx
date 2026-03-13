@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import BannerLab from "@/app/dev/banner-lab";
-import { scoreProjectLocal } from "@/app/lib/dev-engine";
 import { ensureDevWasmRuntime } from "@/app/lib/dev-wasm-loader";
 import {
   initialProjects,
@@ -35,21 +34,16 @@ type TechNode = {
   count: number;
 };
 
-type QualityCheck = {
-  id: string;
-  label: string;
-  done: boolean;
-};
-
-type ReleaseGate = {
-  canPublish: boolean;
-  reasons: string[];
-};
-
 const collabPresets = {
-  es: ["Frontend", "Backend", "AI/ML", "Diseno de juegos", "Embebidos", "Soporte no-code"],
-  en: ["Frontend", "Backend", "AI/ML", "Game design", "Embedded", "No-code support"],
+  es: ["Idea", "Construir", "Publicar"],
+  en: ["Idea", "Build", "Publish"],
 } as const;
+
+function phaseToStatus(phase: string): DevProject["status"] {
+  if (phase === "Construir" || phase === "Build") return "building";
+  if (phase === "Publicar" || phase === "Publish") return "live";
+  return "idea";
+}
 
 const skeletonCards = Array.from({ length: 6 }, (_, index) => `dev-skeleton-${index}`);
 
@@ -87,63 +81,6 @@ function statusLabel(status: DevProject["status"], copy: Copy) {
   return copy.statusIdeaLower;
 }
 
-function buildQualityChecks(project: DevProject, isEs: boolean): QualityCheck[] {
-  return [
-    {
-      id: "title",
-      label: isEs ? "Titulo claro" : "Clear title",
-      done: project.title.trim().length >= 8,
-    },
-    {
-      id: "summary",
-      label: isEs ? "Resumen util" : "Useful summary",
-      done: project.summary.trim().length >= 36,
-    },
-    {
-      id: "stack",
-      label: isEs ? "Stack definido" : "Defined stack",
-      done: project.stack.trim().length >= 2,
-    },
-    {
-      id: "proof",
-      label: isEs ? "Demo o repo" : "Demo or repo",
-      done: Boolean(project.demoUrl.trim() || project.repoUrl.trim()),
-    },
-  ];
-}
-
-function qualityScore(project: DevProject, isEs: boolean): number {
-  const checks = buildQualityChecks(project, isEs);
-  const pass = checks.filter((check) => check.done).length;
-  return Math.round((pass / checks.length) * 100);
-}
-
-function buildReleaseGate(
-  isEs: boolean,
-  project: DevProject,
-  quality: number,
-  engine: number,
-  views: number
-): ReleaseGate {
-  const reasons: string[] = [];
-  if (quality < 75) {
-    reasons.push(isEs ? "Checklist < 75%" : "Checklist < 75%");
-  }
-  if (engine < 70) {
-    reasons.push(isEs ? "Engine < 70%" : "Engine < 70%");
-  }
-  if (!project.demoUrl.trim() && !project.repoUrl.trim()) {
-    reasons.push(isEs ? "Falta demo o repo" : "Missing demo or repo");
-  }
-  if (views < 2) {
-    reasons.push(isEs ? "Validacion insuficiente (2 vistas)" : "Insufficient validation (2 views)");
-  }
-  return {
-    canPublish: reasons.length === 0,
-    reasons,
-  };
-}
-
 function parseStackTokens(stack: string): string[] {
   return stack
     .split(/[,+/|]/g)
@@ -163,23 +100,6 @@ function buildTechNodes(projects: DevProject[]): TechNode[] {
     .map(([label, count]) => ({ id: label.toLowerCase(), label, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 12);
-}
-
-function readStoredViewMode(): ViewMode {
-  if (typeof window === "undefined") return "gallery";
-  const saved = window.localStorage.getItem("codevamp.dev.viewMode");
-  return saved === "graph" || saved === "timeline" || saved === "gallery" ? saved : "gallery";
-}
-
-function readStoredStatusFilter(): StatusFilter {
-  if (typeof window === "undefined") return "all";
-  const saved = window.localStorage.getItem("codevamp.dev.statusFilter");
-  return saved === "idea" || saved === "building" || saved === "live" || saved === "all" ? saved : "all";
-}
-
-function readStoredQuery(): string {
-  if (typeof window === "undefined") return "";
-  return window.localStorage.getItem("codevamp.dev.query") || "";
 }
 
 export default function DevPage() {
@@ -203,6 +123,8 @@ function DevPageContent() {
   const isEs = language === "es";
   const searchParams = useSearchParams();
   const publishedId = (searchParams.get("published") || "").trim();
+  const fromIdeaId = (searchParams.get("fromIdea") || "").trim();
+  const requestedFlow = (searchParams.get("flow") || "").trim().toLowerCase();
 
   const t: Copy = {
     loading: isEs ? "Cargando entorno Dev..." : "Loading Dev environment...",
@@ -219,25 +141,40 @@ function DevPageContent() {
       ? "Este espacio concentra backlog real, publicacion y colaboracion tecnica."
       : "This space centralizes real backlog, publishing, and technical collaboration.",
     openStudio: isEs ? "Abrir Dev Studio" : "Open Dev Studio",
-    toggleComposer: isEs ? "1. Definir idea" : "1. Define idea",
+    toggleComposer: isEs ? "1. Idea" : "1. Idea",
     flowBuildAction: isEs ? "2. Construir en Studio" : "2. Build in Studio",
-    flowMeasureAction: isEs ? "4. Medir publicados" : "4. Measure published",
+    flowMeasureAction: isEs ? "3. Medir publicados" : "3. Measure published",
     strategyLink: isEs ? "Ver estrategia" : "View strategy",
     metricsPublished: isEs ? "Publicados" : "Published",
     metricsBuilding: isEs ? "Construyendo" : "Building",
     metricsIdeas: isEs ? "Ideas" : "Ideas",
     metricsViews: isEs ? "Vistas" : "Views",
-    metricsQuality: isEs ? "Calidad" : "Quality",
-    metricsEngine: isEs ? "Engine" : "Engine",
-    metricsCycle: isEs ? "Ciclo" : "Cycle",
-    qualityChecklist: isEs ? "Checklist automatico" : "Auto checklist",
-    releaseGateTitle: isEs ? "Gate de publicacion" : "Release gate",
-    releaseGatePass: isEs ? "Aprobado para publicar" : "Approved for publish",
-    publishBlocked: isEs
-      ? "No cumple gate de publicacion."
-      : "Release gate not satisfied.",
-    daysLabel: isEs ? "dias" : "days",
     composerTitle: isEs ? "Crear proyecto" : "Create project",
+    composerIntro: isEs ? "Define la base del proyecto y deja claros los enlaces antes de publicarlo." : "Define the base of the project and make the links clear before publishing it.",
+    composerBasics: isEs ? "Base del proyecto" : "Project base",
+    composerLinks: isEs ? "Enlaces y salida" : "Links and output",
+    composerMode: isEs ? "Flujo" : "Flow",
+    composerIdeaHint: isEs ? "Solo define la idea con claridad. Aun no hace falta stack ni enlaces." : "Just define the idea clearly. No stack or links are needed yet.",
+    composerBuildHint: isEs ? "Aqui la idea ya esta definida y pasa a ejecucion. Deja claro lo que el desarrollador debe construir." : "At this stage the idea is already defined and moves into execution. Make clear what the developer must build.",
+    composerPublishHint: isEs ? "Usa esta fase cuando ya tengas salida visible y enlaces reales." : "Use this phase when you already have visible output and real links.",
+    composerGuideTitle: isEs ? "Que conviene dejar claro" : "What should be clear now",
+    composerIdeaGuideA: isEs ? "Que problema quieres resolver o explorar." : "What problem you want to solve or explore.",
+    composerIdeaGuideB: isEs ? "Para quien seria util o interesante." : "Who it would be useful or interesting for.",
+    composerIdeaGuideC: isEs ? "Que hace especial esta idea frente a otras." : "What makes this idea special compared to others.",
+    composerBuildGuideA: isEs ? "Que debe construirse exactamente en esta iteracion." : "What exactly must be built in this iteration.",
+    composerBuildGuideB: isEs ? "Que stack, servicios o piezas tecnicas necesita." : "Which stack, services, or technical pieces it needs.",
+    composerBuildGuideC: isEs ? "Que repositorio o fuente tomara el desarrollador como base." : "Which repository or source the developer will take as the base.",
+    linkedIdeaLabel: isEs ? "Idea vinculada" : "Linked idea",
+    linkedIdeaPlaceholder: isEs ? "Sin idea vinculada" : "No linked idea",
+    linkedIdeaHint: isEs ? "Puedes vincular una idea ya definida para convertirla en brief de desarrollo, o construir sin idea previa." : "You can link an already defined idea to turn it into a development brief, or build without a prior idea.",
+    composerPublishGuideA: isEs ? "Que puede usar otra persona hoy mismo." : "What another person can use right now.",
+    composerPublishGuideB: isEs ? "Donde se prueba o se ve en funcionamiento." : "Where it can be tested or seen working.",
+    composerPublishGuideC: isEs ? "Que estado de madurez tiene esta version." : "What maturity level this version has.",
+    summaryIdeaPlaceholder: isEs ? "Problema, usuario y valor de la idea." : "Problem, user, and value of the idea.",
+    summaryBuildPlaceholder: isEs ? "Brief tecnico: alcance, prioridad y siguiente entregable." : "Technical brief: scope, priority, and next deliverable.",
+    summaryPublishPlaceholder: isEs ? "Que hace esta version y por que alguien deberia usarla hoy." : "What this version does and why someone should use it today.",
+    stackBuildPlaceholder: isEs ? "Stack, servicios y piezas que desarrollo usara." : "Stack, services, and pieces development will use.",
+    stackPublishPlaceholder: isEs ? "Stack final de esta version publica." : "Final stack for this public version.",
     titlePlaceholder: isEs ? "Titulo del proyecto" : "Project title",
     summaryPlaceholder: isEs ? "Resumen en una linea" : "One-line summary",
     stackPlaceholder: isEs ? "Stack (ej. Next.js, Rust, Python, Go)" : "Stack (e.g. Next.js, Rust, Python, Go)",
@@ -245,10 +182,15 @@ function DevPageContent() {
     demoPlaceholder: isEs ? "URL de demo (opcional)" : "Demo URL (optional)",
     lookingFor: isEs ? "Buscando" : "Looking for",
     publishProject: isEs ? "Publicar proyecto" : "Publish project",
-    requiredFields: isEs ? "Titulo, resumen y stack son obligatorios." : "Title, summary and stack are required.",
+    saveIdea: isEs ? "Guardar idea" : "Save idea",
+    saveBuild: isEs ? "Guardar build" : "Save build",
+    publishRelease: isEs ? "Lanzar version publica" : "Launch public release",
+    requiredFields: isEs ? "Titulo y resumen son obligatorios." : "Title and summary are required.",
     supabaseMissing: isEs ? "Supabase no esta configurado." : "Supabase is not configured.",
     signinToPublish: isEs ? "Inicia sesion para publicar en Dev." : "Sign in to publish on Dev.",
-    projectPublished: isEs ? "Proyecto publicado." : "Project published.",
+    projectPublished: isEs ? "Version publica lanzada." : "Public release launched.",
+    ideaSaved: isEs ? "Idea guardada." : "Idea saved.",
+    buildSaved: isEs ? "Brief de desarrollo guardado." : "Development brief saved.",
     projectUpdated: isEs ? "Proyecto actualizado." : "Project updated.",
     projectDeleted: isEs ? "Proyecto eliminado." : "Project deleted.",
     filtersAria: isEs ? "Filtros" : "Filters",
@@ -307,9 +249,9 @@ function DevPageContent() {
 
   const [projects, setProjects] = useState<DevProject[]>([]);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState<string>(() => readStoredQuery());
-  const [activeStatus, setActiveStatus] = useState<StatusFilter>(() => readStoredStatusFilter());
-  const [viewMode, setViewMode] = useState<ViewMode>(() => readStoredViewMode());
+  const [query, setQuery] = useState("");
+  const [activeStatus, setActiveStatus] = useState<StatusFilter>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("gallery");
   const [showComposer, setShowComposer] = useState(false);
   const [sessionUserId, setSessionUserId] = useState<string | null | undefined>(undefined);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -322,17 +264,27 @@ function DevPageContent() {
   const [draftRepoUrl, setDraftRepoUrl] = useState("");
   const [draftDemoUrl, setDraftDemoUrl] = useState("");
   const [draftLookingFor, setDraftLookingFor] = useState<string>(collabPresets.es[0]);
-
-  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState("");
-  const [editSummary, setEditSummary] = useState("");
-  const [editStack, setEditStack] = useState("");
-  const [editRepoUrl, setEditRepoUrl] = useState("");
-  const [editDemoUrl, setEditDemoUrl] = useState("");
-  const [editLookingFor, setEditLookingFor] = useState<string>(collabPresets.es[0]);
-  const [editStatus, setEditStatus] = useState<DevProject["status"]>("idea");
+  const [draftLinkedIdeaIds, setDraftLinkedIdeaIds] = useState<string[]>([]);
   const [compareLeftId, setCompareLeftId] = useState("");
   const [compareRightId, setCompareRightId] = useState("");
+  const [appliedComposerPreset, setAppliedComposerPreset] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const savedView = window.localStorage.getItem("codevamp.dev.viewMode");
+    const savedStatus = window.localStorage.getItem("codevamp.dev.statusFilter");
+    const savedQuery = window.localStorage.getItem("codevamp.dev.query");
+
+    if (savedView === "gallery" || savedView === "graph" || savedView === "timeline") {
+      setViewMode(savedView);
+    }
+    if (savedStatus === "all" || savedStatus === "idea" || savedStatus === "building" || savedStatus === "live") {
+      setActiveStatus(savedStatus);
+    }
+    if (typeof savedQuery === "string" && savedQuery.length > 0) {
+      setQuery(savedQuery);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -351,8 +303,7 @@ function DevPageContent() {
 
   useEffect(() => {
     if (!collabOptions.includes(draftLookingFor)) setDraftLookingFor(collabOptions[0]);
-    if (!collabOptions.includes(editLookingFor)) setEditLookingFor(collabOptions[0]);
-  }, [collabOptions, draftLookingFor, editLookingFor]);
+  }, [collabOptions, draftLookingFor]);
 
   useEffect(() => {
     void ensureDevWasmRuntime();
@@ -452,14 +403,71 @@ function DevPageContent() {
     };
   }, [projects]);
 
+  const projectIds = useMemo(() => projects.map((project) => project.id).filter(Boolean), [projects]);
+  const projectIdsSignature = useMemo(() => projectIds.join("|"), [projectIds]);
+
+  useEffect(() => {
+    let active = true;
+    const loadLinkedIdeas = async () => {
+      if (!supabase || projectIds.length === 0) {
+        return;
+      }
+      const ids = Array.from(new Set(projectIds));
+      if (ids.length === 0) {
+        return;
+      }
+      const { data, error } = await supabase
+        .from("dev_project_idea_links")
+        .select("project_id, idea_id")
+        .in("project_id", ids);
+
+      if (!active) return;
+      if (error || !data) {
+        return;
+      }
+
+      const next: Record<string, string[]> = {};
+      for (const row of data as Array<{ project_id: string; idea_id: string }>) {
+        if (!next[row.project_id]) next[row.project_id] = [];
+        next[row.project_id].push(row.idea_id);
+      }
+      setProjects((prev) =>
+        prev.map((project) => ({
+          ...project,
+          linkedIdeaIds: next[project.id] ?? [],
+        }))
+      );
+    };
+
+    void loadLinkedIdeas();
+    return () => {
+      active = false;
+    };
+  }, [projectIds, projectIdsSignature]);
+
+  const linkedIdeaSearchMap = useMemo(
+    () =>
+      new Map(
+        projects
+          .filter((project) => project.status === "idea")
+          .map((project) => [project.id, `${project.title} ${project.summary}`.trim()])
+      ),
+    [projects]
+  );
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return projects.filter((project) => {
       if (activeStatus !== "all" && project.status !== activeStatus) return false;
       if (!q) return true;
-      return `${project.title} ${project.summary} ${project.stack} ${project.lookingFor}`.toLowerCase().includes(q);
+      const linkedIdeaMetadata = project.linkedIdeaIds
+        .map((ideaId) => linkedIdeaSearchMap.get(ideaId) ?? "")
+        .join(" ");
+      return `${project.title} ${project.summary} ${project.stack} ${project.lookingFor} ${linkedIdeaMetadata}`
+        .toLowerCase()
+        .includes(q);
     });
-  }, [projects, activeStatus, query]);
+  }, [projects, activeStatus, query, linkedIdeaSearchMap]);
 
   const metrics = useMemo(() => {
     const published = projects.filter((project) => project.status === "live").length;
@@ -486,13 +494,105 @@ function DevPageContent() {
     () => filtered.find((item) => item.id === compareRightId) ?? null,
     [compareRightId, filtered]
   );
+  const ideaProjects = useMemo(
+    () => projects.filter((project) => project.status === "idea"),
+    [projects]
+  );
+  const buildPhaseLabel = isEs ? collabPresets.es[1] : collabPresets.en[1];
+  const draftPhaseStatus = phaseToStatus(draftLookingFor);
+  const draftNeedsStack = draftPhaseStatus !== "idea";
+  const draftShowsRepo = draftPhaseStatus !== "idea";
+  const draftShowsDemo = draftPhaseStatus === "live";
+  const draftPhaseHint =
+    draftPhaseStatus === "idea"
+      ? t.composerIdeaHint
+      : draftPhaseStatus === "building"
+        ? t.composerBuildHint
+        : t.composerPublishHint;
+  const draftActionLabel =
+    draftPhaseStatus === "idea"
+      ? t.saveIdea
+      : draftPhaseStatus === "building"
+        ? t.saveBuild
+        : t.publishRelease;
+  const draftSuccessLabel =
+    draftPhaseStatus === "idea"
+      ? t.ideaSaved
+      : draftPhaseStatus === "building"
+        ? t.buildSaved
+        : t.projectPublished;
+  const draftGuideItems =
+    draftPhaseStatus === "idea"
+      ? [t.composerIdeaGuideA, t.composerIdeaGuideB, t.composerIdeaGuideC]
+      : draftPhaseStatus === "building"
+        ? [t.composerBuildGuideA, t.composerBuildGuideB, t.composerBuildGuideC]
+        : [t.composerPublishGuideA, t.composerPublishGuideB, t.composerPublishGuideC];
+  const draftSummaryPlaceholder =
+    draftPhaseStatus === "idea"
+      ? t.summaryIdeaPlaceholder
+      : draftPhaseStatus === "building"
+        ? t.summaryBuildPlaceholder
+        : t.summaryPublishPlaceholder;
+  const draftStackPlaceholder = draftPhaseStatus === "live" ? t.stackPublishPlaceholder : t.stackBuildPlaceholder;
 
   const authHref = "/auth?returnTo=/dev";
   const sessionReady = typeof sessionUserId === "string" && sessionUserId.length > 0;
 
+  useEffect(() => {
+    const presetKey = `${fromIdeaId}:${requestedFlow}`;
+    if (!fromIdeaId || requestedFlow !== "build" || appliedComposerPreset === presetKey) {
+      return;
+    }
+    const sourceIdea = projects.find((project) => project.id === fromIdeaId && project.status === "idea");
+    if (!sourceIdea) {
+      return;
+    }
+
+    setDraftLookingFor(buildPhaseLabel);
+    setDraftLinkedIdeaIds([sourceIdea.id]);
+    setDraftStack((current) => current || sourceIdea.stack);
+    setShowComposer(true);
+    setAppliedComposerPreset(presetKey);
+  }, [fromIdeaId, requestedFlow, appliedComposerPreset, projects, buildPhaseLabel]);
+
   const resetMessages = () => {
     setErrorMsg(null);
     setInfoMsg(null);
+  };
+
+  const syncLinkedIdeas = async (projectId: string, ideaIds: string[]) => {
+    if (!supabase) {
+      setProjects((prev) =>
+        prev.map((project) => (project.id === projectId ? { ...project, linkedIdeaIds: ideaIds } : project))
+      );
+      return;
+    }
+
+    const uniqueIds = Array.from(new Set(ideaIds.filter(Boolean)));
+    const { error: deleteError } = await supabase
+      .from("dev_project_idea_links")
+      .delete()
+      .eq("project_id", projectId);
+
+    if (deleteError) {
+      return;
+    }
+
+    if (uniqueIds.length > 0) {
+      const { error: insertError } = await supabase.from("dev_project_idea_links").insert(
+        uniqueIds.map((ideaId) => ({
+          project_id: projectId,
+          idea_id: ideaId,
+        }))
+      );
+      if (insertError) {
+        return;
+      }
+    }
+
+    setProjects((prev) =>
+      prev.map((project) => (project.id === projectId ? { ...project, linkedIdeaIds: uniqueIds } : project))
+    );
   };
 
   const publishProject = async () => {
@@ -501,7 +601,9 @@ function DevPageContent() {
     const title = draftTitle.trim();
     const summary = draftSummary.trim();
     const stack = draftStack.trim();
-    if (!title || !summary || !stack) {
+    const demoUrl = normalizeUrl(draftDemoUrl);
+    const repoUrl = normalizeUrl(draftRepoUrl);
+    if (!title || !summary) {
       setErrorMsg(t.requiredFields);
       return;
     }
@@ -516,15 +618,14 @@ function DevPageContent() {
       return;
     }
 
-    const payload = {
+      const payload = {
       title,
       summary,
       stack,
-      repo_url: normalizeUrl(draftRepoUrl),
-      demo_url: normalizeUrl(draftDemoUrl),
+      repo_url: repoUrl,
+      demo_url: demoUrl,
       looking_for: draftLookingFor,
-      status: "idea" as const,
-      author_handle: "@dev",
+      status: draftPhaseStatus,
       created_by: sessionUserId,
     };
 
@@ -540,140 +641,17 @@ function DevPageContent() {
     }
 
     const nextProject = mapDevProjectRow(data as DevProjectRow);
-    setProjects((prev) => [nextProject, ...prev]);
+    await syncLinkedIdeas(nextProject.id, draftPhaseStatus === "building" ? draftLinkedIdeaIds : []);
+    setProjects((prev) => [{ ...nextProject, linkedIdeaIds: draftPhaseStatus === "building" ? draftLinkedIdeaIds : [] }, ...prev]);
     setDraftTitle("");
     setDraftSummary("");
     setDraftStack("");
     setDraftRepoUrl("");
     setDraftDemoUrl("");
     setDraftLookingFor(collabOptions[0]);
+    setDraftLinkedIdeaIds([]);
     setShowComposer(false);
-    setInfoMsg(t.projectPublished);
-  };
-
-  const updateProjectStatus = async (project: DevProject, nextStatus: DevProject["status"]) => {
-    resetMessages();
-
-    if (project.status === nextStatus) return;
-    if (nextStatus === "live") {
-      const quality = qualityScore(project, isEs);
-      const engine = scoreProjectLocal({
-        title: project.title,
-        summary: project.summary,
-        stack: project.stack,
-        hasRepo: Boolean(project.repoUrl),
-        hasDemo: Boolean(project.demoUrl),
-      });
-      const views = statsMap[project.id] ?? 0;
-      const gate = buildReleaseGate(isEs, project, quality, engine, views);
-      if (!gate.canPublish) {
-        setErrorMsg(`${t.publishBlocked} ${gate.reasons.join(" · ")}`);
-        return;
-      }
-    }
-
-    if (!supabase) {
-      setProjects((prev) =>
-        prev.map((item) => (item.id === project.id ? { ...item, status: nextStatus } : item))
-      );
-      setInfoMsg(t.projectUpdated);
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("dev_projects")
-      .update({ status: nextStatus })
-      .eq("id", project.id)
-      .select("id,title,summary,stack,repo_url,demo_url,looking_for,status,author_handle,created_by,created_at")
-      .single();
-
-    if (error || !data) {
-      setErrorMsg(formatDevProjectsError(isEs, error));
-      return;
-    }
-
-    const updated = mapDevProjectRow(data as DevProjectRow);
-    setProjects((prev) => prev.map((item) => (item.id === project.id ? updated : item)));
-    setInfoMsg(t.projectUpdated);
-  };
-
-  const startEdit = (project: DevProject) => {
-    resetMessages();
-    setEditingProjectId(project.id);
-    setEditTitle(project.title);
-    setEditSummary(project.summary);
-    setEditStack(project.stack);
-    setEditRepoUrl(project.repoUrl);
-    setEditDemoUrl(project.demoUrl);
-    setEditLookingFor(project.lookingFor);
-    setEditStatus(project.status);
-  };
-
-  const cancelEdit = () => {
-    setEditingProjectId(null);
-  };
-
-  const saveEdit = async () => {
-    if (!editingProjectId) return;
-    resetMessages();
-
-    const title = editTitle.trim();
-    const summary = editSummary.trim();
-    const stack = editStack.trim();
-    if (!title || !summary || !stack) {
-      setErrorMsg(t.requiredFields);
-      return;
-    }
-
-    if (!supabase) {
-      setErrorMsg(t.supabaseMissing);
-      return;
-    }
-
-    const payload = {
-      title,
-      summary,
-      stack,
-      repo_url: normalizeUrl(editRepoUrl),
-      demo_url: normalizeUrl(editDemoUrl),
-      looking_for: editLookingFor,
-      status: editStatus,
-    };
-
-    const { data, error } = await supabase
-      .from("dev_projects")
-      .update(payload)
-      .eq("id", editingProjectId)
-      .select("id,title,summary,stack,repo_url,demo_url,looking_for,status,author_handle,created_by,created_at")
-      .single();
-
-    if (error || !data) {
-      setErrorMsg(formatDevProjectsError(isEs, error));
-      return;
-    }
-
-    const updated = mapDevProjectRow(data as DevProjectRow);
-    setProjects((prev) => prev.map((project) => (project.id === editingProjectId ? updated : project)));
-    setEditingProjectId(null);
-    setInfoMsg(t.projectUpdated);
-  };
-
-  const deleteProject = async (projectId: string) => {
-    resetMessages();
-
-    if (!supabase) {
-      setErrorMsg(t.supabaseMissing);
-      return;
-    }
-
-    const { error } = await supabase.from("dev_projects").delete().eq("id", projectId);
-    if (error) {
-      setErrorMsg(formatDevProjectsError(isEs, error));
-      return;
-    }
-
-    setProjects((prev) => prev.filter((project) => project.id !== projectId));
-    setInfoMsg(t.projectDeleted);
+    setInfoMsg(draftSuccessLabel);
   };
 
   const copyClone = async (repoUrl: string) => {
@@ -704,9 +682,6 @@ function DevPageContent() {
           <nav className="dev-nav">
             <Link href="/dev" className="is-active" aria-current="page" prefetch>
               {t.inDev}
-            </Link>
-            <Link href="/proyectos" prefetch>
-              {t.published}
             </Link>
           </nav>
           <button
@@ -753,55 +728,142 @@ function DevPageContent() {
             <div className="dev-composer-shell__inner" onClick={(event) => event.stopPropagation()}>
               <section className="dev-composer">
                 <div className="dev-composer__header">
-                  <h2 className="dev-section-title">{t.composerTitle}</h2>
+                  <div className="dev-composer__titleblock">
+                    <h2 className="dev-section-title">{t.composerTitle}</h2>
+                    <p>{t.composerIntro}</p>
+                  </div>
                   <button type="button" className="dev-action-secondary" onClick={() => setShowComposer(false)}>
                     {t.cancel}
                   </button>
                 </div>
-                <input
-                  type="text"
-                  placeholder={t.titlePlaceholder}
-                  value={draftTitle}
-                  onChange={(event) => setDraftTitle(event.target.value)}
-                />
-                <input
-                  type="text"
-                  placeholder={t.summaryPlaceholder}
-                  value={draftSummary}
-                  onChange={(event) => setDraftSummary(event.target.value)}
-                />
-                <input
-                  type="text"
-                  placeholder={t.stackPlaceholder}
-                  value={draftStack}
-                  onChange={(event) => setDraftStack(event.target.value)}
-                />
-                <div className="dev-composer__row">
-                  <input
-                    type="url"
-                    placeholder={t.repoPlaceholder}
-                    value={draftRepoUrl}
-                    onChange={(event) => setDraftRepoUrl(event.target.value)}
-                  />
-                  <input
-                    type="url"
-                    placeholder={t.demoPlaceholder}
-                    value={draftDemoUrl}
-                    onChange={(event) => setDraftDemoUrl(event.target.value)}
-                  />
-                </div>
-                <div className="dev-composer__row">
-                  <select value={draftLookingFor} onChange={(event) => setDraftLookingFor(event.target.value)}>
+                <div className="dev-composer__group">
+                  <p className="dev-composer__eyebrow">{t.composerMode}</p>
+                  <div className="dev-chips dev-chips--composer">
                     {collabOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {t.lookingFor}: {option}
-                      </option>
+                      <button
+                        key={option}
+                        type="button"
+                        className={draftLookingFor === option ? "is-active" : ""}
+                        onClick={() => setDraftLookingFor(option)}
+                      >
+                        {option}
+                      </button>
                     ))}
-                  </select>
-                  <button type="button" onClick={() => void publishProject()}>
-                    {t.publishProject}
-                  </button>
+                  </div>
+                  <p className="dev-composer__hint">{draftPhaseHint}</p>
+                  <div className="dev-composer__guide">
+                    <strong>{t.composerGuideTitle}</strong>
+                    <ul>
+                      {draftGuideItems.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  {draftPhaseStatus === "building" ? (
+                    <label className="dev-composer__field">
+                      <span>{t.linkedIdeaLabel}</span>
+                      <div className="dev-idea-links">
+                        <label className="dev-idea-links__option">
+                          <input
+                            type="checkbox"
+                            checked={draftLinkedIdeaIds.length === 0}
+                            onChange={() => setDraftLinkedIdeaIds([])}
+                          />
+                          <span>{t.linkedIdeaPlaceholder}</span>
+                        </label>
+                        {ideaProjects.map((project) => (
+                          <label key={project.id} className="dev-idea-links__option">
+                            <input
+                              type="checkbox"
+                              checked={draftLinkedIdeaIds.includes(project.id)}
+                              onChange={(event) =>
+                                setDraftLinkedIdeaIds((prev) =>
+                                  event.target.checked ? [...prev, project.id] : prev.filter((id) => id !== project.id)
+                                )
+                              }
+                            />
+                            <span>{project.title}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <small className="dev-composer__field-hint">{t.linkedIdeaHint}</small>
+                    </label>
+                  ) : null}
                 </div>
+                <div className="dev-composer__group">
+                  <p className="dev-composer__eyebrow">{t.composerBasics}</p>
+                  <div className="dev-composer__stack">
+                    <label className="dev-composer__field">
+                      <span>{t.titlePlaceholder}</span>
+                      <input
+                        type="text"
+                        placeholder={t.titlePlaceholder}
+                        value={draftTitle}
+                        onChange={(event) => setDraftTitle(event.target.value)}
+                      />
+                    </label>
+                    <label className="dev-composer__field">
+                      <span>{t.summaryPlaceholder}</span>
+                      <input
+                        type="text"
+                        placeholder={draftSummaryPlaceholder}
+                        value={draftSummary}
+                        onChange={(event) => setDraftSummary(event.target.value)}
+                      />
+                    </label>
+                    {draftNeedsStack ? (
+                    <label className="dev-composer__field">
+                      <span>{t.stackPlaceholder}</span>
+                        <input
+                          type="text"
+                          placeholder={draftStackPlaceholder}
+                          value={draftStack}
+                          onChange={(event) => setDraftStack(event.target.value)}
+                        />
+                    </label>
+                    ) : null}
+                  </div>
+                </div>
+                {draftShowsRepo || draftShowsDemo ? (
+                <div className="dev-composer__group">
+                  <p className="dev-composer__eyebrow">{t.composerLinks}</p>
+                  <div className="dev-composer__row">
+                    {draftShowsRepo ? (
+                      <label className="dev-composer__field">
+                        <span>{t.repoPlaceholder}</span>
+                        <input
+                          type="url"
+                          placeholder={t.repoPlaceholder}
+                          value={draftRepoUrl}
+                          onChange={(event) => setDraftRepoUrl(event.target.value)}
+                        />
+                      </label>
+                    ) : null}
+                    {draftShowsDemo ? (
+                      <label className="dev-composer__field">
+                        <span>{t.demoPlaceholder}</span>
+                        <input
+                          type="url"
+                          placeholder={t.demoPlaceholder}
+                          value={draftDemoUrl}
+                          onChange={(event) => setDraftDemoUrl(event.target.value)}
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+                  <div className="dev-composer__row dev-composer__row--actions">
+                    <button type="button" onClick={() => void publishProject()}>
+                      {draftActionLabel}
+                    </button>
+                  </div>
+                </div>
+                ) : (
+                  <div className="dev-composer__row dev-composer__row--actions">
+                    <button type="button" onClick={() => void publishProject()}>
+                      {draftActionLabel}
+                    </button>
+                  </div>
+                )}
               </section>
             </div>
           </section>
@@ -884,25 +946,13 @@ function DevPageContent() {
             <div className="dev-compare__result">
               <article>
                 <strong>{compareLeft.title}</strong>
-                <span>{t.metricsQuality}: {qualityScore(compareLeft, isEs)}%</span>
-                <span>{t.metricsEngine}: {scoreProjectLocal({
-                  title: compareLeft.title,
-                  summary: compareLeft.summary,
-                  stack: compareLeft.stack,
-                  hasRepo: Boolean(compareLeft.repoUrl),
-                  hasDemo: Boolean(compareLeft.demoUrl),
-                })}%</span>
+                <span>{statusLabel(compareLeft.status, t)}</span>
+                <span>{compareLeft.stack}</span>
               </article>
               <article>
                 <strong>{compareRight.title}</strong>
-                <span>{t.metricsQuality}: {qualityScore(compareRight, isEs)}%</span>
-                <span>{t.metricsEngine}: {scoreProjectLocal({
-                  title: compareRight.title,
-                  summary: compareRight.summary,
-                  stack: compareRight.stack,
-                  hasRepo: Boolean(compareRight.repoUrl),
-                  hasDemo: Boolean(compareRight.demoUrl),
-                })}%</span>
+                <span>{statusLabel(compareRight.status, t)}</span>
+                <span>{compareRight.stack}</span>
               </article>
             </div>
           ) : (
@@ -930,60 +980,18 @@ function DevPageContent() {
           {filtered.map((project) => {
             const showEmbeddedPreview = canEmbedDemo(project.demoUrl);
             const compact = !showEmbeddedPreview;
-            const checks = buildQualityChecks(project, isEs);
-            const score = qualityScore(project, isEs);
-            const engineScore = scoreProjectLocal({
-              title: project.title,
-              summary: project.summary,
-              stack: project.stack,
-              hasRepo: Boolean(project.repoUrl),
-              hasDemo: Boolean(project.demoUrl),
-            });
             const views = statsMap[project.id] ?? 0;
-            const releaseGate = buildReleaseGate(isEs, project, score, engineScore, views);
-            const cycleDays =
-              project.status === "live"
-                ? Math.max(1, Math.ceil((Date.now() - new Date(project.createdAt).getTime()) / 86400000))
-                : null;
+            const metaItems = [
+              project.stack.trim(),
+              project.updated.trim(),
+            ].filter(Boolean);
 
             return (
               <article
                 key={project.id}
                 className={`dev-card${compact ? " dev-card--compact" : ""}${publishedId === project.id ? " dev-card--published" : ""}`}
               >
-                {editingProjectId === project.id ? (
-                  <div className="dev-edit">
-                    <input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} />
-                    <input value={editSummary} onChange={(event) => setEditSummary(event.target.value)} />
-                    <input value={editStack} onChange={(event) => setEditStack(event.target.value)} />
-                    <div className="dev-composer__row">
-                      <input value={editRepoUrl} onChange={(event) => setEditRepoUrl(event.target.value)} />
-                      <input value={editDemoUrl} onChange={(event) => setEditDemoUrl(event.target.value)} />
-                    </div>
-                    <div className="dev-composer__row">
-                      <select value={editLookingFor} onChange={(event) => setEditLookingFor(event.target.value)}>
-                        {collabOptions.map((option) => (
-                          <option key={option} value={option}>
-                            {t.lookingFor}: {option}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        value={editStatus}
-                        onChange={(event) => setEditStatus(event.target.value as DevProject["status"])}
-                      >
-                        <option value="idea">{t.statusWord}: {t.statusIdeaLower}</option>
-                        <option value="building">{t.statusWord}: {t.statusBuildingLower}</option>
-                        <option value="live">{t.statusWord}: {t.statusLiveLower}</option>
-                      </select>
-                    </div>
-                    <div className="dev-card__actions">
-                      <button type="button" onClick={() => void saveEdit()}>{t.save}</button>
-                      <button type="button" onClick={cancelEdit}>{t.cancel}</button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
+                <>
                     <div className={`dev-card__preview${compact ? " dev-card__preview--compact" : ""}`} aria-label={`${t.previewLabel} ${project.title}`}>
                       {showEmbeddedPreview ? (
                         <iframe
@@ -1010,33 +1018,12 @@ function DevPageContent() {
                     </div>
                     <p>{project.summary}</p>
                     <div className="dev-card__meta">
-                      <span>{project.stack}</span>
-                      <span>{project.lookingFor}</span>
-                      <span>{project.author}</span>
-                      <span>{project.updated}</span>
+                      {metaItems.map((item) => (
+                        <span key={`${project.id}-${item}`}>{item}</span>
+                      ))}
                     </div>
                     <div className="dev-card__insights">
                       <span>{t.metricsViews}: {formatCompactMetric(views)}</span>
-                      <span>{t.metricsQuality}: {score}%</span>
-                      <span>{t.metricsEngine}: {engineScore}%</span>
-                      <span>
-                        {t.metricsCycle}: {cycleDays ? `${cycleDays} ${t.daysLabel}` : "-"}
-                      </span>
-                    </div>
-                    <div className="dev-card__quality" aria-label={t.qualityChecklist}>
-                      {checks.map((check) => (
-                        <span key={check.id} className={check.done ? "is-pass" : "is-fail"}>
-                          {check.done ? "OK" : "TODO"} - {check.label}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="dev-card__release" aria-label={t.releaseGateTitle}>
-                      <strong>{t.releaseGateTitle}</strong>
-                      {releaseGate.canPublish ? (
-                        <span className="is-pass">{t.releaseGatePass}</span>
-                      ) : (
-                        <span className="is-fail">{releaseGate.reasons.join(" · ")}</span>
-                      )}
                     </div>
                     <div className="dev-card__actions">
                       <Link href={`/dev/proyecto/${project.id}`} prefetch>{t.view}</Link>
@@ -1047,30 +1034,8 @@ function DevPageContent() {
                       {project.demoUrl ? (
                         <a href={project.demoUrl} target="_blank" rel="noreferrer">{t.demo}</a>
                       ) : null}
-                      {sessionUserId && project.ownerId === sessionUserId ? (
-                        <>
-                          {project.status === "idea" ? (
-                            <button type="button" onClick={() => void updateProjectStatus(project, "building")}>
-                              {t.moveToBuilding}
-                            </button>
-                          ) : null}
-                          {project.status === "building" ? (
-                            <button
-                              type="button"
-                              onClick={() => void updateProjectStatus(project, "live")}
-                              disabled={!releaseGate.canPublish}
-                              title={!releaseGate.canPublish ? `${t.publishBlocked} ${releaseGate.reasons.join(" · ")}` : undefined}
-                            >
-                              {t.moveToLive}
-                            </button>
-                          ) : null}
-                          <button type="button" onClick={() => startEdit(project)}>{t.edit}</button>
-                          <button type="button" onClick={() => void deleteProject(project.id)}>{t.remove}</button>
-                        </>
-                      ) : null}
                     </div>
-                  </>
-                )}
+                </>
               </article>
             );
           })}
@@ -1123,7 +1088,6 @@ function DevPageContent() {
                     <div className="dev-card__meta">
                       <span>{t.createdLabel}: {new Date(project.createdAt).toLocaleDateString()}</span>
                       <span>{project.stack}</span>
-                      <span>{project.author}</span>
                     </div>
                   </article>
                 ))}

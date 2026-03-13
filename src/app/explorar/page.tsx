@@ -69,7 +69,7 @@ export default function ExplorarPage() {
           <div className="story-arc" aria-label="Recorrido narrativo principal">
             <Link href="/acerca" prefetch className="story-arc__item is-done">1. Acerca</Link>
             <Link href="/explorar" prefetch className="story-arc__item is-active">2. Explorar</Link>
-            <Link href="/proyectos" prefetch className="story-arc__item">3. Proyectos</Link>
+            <Link href="/dev" prefetch className="story-arc__item">3. Dev</Link>
           </div>
           <div className="story-intro-strip" aria-label="Resumen rapido de explorar">
             <article className="story-intro-item">
@@ -86,8 +86,8 @@ export default function ExplorarPage() {
             </article>
           </div>
           <div className="root-actions">
-            <Link href="/proyectos" prefetch className="root-action-button">
-              Ver archivo de proyectos
+            <Link href="/dev" prefetch className="root-action-button">
+              Entrar a Dev
             </Link>
             <Link href="/visuales" prefetch className="root-action-button root-action-button--ghost">
               Ir a la comunidad Visuales
@@ -137,9 +137,9 @@ export default function ExplorarPage() {
           <div className="root-split">
             <div>
               <h2>Acto III - Transicion</h2>
-              <p>Cuando ya exploraste, el siguiente paso logico es entrar al archivo para entender que lineas siguen activas.</p>
+              <p>Cuando ya exploraste, el siguiente paso logico es entrar a Dev para ver que productos siguen activos.</p>
             </div>
-            <Link href="/proyectos" prefetch className="root-action-button">Continuar a Proyectos</Link>
+            <Link href="/dev" prefetch className="root-action-button">Continuar a Dev</Link>
           </div>
         </section>
       </div>

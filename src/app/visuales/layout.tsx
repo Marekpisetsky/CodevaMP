@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "../../styles/domains/visuales.css";
 
 export const metadata: Metadata = {
   icons: {

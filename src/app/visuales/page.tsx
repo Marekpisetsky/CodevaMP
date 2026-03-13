@@ -599,7 +599,7 @@ export default function VisualesHubPage() {
     goToStudioIntent("publish");
   };
 
-  const handleMyCabina = () => {
+  const handleMyStudio = () => {
     if (sessionUser === undefined) {
       return;
     }
@@ -748,7 +748,7 @@ export default function VisualesHubPage() {
                       type="button"
                       onClick={() => {
                         setMenuOpen(false);
-                        handleMyCabina();
+                        handleMyStudio();
                       }}
                     >
                       {tx("Mi estudio", "My studio")}

@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
+const distDir = isDev ? ".next-dev" : ".next";
 
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -22,6 +23,7 @@ const contentSecurityPolicy = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  distDir,
   allowedDevOrigins: [
     "localhost",
     "*.localhost",
@@ -50,12 +52,12 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: "/prototipos",
+        source: "/proyectos",
         destination: "/dev",
         permanent: true,
       },
       {
-        source: "/prototipos/:path*",
+        source: "/proyectos/:path*",
         destination: "/dev",
         permanent: true,
       },

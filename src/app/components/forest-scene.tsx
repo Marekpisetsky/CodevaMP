@@ -34,7 +34,7 @@ const BASE_TILES: BaseTile[] = [
   { id: "lab", label: "Laboratorio", detail: "Entradas vivas", className: "hero-tile--core hero-tile--signal" },
   { id: "explorar", label: "Explorar", detail: "Toca y descubre", className: "hero-tile--ice" },
   { id: "audio", label: "Audio", detail: "Ritmos sensoriales", className: "hero-tile--glass hero-tile--oxide" },
-  { id: "prototipos", label: "Dev Lab", detail: "Construir y validar", className: "hero-tile--teal" },
+  { id: "dev", label: "Dev Lab", detail: "Construir y validar", className: "hero-tile--teal" },
   { id: "mapa", label: "Mapa vivo", detail: "Capas que mutan", className: "hero-tile--pulse hero-tile--amber" },
   { id: "archivo", label: "Archivo", detail: "Colecciones abiertas", className: "hero-tile--hollow hero-tile--chalk" },
   { id: "vision", label: "Vision", detail: "Narrativas en capas", className: "hero-tile--rose" },

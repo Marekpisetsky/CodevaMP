@@ -8,7 +8,7 @@
     "dev:turbo": "next dev --turbopack",
     "dev:bridge": "node scripts/local-shell-bridge.mjs",
     "supabase:migrations:verify": "node scripts/verify-supabase-migrations.mjs",
-    "clean:next": "node -e \"const fs=require('fs');['.next','node_modules/.cache/next'].forEach((p)=>fs.rmSync(p,{recursive:true,force:true}));\"",
+    "clean:next": "node -e \"const fs=require('fs');['.next','.next-dev','node_modules/.cache/next'].forEach((p)=>fs.rmSync(p,{recursive:true,force:true}));\"",
     "dev:reset": "npm run clean:next && next dev",
     "dev:reset:turbo": "npm run clean:next && next dev --turbopack",
     "quality:release": "npm run lint && npm run build",

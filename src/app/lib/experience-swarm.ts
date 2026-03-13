@@ -15,6 +15,18 @@ export type SwarmProfile = {
 
 const ROOT_BRAND = getBrandConfig("codevamp");
 
+function dedupeLinks(links: Array<{ href: string; label: string }>) {
+  const seen = new Set<string>();
+  return links.filter((link) => {
+    const key = `${link.href}::${link.label}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
 export function useExperienceSwarm() {
   const [mode, setMode] = useState<SwarmMode>("balanced");
 
@@ -66,10 +78,9 @@ export function useExperienceSwarm() {
     return {
       mode,
       trustSignals,
-      quickLinks: ROOT_BRAND.quickLinks,
+      quickLinks: dedupeLinks(ROOT_BRAND.quickLinks),
       tileRouteMap: {
         ...ROOT_BRAND.homeTileRoutes,
-        prototipos: APP_ROUTES.prototipos,
         audio: APP_ROUTES.audio,
       },
     };

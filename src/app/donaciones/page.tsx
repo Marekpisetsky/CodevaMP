@@ -10,7 +10,7 @@ const donationOptions = [
   {
     name: "Ko-fi",
     link: "https://ko-fi.com/codevamp",
-    description: "Apoyo directo para produccion de arte, sonido y prototipos visuales.",
+    description: "Apoyo directo para produccion de arte, sonido y herramientas visuales.",
     perks: ["Bocetos del laboratorio", "Creditos en colecciones abiertas"],
   },
   {
@@ -25,7 +25,7 @@ const transparency = [
   {
     label: "Produccion creativa",
     percentage: "45%",
-    detail: "Arte, animacion, sonido, prototipos interactivos y documentacion.",
+    detail: "Arte, animacion, sonido, herramientas interactivas y documentacion.",
   },
   {
     label: "Infraestructura",

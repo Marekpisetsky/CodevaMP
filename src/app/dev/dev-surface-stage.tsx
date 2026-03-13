@@ -35,7 +35,7 @@ export default function DevSurfaceStage({ animated }: DevSurfaceStageProps) {
       );
       return {
         phase: Math.random() * Math.PI * 2,
-        speed: 0.78 + Math.random() * 0.52,
+        speed: 0.72 + Math.random() * 0.62,
         delay: Math.random() * 0.34,
         exitMask,
         exitLag,
@@ -67,7 +67,6 @@ export default function DevSurfaceStage({ animated }: DevSurfaceStageProps) {
       const w = canvas.width;
       const h = canvas.height;
       frame += frameStep;
-
       ctx.clearRect(0, 0, w, h);
       const t = frame * 0.008;
       const glowX = w * (0.2 + 0.6 * pointerX);
@@ -180,15 +179,18 @@ export default function DevSurfaceStage({ animated }: DevSurfaceStageProps) {
         from: { x: number; y: number },
         to: { x: number; y: number },
         alpha: number,
-        control: { x: number; y: number }
+        control: { x: number; y: number },
+        reveal = 1
       ) => {
         ctx.lineWidth = px;
         ctx.strokeStyle = `rgba(67, 208, 160, ${alpha})`;
         ctx.beginPath();
         const samples = 40;
-        for (let i = 0; i <= samples; i += 1) {
-          const tSample = i / samples;
-          const raw = quadPoint(from, control, to, tSample);
+        const limit = Math.max(1, Math.floor(samples * reveal));
+        for (let i = 0; i <= limit; i += 1) {
+          const tSample = (i / samples) / Math.max(reveal, 1e-3);
+          const clampedSample = Math.min(1, tSample);
+          const raw = quadPoint(from, control, to, clampedSample);
           const warped = lensWarp(raw);
           if (i === 0) ctx.moveTo(warped.x, warped.y);
           else ctx.lineTo(warped.x, warped.y);

@@ -62,11 +62,6 @@ begin
 
   -- 2) Drop non-primary/non-unique/non-constraint indexes on advisor-flagged tables.
   foreach target_table in array array[
-    'autonomy_decisions',
-    'autonomy_deployments',
-    'autonomy_feedback',
-    'autonomy_task_events',
-    'autonomy_tasks',
     'dev_projects',
     'dev_studio_commits',
     'project_view_events',
@@ -96,4 +91,3 @@ begin
     end loop;
   end loop;
 end $$;
-
