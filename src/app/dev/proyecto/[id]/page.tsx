@@ -6,6 +6,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   initialProjects,
   mapDevProjectRow,
+  normalizeDevProject,
+  readLocalDevProjects,
+  removeLocalDevProject,
+  upsertLocalDevProject,
   type DevProject,
   type DevProjectRow,
 } from "@/app/lib/dev-projects";
@@ -194,7 +198,10 @@ export default function DevProjectPage() {
   const params = useParams<{ id: string | string[] }>();
   const routeId = params?.id;
   const projectId = Array.isArray(routeId) ? routeId[0] : routeId;
-  const fallbackCatalog = useMemo(() => initialProjects, []);
+  const fallbackCatalog = useMemo(() => {
+    const localProjects = readLocalDevProjects();
+    return localProjects.length ? localProjects : initialProjects;
+  }, []);
   const [project, setProject] = useState<DevProject | null>(null);
   const [linkedIdeas, setLinkedIdeas] = useState<DevProject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -343,9 +350,29 @@ export default function DevProjectPage() {
   }, [projectId]);
 
   const updateProject = async (patch: Partial<Pick<DevProjectRow, "title" | "summary" | "stack" | "looking_for" | "status">>) => {
-    if (!project || !supabase) return;
+    if (!project) return;
     setError(null);
     setInfo(null);
+    if (!supabase || project.ownerId === "local" || !project.ownerId) {
+      const nextProject = normalizeDevProject({
+        ...project,
+        title: patch.title ?? project.title,
+        summary: patch.summary ?? project.summary,
+        stack: patch.stack ?? project.stack,
+        lookingFor: patch.looking_for ?? project.lookingFor,
+        status: patch.status ?? project.status,
+        createdAt: project.createdAt,
+      });
+      upsertLocalDevProject(nextProject);
+      setProject(nextProject);
+      setEditTitle(nextProject.title);
+      setEditSummary(nextProject.summary);
+      setEditStack(nextProject.stack);
+      setEditLookingFor(nextProject.lookingFor);
+      setIsEditing(false);
+      setInfo(t.saveOk);
+      return;
+    }
     const { data, error: updateError } = await supabase
       .from("dev_projects")
       .update(patch)
@@ -400,10 +427,17 @@ export default function DevProjectPage() {
   };
 
   const removeProject = async () => {
-    if (!project || !supabase) return;
+    if (!project) return;
     if (typeof window !== "undefined" && !window.confirm(t.confirmDelete)) return;
     setError(null);
     setInfo(null);
+    if (!supabase || project.ownerId === "local" || !project.ownerId) {
+      removeLocalDevProject(project.id);
+      setInfo(t.deleteOk);
+      router.push("/dev");
+      router.refresh();
+      return;
+    }
     const { error: deleteError } = await supabase.from("dev_projects").delete().eq("id", project.id);
     if (deleteError) {
       setError(t.deleteError);

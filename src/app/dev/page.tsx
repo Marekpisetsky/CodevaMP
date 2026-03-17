@@ -6,10 +6,14 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import BannerLab from "@/app/dev/banner-lab";
 import { ensureDevWasmRuntime } from "@/app/lib/dev-wasm-loader";
 import {
-  initialProjects,
+  mergeDevProjectCatalogs,
   mapDevProjectRow,
+  normalizeDevProject,
+  readLocalDevProjects,
+  upsertLocalDevProject,
   type DevProject,
   type DevProjectRow,
+  writeLocalDevProjects,
 } from "@/app/lib/dev-projects";
 import { formatCompactMetric } from "@/app/lib/project-stats";
 import { ensureExplorerMembership } from "@/app/lib/product-memberships";
@@ -337,9 +341,10 @@ function DevPageContent() {
     let active = true;
 
     const loadProjects = async () => {
+      const localProjects = readLocalDevProjects();
       if (!supabase) {
         if (active) {
-          setProjects(initialProjects);
+          setProjects(localProjects);
           setLoading(false);
         }
         return;
@@ -354,14 +359,14 @@ function DevPageContent() {
       if (!active) return;
 
       if (error) {
-        setProjects(initialProjects);
+        setProjects(localProjects);
         setErrorMsg(formatDevProjectsError(isEs, error));
         setLoading(false);
         return;
       }
 
       const rows = (data || []) as DevProjectRow[];
-      setProjects(rows.map(mapDevProjectRow));
+      setProjects(mergeDevProjectCatalogs(rows.map(mapDevProjectRow), localProjects));
       setLoading(false);
     };
 
@@ -561,14 +566,16 @@ function DevPageContent() {
   };
 
   const syncLinkedIdeas = async (projectId: string, ideaIds: string[]) => {
+    const uniqueIds = Array.from(new Set(ideaIds.filter(Boolean)));
     if (!supabase) {
-      setProjects((prev) =>
-        prev.map((project) => (project.id === projectId ? { ...project, linkedIdeaIds: ideaIds } : project))
-      );
+      setProjects((prev) => {
+        const next = prev.map((project) => (project.id === projectId ? { ...project, linkedIdeaIds: uniqueIds } : project));
+        writeLocalDevProjects(next);
+        return next;
+      });
       return;
     }
 
-    const uniqueIds = Array.from(new Set(ideaIds.filter(Boolean)));
     const { error: deleteError } = await supabase
       .from("dev_project_idea_links")
       .delete()
@@ -608,17 +615,38 @@ function DevPageContent() {
       return;
     }
 
-    if (!supabase) {
-      setErrorMsg(t.supabaseMissing);
+    const localProject: DevProject = normalizeDevProject({
+      id: `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      title,
+      summary,
+      stack,
+      repoUrl,
+      demoUrl,
+      lookingFor: draftLookingFor,
+      linkedIdeaIds: draftPhaseStatus === "building" ? draftLinkedIdeaIds : [],
+      status: draftPhaseStatus,
+      author: "",
+      updated: "",
+      createdAt: new Date().toISOString(),
+      ownerId: sessionUserId ?? "local",
+    });
+
+    if (!supabase || !sessionUserId) {
+      const next = upsertLocalDevProject(localProject);
+      setProjects((prev) => mergeDevProjectCatalogs(prev, next));
+      setInfoMsg(draftSuccessLabel);
+      setDraftTitle("");
+      setDraftSummary("");
+      setDraftStack("");
+      setDraftRepoUrl("");
+      setDraftDemoUrl("");
+      setDraftLookingFor(collabOptions[0]);
+      setDraftLinkedIdeaIds([]);
+      setShowComposer(false);
       return;
     }
 
-    if (!sessionUserId) {
-      setErrorMsg(t.signinToPublish);
-      return;
-    }
-
-      const payload = {
+    const payload = {
       title,
       summary,
       stack,
@@ -636,13 +664,24 @@ function DevPageContent() {
       .single();
 
     if (error || !data) {
+      const next = upsertLocalDevProject(localProject);
+      setProjects((prev) => mergeDevProjectCatalogs(prev, next));
+      setInfoMsg(draftSuccessLabel);
       setErrorMsg(formatDevProjectsError(isEs, error));
+      setDraftTitle("");
+      setDraftSummary("");
+      setDraftStack("");
+      setDraftRepoUrl("");
+      setDraftDemoUrl("");
+      setDraftLookingFor(collabOptions[0]);
+      setDraftLinkedIdeaIds([]);
+      setShowComposer(false);
       return;
     }
 
     const nextProject = mapDevProjectRow(data as DevProjectRow);
     await syncLinkedIdeas(nextProject.id, draftPhaseStatus === "building" ? draftLinkedIdeaIds : []);
-    setProjects((prev) => [{ ...nextProject, linkedIdeaIds: draftPhaseStatus === "building" ? draftLinkedIdeaIds : [] }, ...prev]);
+    setProjects((prev) => [{ ...nextProject, linkedIdeaIds: draftPhaseStatus === "building" ? draftLinkedIdeaIds : [] }, ...prev.filter((item) => item.id !== nextProject.id)]);
     setDraftTitle("");
     setDraftSummary("");
     setDraftStack("");
