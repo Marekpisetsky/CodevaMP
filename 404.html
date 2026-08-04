@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>404 — CodevaMP</title>
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0A0A0C">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg: #0A0A0C;
+    --red: #EC4038;
+    --white: #F5F5F7;
+    --gray: #9A9AA2;
+    --border: rgba(255,255,255,0.09);
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ color-scheme:dark; }
+  body{
+    background:var(--bg);
+    color:var(--white);
+    font-family:'IBM Plex Mono',monospace;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:32px;
+    position:relative;
+    overflow:hidden;
+  }
+  .ambient{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:radial-gradient(ellipse 700px 400px at 82% -5%, rgba(232,52,42,0.13), transparent 60%),
+               radial-gradient(ellipse 600px 400px at 8% 105%, rgba(232,52,42,0.09), transparent 55%);
+  }
+  .content{ position:relative; z-index:1; max-width:560px; }
+  .crack{
+    display:block;
+    margin:0 auto 28px;
+    width:64px; height:64px;
+    opacity:.85;
+  }
+  .code{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;
+    font-size:clamp(64px, 14vw, 120px);
+    line-height:1;
+    letter-spacing:0.02em;
+    color:var(--red);
+    text-shadow:0 0 40px rgba(232,52,42,0.35);
+    margin-bottom:18px;
+  }
+  h1{
+    font-family:'Oswald',sans-serif;
+    font-weight:600;
+    text-transform:uppercase;
+    font-size:clamp(20px, 3vw, 26px);
+    letter-spacing:0.02em;
+    margin-bottom:16px;
+  }
+  p{
+    color:var(--gray);
+    font-size:14.5px;
+    line-height:1.7;
+    max-width:440px;
+    margin:0 auto 34px;
+  }
+  a.btn{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    background:var(--red);
+    color:var(--white);
+    font-family:'Oswald',sans-serif;
+    font-weight:600;
+    letter-spacing:0.03em;
+    text-transform:uppercase;
+    font-size:14px;
+    padding:15px 28px;
+    text-decoration:none;
+    clip-path:polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+    transition:transform .15s, box-shadow .15s;
+  }
+  a.btn:hover{
+    transform:translateY(-2px);
+    box-shadow:0 12px 28px rgba(232,52,42,0.3);
+  }
+</style>
+</head>
+<body>
+<div class="ambient" aria-hidden="true"></div>
+<div class="content">
+  <svg class="crack" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+    <path d="M32 4 L27 20 L34 24 L24 38 L30 40 L20 60" stroke="#EC4038" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div class="code">404</div>
+  <h1>Esto no está en ningún mapa de Cendraria</h1>
+  <p>Lo que buscabas cruzó a un lugar que esta página no puede describir. No hay vuelta atrás por este camino — pero sí una salida.</p>
+  <a class="btn" href="/CodevaMP-web/">← Volver al canal</a>
+</div>
+</body>
+</html>
