@@ -4,7 +4,11 @@ import fragmentShader from './shaders/particle.frag.js';
 
 export function createVoxelModel({ positions, colors, seeds }) {
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  // `positions` is the physics sim's own buffer — mutated in place every
+  // frame, so this attribute needs re-uploading (not a static geometry).
+  const positionAttribute = new THREE.BufferAttribute(positions, 3);
+  positionAttribute.setUsage(THREE.DynamicDrawUsage);
+  geometry.setAttribute('position', positionAttribute);
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1));
 
@@ -18,17 +22,15 @@ export function createVoxelModel({ positions, colors, seeds }) {
     blending: THREE.AdditiveBlending,
     uniforms: {
       uTime: { value: 0 },
-      uCursor: { value: new THREE.Vector3(9999, 9999, 9999) },
-      uRadius: { value: 12 },
-      uStrength: { value: 0 },
       uPointSize: { value: 2.1 },
       uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
-      uFlowStrength: { value: 0.14 },
-      uPushDistance: { value: 16 },
     },
   });
 
   const points = new THREE.Points(geometry, material);
-  points.geometry.computeBoundingSphere();
+  // Particles get pushed well outside the rest-pose bounding sphere on
+  // cursor hits — recomputing it every frame isn't worth it for a single
+  // always-on-screen hero object, so just never cull it.
+  points.frustumCulled = false;
   return points;
 }

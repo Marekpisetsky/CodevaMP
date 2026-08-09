@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { parseSkin, FIGURE_HEIGHT, FIGURE_CENTER_Y } from './skin-parser.js';
 import { createVoxelModel } from './voxel-model.js';
 import { createCursorTracker } from './cursor-interaction.js';
+import { createParticlePhysics } from './particle-physics.js';
 import { reduceMotion, hoverCapable } from '../js/utils/motion-prefs.js';
 
 function createGroundRing() {
@@ -42,7 +43,8 @@ export async function createHeroScene(container, skinUrl) {
     camera.updateProjectionMatrix();
   }
 
-  const points = createVoxelModel(skinData);
+  const physics = createParticlePhysics({ basePositions: skinData.positions, count: skinData.count });
+  const points = createVoxelModel({ positions: physics.positions, colors: skinData.colors, seeds: skinData.seeds });
   scene.add(points);
 
   const ring = createGroundRing();
@@ -61,7 +63,7 @@ export async function createHeroScene(container, skinUrl) {
 
   const cursor = hoverCapable ? createCursorTracker({ camera, points, renderer }) : null;
   const uniforms = points.material.uniforms;
-  let strength = 0;
+  const positionAttribute = points.geometry.attributes.position;
   let raf = null;
   let lastTime = performance.now();
 
@@ -70,13 +72,12 @@ export async function createHeroScene(container, skinUrl) {
     lastTime = now;
 
     points.rotation.y += delta * 0.35;
-    uniforms.uTime.value = now / 1000;
+    const t = now / 1000;
+    uniforms.uTime.value = t;
 
-    const hovering = cursor ? cursor.update(uniforms.uCursor.value) : false;
-    const target = hovering ? 1 : 0;
-    const rate = hovering ? 5 : 1.8; // snap out fast, drift back to the form more slowly
-    strength += (target - strength) * Math.min(1, delta * rate);
-    uniforms.uStrength.value = strength;
+    const cursorState = cursor ? cursor.update(delta) : null;
+    physics.update(delta, cursorState, t);
+    positionAttribute.needsUpdate = true;
 
     renderer.render(scene, camera);
     raf = requestAnimationFrame(frame);
