@@ -1,26 +1,27 @@
 // Real per-particle physics: each point has its own velocity, integrated
 // every frame. Every particle also carries a "disturbance" level (0 = at
-// rest, 1 = just got hit) that governs how free it currently is:
+// rest, 1 = just got hit):
 //
 // - On contact, a particle gets kicked by an IMPULSE (added to its
 //   velocity, not a target it's forced toward) that mixes the cursor's own
 //   velocity (carry) with a fixed-per-particle random scatter direction —
 //   so a touch doesn't move every affected particle the same way, closer
 //   to knocking a handful of debris than dragging one shape.
-// - Disturbance spikes up on contact and decays on its own afterward. Both
-//   the spring pulling a particle back to rest AND how much it fights that
-//   spring are scaled by (1 - disturbance): freshly hit particles are left
-//   essentially free (spring barely engaged, wobble amplitude boosted) and
-//   only get reeled back in gradually as disturbance fades — instead of the
-//   spring immediately resuming full strength the instant contact ends.
+// - Disturbance spikes up on contact and decays on its own afterward, and
+//   only ever SUPPRESSES the spring pulling a particle back to rest — it
+//   never adds force. A freshly-hit particle keeps moving purely on the
+//   velocity it was actually given (real inertia, bled off by damping) and
+//   only gets reeled back in gradually as disturbance fades, instead of the
+//   spring resuming full strength the instant contact ends. It must NOT
+//   keep animating once its velocity has decayed to ~nothing just because
+//   disturbance hasn't — that would be motion with no force behind it.
 const SPRING_K = 26;
 const DAMPING = 3.2;
 const INFLUENCE_RADIUS = 7;
 const CARRY_GAIN = 1.3;
 const SCATTER_GAIN = 26;
 const SPRING_SUPPRESSION = 0.9;
-const IDLE_FORCE = 8;        // ambient wobble at rest
-const DISTURB_BOOST = 46;    // extra wobble amplitude while freshly disturbed
+const IDLE_FORCE = 8;        // small ambient wobble, constant whether disturbed or not
 const DISTURB_RISE = 30;     // how fast disturbance ramps up on contact
 const DISTURB_DECAY = 0.9;   // exponential fade-out rate of disturbance per second
 
@@ -91,10 +92,9 @@ export function createParticlePhysics({ basePositions, count }) {
       let ay = (basePositions[iy] - py) * SPRING_K * springScale;
       let az = (basePositions[iz] - pz) * SPRING_K * springScale;
 
-      const wobble = IDLE_FORCE + dist * DISTURB_BOOST;
-      ax += Math.sin(time * idleFreq[ix] + idlePhase[ix]) * wobble;
-      ay += Math.sin(time * idleFreq[iy] + idlePhase[iy]) * wobble;
-      az += Math.sin(time * idleFreq[iz] + idlePhase[iz]) * wobble;
+      ax += Math.sin(time * idleFreq[ix] + idlePhase[ix]) * IDLE_FORCE;
+      ay += Math.sin(time * idleFreq[iy] + idlePhase[iy]) * IDLE_FORCE;
+      az += Math.sin(time * idleFreq[iz] + idlePhase[iz]) * IDLE_FORCE;
 
       vx = (vx + ax * dt) * damp;
       vy = (vy + ay * dt) * damp;
