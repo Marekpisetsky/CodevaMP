@@ -13,6 +13,7 @@ import * as scrollReveal from './js/scroll-reveal.js';
 import * as counters from './js/counters.js';
 import * as pointerInteractions from './js/pointer-interactions.js';
 import * as emberTrail from './js/ember-trail.js';
+import * as heroVoxel from './three/hero-voxel.js';
 
 youtubeSubs.init();
 youtubeLatestVideos.init();
@@ -32,3 +33,4 @@ scrollReveal.init();
 counters.init();
 pointerInteractions.init();
 emberTrail.init();
+heroVoxel.init(document.getElementById('hero-voxel'));

@@ -1,0 +1,111 @@
+// Standard Minecraft 64x64 skin UV layout. Each body part is a box unwrapped
+// onto the texture at a fixed (u, v) origin — see faceRects() for the exact
+// unwrap formula, which is the same for every box regardless of size.
+// armL/legL mirror armR/legR when the modern (1.8+) left-side regions are
+// fully transparent, which is how legacy skins without that data behave.
+const PARTS = [
+  { name: 'head',  u: 0,  v: 0,  w: 8, h: 8,  d: 8, cx: 0,  cy: 28, cz: 0 },
+  { name: 'torso', u: 16, v: 16, w: 8, h: 12, d: 4, cx: 0,  cy: 18, cz: 0 },
+  { name: 'armR',  u: 40, v: 16, w: 4, h: 12, d: 4, cx: -6, cy: 18, cz: 0 },
+  { name: 'legR',  u: 0,  v: 16, w: 4, h: 12, d: 4, cx: -2, cy: 6,  cz: 0 },
+  { name: 'armL',  u: 32, v: 48, w: 4, h: 12, d: 4, cx: 6,  cy: 18, cz: 0, mirrorOf: 'armR' },
+  { name: 'legL',  u: 16, v: 48, w: 4, h: 12, d: 4, cx: 2,  cy: 6,  cz: 0, mirrorOf: 'legR' },
+];
+
+export const FIGURE_HEIGHT = 32;
+export const FIGURE_CENTER_Y = 16;
+
+function faceRects(u, v, w, h, d) {
+  return {
+    top:    { u: u + d,       v,         w, h: d },
+    bottom: { u: u + d + w,   v,         w, h: d },
+    right:  { u,               v: v + d, w: d, h },
+    front:  { u: u + d,       v: v + d, w, h },
+    left:   { u: u + d + w,   v: v + d, w: d, h },
+    back:   { u: u + 2 * d + w, v: v + d, w, h },
+  };
+}
+
+function regionHasOpaquePixel(data, imgW, rect) {
+  for (let y = rect.v; y < rect.v + rect.h; y++) {
+    for (let x = rect.u; x < rect.u + rect.w; x++) {
+      if (data[(y * imgW + x) * 4 + 3] > 0) return true;
+    }
+  }
+  return false;
+}
+
+function sampleFace(data, imgW, rect, box, face, out) {
+  const hw = box.w / 2, hh = box.h / 2, hd = box.d / 2;
+  for (let dv = 0; dv < rect.h; dv++) {
+    for (let du = 0; du < rect.w; du++) {
+      const idx = ((rect.v + dv) * imgW + (rect.u + du)) * 4;
+      const a = data[idx + 3];
+      if (a === 0) continue;
+
+      let x, y, z;
+      switch (face) {
+        case 'front':  x = box.cx + hw - du; y = box.cy + hh - dv; z = box.cz + hd; break;
+        case 'back':   x = box.cx - hw + du; y = box.cy + hh - dv; z = box.cz - hd; break;
+        case 'right':  x = box.cx + hw;      y = box.cy + hh - dv; z = box.cz - hd + du; break;
+        case 'left':   x = box.cx - hw;      y = box.cy + hh - dv; z = box.cz + hd - du; break;
+        case 'top':    x = box.cx + hw - du; y = box.cy + hh;      z = box.cz - hd + dv; break;
+        default:       x = box.cx + hw - du; y = box.cy - hh;      z = box.cz + hd - dv; break; // bottom
+      }
+
+      out.positions.push(x, y, z);
+      out.colors.push(data[idx] / 255, data[idx + 1] / 255, data[idx + 2] / 255);
+    }
+  }
+}
+
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+export async function parseSkin(url) {
+  const img = await loadImage(url);
+  const size = img.width; // 64 for a standard skin
+
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, 0, 0, size, size);
+  const { data } = ctx.getImageData(0, 0, size, size);
+
+  const out = { positions: [], colors: [] };
+
+  for (const part of PARTS) {
+    let source = part;
+    if (part.mirrorOf) {
+      const rects = faceRects(part.u, part.v, part.w, part.h, part.d);
+      const hasData = Object.values(rects).some((r) => regionHasOpaquePixel(data, size, r));
+      if (!hasData) {
+        source = PARTS.find((p) => p.name === part.mirrorOf);
+      }
+    }
+    const rects = faceRects(source.u, source.v, source.w, source.h, source.d);
+    const box = { w: part.w, h: part.h, d: part.d, cx: part.cx, cy: part.cy, cz: part.cz };
+    for (const face of Object.keys(rects)) {
+      sampleFace(data, size, rects[face], box, face, out);
+    }
+  }
+
+  const count = out.positions.length / 3;
+  const seeds = new Float32Array(count);
+  for (let i = 0; i < count; i++) seeds[i] = Math.random();
+
+  return {
+    positions: new Float32Array(out.positions),
+    colors: new Float32Array(out.colors),
+    seeds,
+    count,
+  };
+}
