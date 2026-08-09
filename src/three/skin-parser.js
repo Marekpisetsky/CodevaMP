@@ -47,9 +47,12 @@ const FACE_NORMALS = {
 };
 
 // How many jittered samples to emit per opaque texel. Multiplying the raw
-// pixel count this way is what turns a ~1.6k-point flat shell into a dense,
-// volumetric-looking cloud (~15-20k points) without hand-authoring geometry.
-const SAMPLES_PER_TEXEL = 10;
+// pixel count (~1.6k opaque texels on this skin) this way is what turns a
+// flat shell into a dense, volumetric cloud without hand-authoring geometry.
+// 62 lands in the ~90-100k range, comfortably inside the 50k-150k target —
+// physics for this many particles runs on the GPU (see particle-physics.js),
+// a CPU JS loop measured ~24fps at this density.
+const SAMPLES_PER_TEXEL = 62;
 
 function sampleFace(data, imgW, rect, box, face, out) {
   const hw = box.w / 2, hh = box.h / 2, hd = box.d / 2;

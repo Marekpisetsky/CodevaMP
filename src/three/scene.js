@@ -43,8 +43,14 @@ export async function createHeroScene(container, skinUrl) {
     camera.updateProjectionMatrix();
   }
 
-  const physics = createParticlePhysics({ basePositions: skinData.positions, count: skinData.count });
-  const points = createVoxelModel({ positions: physics.positions, colors: skinData.colors, seeds: skinData.seeds });
+  const physics = createParticlePhysics({ renderer, basePositions: skinData.positions, count: skinData.count });
+  const reference = buildReferenceUvs(skinData.count, physics.size);
+  const points = createVoxelModel({
+    positions: skinData.positions,
+    colors: skinData.colors,
+    seeds: skinData.seeds,
+    reference,
+  });
   scene.add(points);
 
   const ring = createGroundRing();
@@ -63,7 +69,6 @@ export async function createHeroScene(container, skinUrl) {
 
   const cursor = hoverCapable ? createCursorTracker({ camera, points, renderer }) : null;
   const uniforms = points.material.uniforms;
-  const positionAttribute = points.geometry.attributes.position;
   let raf = null;
   let lastTime = performance.now();
 
@@ -77,7 +82,7 @@ export async function createHeroScene(container, skinUrl) {
 
     const cursorState = cursor ? cursor.update(delta) : null;
     physics.update(delta, cursorState, t);
-    positionAttribute.needsUpdate = true;
+    uniforms.uPositionTexture.value = physics.getPositionTexture();
 
     renderer.render(scene, camera);
     raf = requestAnimationFrame(frame);
@@ -95,7 +100,10 @@ export async function createHeroScene(container, skinUrl) {
   }
 
   if (reduceMotion) {
+    // No compute() call: the GPU textures start out equal to the rest pose,
+    // so this renders that static shape directly, no jitter implied.
     uniforms.uTime.value = performance.now() / 1000;
+    uniforms.uPositionTexture.value = physics.getPositionTexture();
     renderer.render(scene, camera);
   } else {
     ensureLoop();
@@ -109,6 +117,7 @@ export async function createHeroScene(container, skinUrl) {
     stopLoop();
     resizeObserver.disconnect();
     if (cursor) cursor.dispose();
+    physics.dispose();
     points.geometry.dispose();
     points.material.dispose();
     ring.geometry.dispose();
@@ -117,4 +126,19 @@ export async function createHeroScene(container, skinUrl) {
   }
 
   return { dispose };
+}
+
+// Maps each particle index to the (u, v) texel center it lives at in the
+// physics sim's square textures — same row-major i -> (i % size, i / size)
+// layout particle-physics.js uses to fill the initial position data, so a
+// given index always reads back the position it was written to.
+function buildReferenceUvs(count, size) {
+  const reference = new Float32Array(count * 2);
+  for (let i = 0; i < count; i++) {
+    const x = i % size;
+    const y = Math.floor(i / size);
+    reference[i * 2] = (x + 0.5) / size;
+    reference[i * 2 + 1] = (y + 0.5) / size;
+  }
+  return reference;
 }
