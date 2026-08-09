@@ -1,0 +1,29 @@
+{
+  "name": "codevamp",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Marekpisetsky/CodevaMP.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Marekpisetsky/CodevaMP/issues"
+  },
+  "homepage": "https://github.com/Marekpisetsky/CodevaMP#readme",
+  "devDependencies": {
+    "vite": "^8.2.1"
+  },
+  "dependencies": {
+    "three": "^0.185.1"
+  }
+}
