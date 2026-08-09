@@ -68,7 +68,7 @@ function sampleFace(data, imgW, rect, box, face, out) {
         // along the face normal (mostly positive, adds volume/fluffiness).
         const jdu = du + (Math.random() - 0.5);
         const jdv = dv + (Math.random() - 0.5);
-        const puff = Math.random() * 1.1 - 0.15;
+        const puff = Math.random() * 0.35;
 
         let x, y, z;
         switch (face) {

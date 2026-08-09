@@ -73,7 +73,9 @@ export async function createHeroScene(container, skinUrl) {
     uniforms.uTime.value = now / 1000;
 
     const hovering = cursor ? cursor.update(uniforms.uCursor.value) : false;
-    strength += ((hovering ? 1 : 0) - strength) * Math.min(1, delta * 4);
+    const target = hovering ? 1 : 0;
+    const rate = hovering ? 5 : 1.8; // snap out fast, drift back to the form more slowly
+    strength += (target - strength) * Math.min(1, delta * rate);
     uniforms.uStrength.value = strength;
 
     renderer.render(scene, camera);

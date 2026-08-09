@@ -19,11 +19,12 @@ export function createVoxelModel({ positions, colors, seeds }) {
     uniforms: {
       uTime: { value: 0 },
       uCursor: { value: new THREE.Vector3(9999, 9999, 9999) },
-      uRadius: { value: 7 },
+      uRadius: { value: 12 },
       uStrength: { value: 0 },
       uPointSize: { value: 2.1 },
       uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
-      uFlowStrength: { value: 0.55 },
+      uFlowStrength: { value: 0.14 },
+      uPushDistance: { value: 16 },
     },
   });
 
