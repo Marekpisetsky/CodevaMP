@@ -1,8 +1,6 @@
 export default /* glsl */ `
 attribute float aSeed;
-attribute vec2 aReference;
 
-uniform sampler2D uPositionTexture;
 uniform float uTime;
 uniform float uPointSize;
 uniform float uPixelRatio;
@@ -12,13 +10,11 @@ varying float vShimmer;
 varying float vDepth;
 
 void main() {
-  vec3 pos = texture2D(uPositionTexture, aReference).xyz;
-
   float shimmer = 0.5 + 0.5 * sin(uTime * 1.8 + aSeed * 6.2831853);
   vShimmer = shimmer;
   vColor = color;
 
-  vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+  vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
   gl_Position = projectionMatrix * mvPosition;
 
   // Orthographic projection alone gives no size-by-distance cue, so a

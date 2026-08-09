@@ -35,6 +35,16 @@ function regionHasOpaquePixel(data, imgW, rect) {
   return false;
 }
 
+function countOpaquePixels(data, imgW, rect) {
+  let n = 0;
+  for (let y = rect.v; y < rect.v + rect.h; y++) {
+    for (let x = rect.u; x < rect.u + rect.w; x++) {
+      if (data[(y * imgW + x) * 4 + 3] > 0) n++;
+    }
+  }
+  return n;
+}
+
 // Outward normal per face, used to "puff" samples off the surface so the
 // cloud reads as a volume with real thickness instead of a flat paper shell.
 const FACE_NORMALS = {
@@ -46,15 +56,7 @@ const FACE_NORMALS = {
   bottom: [0, -1, 0],
 };
 
-// How many jittered samples to emit per opaque texel. Multiplying the raw
-// pixel count (~1.6k opaque texels on this skin) this way is what turns a
-// flat shell into a dense, volumetric cloud without hand-authoring geometry.
-// 62 lands in the ~90-100k range, comfortably inside the 50k-150k target —
-// physics for this many particles runs on the GPU (see particle-physics.js),
-// a CPU JS loop measured ~24fps at this density.
-const SAMPLES_PER_TEXEL = 62;
-
-function sampleFace(data, imgW, rect, box, face, out) {
+function sampleFace(data, imgW, rect, box, face, samplesPerTexel, out) {
   const hw = box.w / 2, hh = box.h / 2, hd = box.d / 2;
   const [nx, ny, nz] = FACE_NORMALS[face];
 
@@ -66,7 +68,7 @@ function sampleFace(data, imgW, rect, box, face, out) {
 
       const r = data[idx] / 255, g = data[idx + 1] / 255, b = data[idx + 2] / 255;
 
-      for (let s = 0; s < SAMPLES_PER_TEXEL; s++) {
+      for (let s = 0; s < samplesPerTexel; s++) {
         // Sub-texel jitter (smooths out the pixel grid) + an outward puff
         // along the face normal (mostly positive, adds volume/fluffiness).
         const jdu = du + (Math.random() - 0.5);
@@ -102,20 +104,8 @@ function loadImage(url) {
   });
 }
 
-export async function parseSkin(url) {
-  const img = await loadImage(url);
-  const size = img.width; // 64 for a standard skin
-
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(img, 0, 0, size, size);
-  const { data } = ctx.getImageData(0, 0, size, size);
-
-  const out = { positions: [], colors: [] };
-
+function resolveRegions(data, size) {
+  const regions = [];
   for (const part of PARTS) {
     let source = part;
     if (part.mirrorOf) {
@@ -128,8 +118,37 @@ export async function parseSkin(url) {
     const rects = faceRects(source.u, source.v, source.w, source.h, source.d);
     const box = { w: part.w, h: part.h, d: part.d, cx: part.cx, cy: part.cy, cz: part.cz };
     for (const face of Object.keys(rects)) {
-      sampleFace(data, size, rects[face], box, face, out);
+      regions.push({ rect: rects[face], box, face });
     }
+  }
+  return regions;
+}
+
+// `targetCount` is a budget, not an exact result: samples-per-texel has to
+// be a whole number, so the actual count is opaqueTexels * round(targetCount
+// / opaqueTexels) — close to the ask, exact for whatever skin is loaded
+// rather than tuned to this one specific file's opaque-pixel count.
+export async function parseSkin(url, { targetCount = 30000 } = {}) {
+  const img = await loadImage(url);
+  const size = img.width; // 64 for a standard skin
+
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, 0, 0, size, size);
+  const { data } = ctx.getImageData(0, 0, size, size);
+
+  const regions = resolveRegions(data, size);
+
+  let opaqueTexels = 0;
+  for (const { rect } of regions) opaqueTexels += countOpaquePixels(data, size, rect);
+  const samplesPerTexel = Math.max(1, Math.round(targetCount / Math.max(1, opaqueTexels)));
+
+  const out = { positions: [], colors: [] };
+  for (const { rect, box, face } of regions) {
+    sampleFace(data, size, rect, box, face, samplesPerTexel, out);
   }
 
   const count = out.positions.length / 3;

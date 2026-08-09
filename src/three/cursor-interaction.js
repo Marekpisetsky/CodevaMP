@@ -16,6 +16,9 @@ export function createCursorTracker({ camera, points, renderer }) {
   const planeNormal = new THREE.Vector3();
   const hit = new THREE.Vector3();
   const prevLocal = new THREE.Vector3();
+  // Reused every frame instead of returning a fresh object literal from
+  // update() — the animation loop should not be allocating.
+  const state = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
   let active = false;
   let hasPrev = false;
 
@@ -33,7 +36,10 @@ export function createCursorTracker({ camera, points, renderer }) {
   renderer.domElement.addEventListener('pointermove', onPointerMove);
   renderer.domElement.addEventListener('pointerleave', onPointerLeave);
 
-  // Returns { x, y, z, vx, vy, vz } in the figure's local space, or null.
+  // Returns the shared `state` object ({x,y,z,vx,vy,vz} in the figure's
+  // local space) with fresh values, or null. The returned reference is the
+  // same object every call — copy out of it if it needs to outlive the
+  // frame, don't retain it expecting it to stay unchanged.
   function update(dt) {
     if (!active) {
       hasPrev = false;
@@ -59,7 +65,9 @@ export function createCursorTracker({ camera, points, renderer }) {
     prevLocal.copy(hit);
     hasPrev = true;
 
-    return { x: hit.x, y: hit.y, z: hit.z, vx, vy, vz };
+    state.x = hit.x; state.y = hit.y; state.z = hit.z;
+    state.vx = vx; state.vy = vy; state.vz = vz;
+    return state;
   }
 
   function dispose() {

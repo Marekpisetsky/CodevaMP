@@ -3,6 +3,7 @@ import { parseSkin, FIGURE_HEIGHT, FIGURE_CENTER_Y } from './skin-parser.js';
 import { createVoxelModel } from './voxel-model.js';
 import { createCursorTracker } from './cursor-interaction.js';
 import { createParticlePhysics } from './particle-physics.js';
+import { TIERS, guessInitialTier, stepDownTier, fpsFloorFor, measureFps, resolvePixelRatio } from './device-quality.js';
 import { reduceMotion, hoverCapable } from '../js/utils/motion-prefs.js';
 
 function createGroundRing() {
@@ -18,12 +19,33 @@ function createGroundRing() {
   return ring;
 }
 
-export async function createHeroScene(container, skinUrl) {
-  const skinData = await parseSkin(skinUrl);
+async function buildParticleSystem(skinUrl, tier) {
+  const config = TIERS[tier];
+  const skinData = await parseSkin(skinUrl, { targetCount: config.particleBudget });
   if (skinData.count === 0) throw new Error('empty skin: no opaque pixels parsed');
 
+  const physics = createParticlePhysics({
+    basePositions: skinData.positions,
+    count: skinData.count,
+    interactionRadius: config.interactionRadius,
+    noiseComplexity: config.noiseComplexity,
+  });
+  const points = createVoxelModel({
+    positions: physics.positions,
+    colors: skinData.colors,
+    seeds: skinData.seeds,
+    pointSize: config.pointSize,
+    pixelRatio: resolvePixelRatio(tier),
+  });
+
+  return { points, physics };
+}
+
+export async function createHeroScene(container, skinUrl) {
+  let tier = guessInitialTier();
+
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(resolvePixelRatio(tier)); // never devicePixelRatio uncapped — see device-quality.js
   renderer.domElement.style.cssText = 'width:100%;height:100%;display:block;';
   container.appendChild(renderer.domElement);
 
@@ -43,14 +65,7 @@ export async function createHeroScene(container, skinUrl) {
     camera.updateProjectionMatrix();
   }
 
-  const physics = createParticlePhysics({ renderer, basePositions: skinData.positions, count: skinData.count });
-  const reference = buildReferenceUvs(skinData.count, physics.size);
-  const points = createVoxelModel({
-    positions: skinData.positions,
-    colors: skinData.colors,
-    seeds: skinData.seeds,
-    reference,
-  });
+  let { points, physics } = await buildParticleSystem(skinUrl, tier);
   scene.add(points);
 
   const ring = createGroundRing();
@@ -67,10 +82,10 @@ export async function createHeroScene(container, skinUrl) {
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(container);
 
-  const cursor = hoverCapable ? createCursorTracker({ camera, points, renderer }) : null;
-  const uniforms = points.material.uniforms;
+  let cursor = hoverCapable ? createCursorTracker({ camera, points, renderer }) : null;
   let raf = null;
   let lastTime = performance.now();
+  let downgradeChecked = false;
 
   function frame(now) {
     const delta = Math.min(0.05, (now - lastTime) / 1000);
@@ -78,11 +93,11 @@ export async function createHeroScene(container, skinUrl) {
 
     points.rotation.y += delta * 0.35;
     const t = now / 1000;
-    uniforms.uTime.value = t;
+    points.material.uniforms.uTime.value = t;
 
     const cursorState = cursor ? cursor.update(delta) : null;
     physics.update(delta, cursorState, t);
-    uniforms.uPositionTexture.value = physics.getPositionTexture();
+    points.geometry.attributes.position.needsUpdate = true;
 
     renderer.render(scene, camera);
     raf = requestAnimationFrame(frame);
@@ -99,14 +114,38 @@ export async function createHeroScene(container, skinUrl) {
     raf = null;
   }
 
+  // One-shot: confirm the static tier guess against real achieved fps a
+  // couple seconds in, and step down (never back up) if it's not holding —
+  // rebuilds the particle system in place at the lower budget/settings.
+  async function calibrateOnce() {
+    if (downgradeChecked || reduceMotion) return;
+    downgradeChecked = true;
+    const fps = await measureFps(1500);
+    if (fps >= fpsFloorFor(tier)) return;
+
+    const nextTier = stepDownTier(tier);
+    if (nextTier === tier) return; // already at the floor (veryLow)
+    tier = nextTier;
+
+    const rebuilt = await buildParticleSystem(skinUrl, tier);
+    scene.remove(points);
+    points.geometry.dispose();
+    points.material.dispose();
+    if (cursor) cursor.dispose();
+
+    points = rebuilt.points;
+    physics = rebuilt.physics;
+    scene.add(points);
+    cursor = hoverCapable ? createCursorTracker({ camera, points, renderer }) : null;
+    renderer.setPixelRatio(resolvePixelRatio(tier));
+  }
+
   if (reduceMotion) {
-    // No compute() call: the GPU textures start out equal to the rest pose,
-    // so this renders that static shape directly, no jitter implied.
-    uniforms.uTime.value = performance.now() / 1000;
-    uniforms.uPositionTexture.value = physics.getPositionTexture();
+    points.material.uniforms.uTime.value = performance.now() / 1000;
     renderer.render(scene, camera);
   } else {
     ensureLoop();
+    calibrateOnce();
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) stopLoop();
       else ensureLoop();
@@ -117,7 +156,6 @@ export async function createHeroScene(container, skinUrl) {
     stopLoop();
     resizeObserver.disconnect();
     if (cursor) cursor.dispose();
-    physics.dispose();
     points.geometry.dispose();
     points.material.dispose();
     ring.geometry.dispose();
@@ -126,19 +164,4 @@ export async function createHeroScene(container, skinUrl) {
   }
 
   return { dispose };
-}
-
-// Maps each particle index to the (u, v) texel center it lives at in the
-// physics sim's square textures — same row-major i -> (i % size, i / size)
-// layout particle-physics.js uses to fill the initial position data, so a
-// given index always reads back the position it was written to.
-function buildReferenceUvs(count, size) {
-  const reference = new Float32Array(count * 2);
-  for (let i = 0; i < count; i++) {
-    const x = i % size;
-    const y = Math.floor(i / size);
-    reference[i * 2] = (x + 0.5) / size;
-    reference[i * 2 + 1] = (y + 0.5) / size;
-  }
-  return reference;
 }

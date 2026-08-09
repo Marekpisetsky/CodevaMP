@@ -2,16 +2,15 @@ import * as THREE from 'three';
 import vertexShader from './shaders/particle.vert.js';
 import fragmentShader from './shaders/particle.frag.js';
 
-export function createVoxelModel({ positions, colors, seeds, reference }) {
+export function createVoxelModel({ positions, colors, seeds, pointSize, pixelRatio }) {
   const geometry = new THREE.BufferGeometry();
-  // Three.js needs a `position` attribute to know how many vertices to draw
-  // — the vertex shader ignores its actual values and instead samples the
-  // GPU-computed position from `uPositionTexture` via `aReference`, which
-  // is what's actually mutated frame to frame now (see particle-physics.js).
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  // `positions` is the physics sim's own buffer — mutated in place every
+  // frame, so this attribute needs re-uploading (not a static geometry).
+  const positionAttribute = new THREE.BufferAttribute(positions, 3);
+  positionAttribute.setUsage(THREE.DynamicDrawUsage);
+  geometry.setAttribute('position', positionAttribute);
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1));
-  geometry.setAttribute('aReference', new THREE.BufferAttribute(reference, 2));
 
   const material = new THREE.ShaderMaterial({
     vertexShader,
@@ -23,9 +22,8 @@ export function createVoxelModel({ positions, colors, seeds, reference }) {
     blending: THREE.AdditiveBlending,
     uniforms: {
       uTime: { value: 0 },
-      uPointSize: { value: 2.1 },
-      uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
-      uPositionTexture: { value: null },
+      uPointSize: { value: pointSize },
+      uPixelRatio: { value: pixelRatio },
     },
   });
 
