@@ -3,13 +3,13 @@
 // scratch. See cursor-interaction.js for why the cursor drives this with a
 // velocity vector (carry/advection) rather than a push-away-from-position
 // field.
-const SPRING_K = 40;
-const DAMPING = 4.0;
-const INFLUENCE_RADIUS = 13;
-const CARRY_RATE = 14;
+const SPRING_K = 22;        // gentler pull-back — was snapping back forced/rigid instead of drifting
+const DAMPING = 3.0;
+const INFLUENCE_RADIUS = 6; // tight, like actually touching particles — was a big surrounding "aura"
+const CARRY_RATE = 18;
 const CARRY_GAIN = 1.05;
 const SPRING_SUPPRESSION = 0.92;
-const IDLE_FORCE = 14;
+const IDLE_FORCE = 11;
 
 // sin(i * constant) is NOT per-particle randomness — for consecutive integer
 // i it's a smoothly precessing phase, and consecutive particles are also
