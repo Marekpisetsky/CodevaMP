@@ -18,8 +18,6 @@ function igniteSplit(el, baseDelay, step, className) {
 
 export function init() {
   document.querySelectorAll('h2').forEach(h2 => igniteSplit(h2, 0, 0.045));
-  const epithet = document.querySelector('.lore-epithet');
-  if (epithet) igniteSplit(epithet, 1.9, 0.018, 'inscribe-char');
   // The hero button ignites once on page load (it's above the fold,
   // no scroll needed); the CTA button waits until its own section's
   // title finishes igniting, so the two don't compete at the same instant.

@@ -692,17 +692,6 @@
     filter:drop-shadow(0 0 6px rgba(124,42,232,0.9)) drop-shadow(0 0 12px rgba(124,42,232,0.6));
   }
 
-  .hidden-pulse{
-    color:var(--white);
-    animation:pulse-chaos 6s ease-in-out infinite;
-  }
-  @keyframes pulse-chaos{
-    0%, 100%{ text-shadow:0 0 0px rgba(124,42,232,0); }
-    50%{ text-shadow:0 0 6px rgba(124,42,232,0.55); }
-  }
-  @media (prefers-reduced-motion: reduce){
-    .hidden-pulse{ animation:none; }
-  }
   @media (prefers-reduced-motion: reduce){
     .dial-spark{ display:none; }
   }
@@ -1171,138 +1160,6 @@
     color:var(--gray);
   }
 
-  /* Lore section */
-  .lore-section{ position:relative; overflow:hidden; }
-  .lore-particles{
-    position:absolute;
-    inset:0;
-    z-index:0;
-    pointer-events:none;
-  }
-  .lore-content{ position:relative; z-index:1; }
-
-  .lore-epithet{
-    font-family:'Cinzel',serif;
-    font-size:13px;
-    letter-spacing:0.14em;
-    text-transform:uppercase;
-    color:var(--red);
-    margin:-4px 0 20px;
-  }
-
-  .lore-frame{
-    margin-top:36px;
-    max-width:700px;
-    position:relative;
-    isolation:isolate;
-    border:1px solid var(--border);
-    background:
-      radial-gradient(ellipse 340px 220px at 12% 8%, rgba(232,52,42,0.05), transparent 60%),
-      radial-gradient(ellipse 260px 300px at 92% 85%, rgba(232,52,42,0.04), transparent 55%),
-      radial-gradient(ellipse 500px 300px at 50% 100%, rgba(0,0,0,0.35), transparent 65%),
-      linear-gradient(180deg, rgba(232,52,42,0.04), transparent 40%), var(--bg-panel);
-    padding:38px 40px;
-  }
-  .lore-frame::before, .lore-frame::after{
-    content:'';
-    position:absolute;
-    width:20px; height:20px;
-    border-color:var(--red);
-    opacity:0.7;
-  }
-  .lore-frame::before{ top:-1px; left:-1px; border-top:2px solid var(--red); border-left:2px solid var(--red); }
-  .lore-frame::after{ bottom:-1px; right:-1px; border-bottom:2px solid var(--red); border-right:2px solid var(--red); }
-
-  .lore-frame p{
-    font-family:'Cinzel',serif;
-    font-size:16px;
-    line-height:1.9;
-    color:var(--gray);
-    max-width:600px;
-  }
-  .lore-frame p + p{ margin-top:20px; }
-  .lore-frame p em{
-    color:var(--white);
-    font-style:normal;
-  }
-
-  .glossary-term{
-    position:relative;
-    color:var(--white);
-    border-bottom:1px dotted var(--chaos);
-    cursor:help;
-  }
-  .glossary-term::after{
-    content:attr(data-def);
-    position:absolute;
-    bottom:calc(100% + 10px);
-    left:50%;
-    transform:translateX(-50%) translateY(4px);
-    width:220px;
-    background:var(--bg-panel-alt);
-    border:1px solid var(--chaos);
-    color:var(--gray);
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12px;
-    line-height:1.5;
-    padding:10px 12px;
-    text-align:left;
-    opacity:0;
-    pointer-events:none;
-    transition:opacity .2s, transform .2s;
-    z-index:20;
-    box-shadow:0 8px 24px rgba(0,0,0,0.4);
-  }
-  .glossary-term:hover::after,
-  .glossary-term:focus::after,
-  .glossary-term.show::after{
-    opacity:1;
-    transform:translateX(-50%) translateY(0);
-  }
-
-  .grieta-divider{
-    margin:36px 0 32px;
-    width:100%;
-    height:36px;
-  }
-  .grieta-divider svg{
-    width:100%;
-    height:100%;
-    display:block;
-    overflow:visible;
-  }
-  .grieta-crack{
-    fill:none;
-    stroke:var(--red);
-    stroke-width:1.5;
-    stroke-linejoin:round;
-    stroke-linecap:round;
-    filter:drop-shadow(0 0 0px rgba(232,52,42,0.7));
-    transition:stroke-dashoffset 1.4s cubic-bezier(.16,1,.3,1), filter .6s ease .8s;
-  }
-  .grieta-crack.open{
-    stroke-dashoffset:0;
-    filter:drop-shadow(0 0 4px rgba(232,52,42,0.8));
-  }
-  @media (prefers-reduced-motion: reduce){
-    .grieta-crack{ transition:none; stroke-dashoffset:0; }
-  }
-
-  .heat-shimmer{
-    position:absolute;
-    left:0; right:0;
-    height:220px;
-    margin-top:-40px;
-    pointer-events:none;
-    z-index:-1;
-    background:radial-gradient(ellipse 60% 100% at 50% 50%, rgba(232,52,42,0.16), transparent 70%);
-    filter:url(#heat-distort);
-    opacity:0.8;
-  }
-  @media (prefers-reduced-motion: reduce){
-    .heat-shimmer{ filter:none; opacity:0.3; }
-  }
-
   .cta-section{
     text-align:center;
     padding:100px 0;
@@ -1404,6 +1261,5 @@
     .hero{ padding:56px 0 46px; }
     .hud-row{ width:100%; }
     .hud-chip{ flex:1 1 auto; }
-    .lore-frame{ padding:28px 20px; }
     .wrap{ padding:0 20px; }
   }
