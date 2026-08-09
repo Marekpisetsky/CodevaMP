@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 
 // Raycasts the pointer against a plane facing the camera and passing through
-// the figure, converts the hit into the figure's local space (it keeps
-// rotating, so the same world point maps to a different local point each
-// frame), and tracks how fast that point is moving so a fast swipe hits
-// harder than just resting the cursor nearby — closer to actually hitting
-// something than a uniform proximity field.
+// the figure, and converts both the hit point and its frame-to-frame motion
+// into the figure's local space (it keeps rotating, so a fixed world point
+// maps to a different local point each frame). The velocity vector — not
+// just proximity — is what the physics sim uses to "carry" particles along
+// a slow drag and merely "dash" them on a fast swipe, instead of a generic
+// push-away-from-cursor field.
+const MAX_CURSOR_SPEED = 90;
+
 export function createCursorTracker({ camera, points, renderer }) {
   const raycaster = new THREE.Raycaster();
   const pointerNdc = new THREE.Vector2(9999, 9999);
@@ -30,7 +33,7 @@ export function createCursorTracker({ camera, points, renderer }) {
   renderer.domElement.addEventListener('pointermove', onPointerMove);
   renderer.domElement.addEventListener('pointerleave', onPointerLeave);
 
-  // Returns { x, y, z, speed } in the figure's local space, or null if idle.
+  // Returns { x, y, z, vx, vy, vz } in the figure's local space, or null.
   function update(dt) {
     if (!active) {
       hasPrev = false;
@@ -42,14 +45,21 @@ export function createCursorTracker({ camera, points, renderer }) {
     if (!raycaster.ray.intersectPlane(plane, hit)) return null;
     points.worldToLocal(hit);
 
-    let speed = 0;
+    let vx = 0, vy = 0, vz = 0;
     if (hasPrev && dt > 0) {
-      speed = Math.min(hit.distanceTo(prevLocal) / dt, 60);
+      vx = (hit.x - prevLocal.x) / dt;
+      vy = (hit.y - prevLocal.y) / dt;
+      vz = (hit.z - prevLocal.z) / dt;
+      const speed = Math.sqrt(vx * vx + vy * vy + vz * vz);
+      if (speed > MAX_CURSOR_SPEED) {
+        const s = MAX_CURSOR_SPEED / speed;
+        vx *= s; vy *= s; vz *= s;
+      }
     }
     prevLocal.copy(hit);
     hasPrev = true;
 
-    return { x: hit.x, y: hit.y, z: hit.z, speed };
+    return { x: hit.x, y: hit.y, z: hit.z, vx, vy, vz };
   }
 
   function dispose() {
