@@ -35,26 +35,57 @@ function regionHasOpaquePixel(data, imgW, rect) {
   return false;
 }
 
+// Outward normal per face, used to "puff" samples off the surface so the
+// cloud reads as a volume with real thickness instead of a flat paper shell.
+const FACE_NORMALS = {
+  front:  [0, 0, 1],
+  back:   [0, 0, -1],
+  right:  [1, 0, 0],
+  left:   [-1, 0, 0],
+  top:    [0, 1, 0],
+  bottom: [0, -1, 0],
+};
+
+// How many jittered samples to emit per opaque texel. Multiplying the raw
+// pixel count this way is what turns a ~1.6k-point flat shell into a dense,
+// volumetric-looking cloud (~15-20k points) without hand-authoring geometry.
+const SAMPLES_PER_TEXEL = 10;
+
 function sampleFace(data, imgW, rect, box, face, out) {
   const hw = box.w / 2, hh = box.h / 2, hd = box.d / 2;
+  const [nx, ny, nz] = FACE_NORMALS[face];
+
   for (let dv = 0; dv < rect.h; dv++) {
     for (let du = 0; du < rect.w; du++) {
       const idx = ((rect.v + dv) * imgW + (rect.u + du)) * 4;
       const a = data[idx + 3];
       if (a === 0) continue;
 
-      let x, y, z;
-      switch (face) {
-        case 'front':  x = box.cx + hw - du; y = box.cy + hh - dv; z = box.cz + hd; break;
-        case 'back':   x = box.cx - hw + du; y = box.cy + hh - dv; z = box.cz - hd; break;
-        case 'right':  x = box.cx + hw;      y = box.cy + hh - dv; z = box.cz - hd + du; break;
-        case 'left':   x = box.cx - hw;      y = box.cy + hh - dv; z = box.cz + hd - du; break;
-        case 'top':    x = box.cx + hw - du; y = box.cy + hh;      z = box.cz - hd + dv; break;
-        default:       x = box.cx + hw - du; y = box.cy - hh;      z = box.cz + hd - dv; break; // bottom
-      }
+      const r = data[idx] / 255, g = data[idx + 1] / 255, b = data[idx + 2] / 255;
 
-      out.positions.push(x, y, z);
-      out.colors.push(data[idx] / 255, data[idx + 1] / 255, data[idx + 2] / 255);
+      for (let s = 0; s < SAMPLES_PER_TEXEL; s++) {
+        // Sub-texel jitter (smooths out the pixel grid) + an outward puff
+        // along the face normal (mostly positive, adds volume/fluffiness).
+        const jdu = du + (Math.random() - 0.5);
+        const jdv = dv + (Math.random() - 0.5);
+        const puff = Math.random() * 1.1 - 0.15;
+
+        let x, y, z;
+        switch (face) {
+          case 'front':  x = box.cx + hw - jdu; y = box.cy + hh - jdv; z = box.cz + hd; break;
+          case 'back':   x = box.cx - hw + jdu; y = box.cy + hh - jdv; z = box.cz - hd; break;
+          case 'right':  x = box.cx + hw;       y = box.cy + hh - jdv; z = box.cz - hd + jdu; break;
+          case 'left':   x = box.cx - hw;       y = box.cy + hh - jdv; z = box.cz + hd - jdu; break;
+          case 'top':    x = box.cx + hw - jdu; y = box.cy + hh;       z = box.cz - hd + jdv; break;
+          default:       x = box.cx + hw - jdu; y = box.cy - hh;      z = box.cz + hd - jdv; break; // bottom
+        }
+        x += nx * puff;
+        y += ny * puff;
+        z += nz * puff;
+
+        out.positions.push(x, y, z);
+        out.colors.push(r, g, b);
+      }
     }
   }
 }

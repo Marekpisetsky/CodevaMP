@@ -14,13 +14,16 @@ export function createVoxelModel({ positions, colors, seeds }) {
     vertexColors: true,
     transparent: true,
     depthWrite: false,
+    depthTest: false,
+    blending: THREE.AdditiveBlending,
     uniforms: {
       uTime: { value: 0 },
       uCursor: { value: new THREE.Vector3(9999, 9999, 9999) },
-      uRadius: { value: 6 },
+      uRadius: { value: 7 },
       uStrength: { value: 0 },
-      uPointSize: { value: 1.7 },
+      uPointSize: { value: 2.1 },
       uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
+      uFlowStrength: { value: 0.55 },
     },
   });
 
