@@ -3,32 +3,37 @@
 // scales down cleanly to weak/old mobile GPUs in a way GPU-texture physics
 // doesn't: vertex texture fetches (what a GPUComputationRenderer approach
 // needs in the render shader) are notoriously slow on older mobile GPUs,
-// so the count/complexity knobs here are what device-quality.js uses to
-// keep this loop inside the frame budget on any device, instead of relying
-// on compute-shader throughput that may not be there.
+// so the count/complexity knobs here (see device-quality.js) are what keep
+// this loop inside the frame budget on any device.
 //
-// Every particle carries a "disturbance" level (0 = at rest, 1 = just got
-// hit):
-// - On contact, a particle gets kicked by an IMPULSE (added to its
-//   velocity, not a target it's forced toward) that mixes the cursor's own
-//   velocity (carry) with a fixed-per-particle random scatter direction —
-//   so a touch doesn't move every affected particle the same way, closer
-//   to knocking a handful of debris than dragging one shape.
-// - Disturbance spikes on contact and decays on its own afterward, and
-//   only ever SUPPRESSES the spring pulling a particle back to rest — it
-//   never adds force. A freshly-hit particle keeps moving purely on the
-//   velocity it was actually given (real inertia, bled off by damping),
-//   reeled back in gradually as disturbance fades — it must not keep
-//   animating once its velocity has died down just because disturbance
-//   hasn't; that would be motion with no force behind it.
+// Every particle has: targetPosition (basePositions, immutable), a
+// currentPosition + velocity (positions/velocities, mutated in place), and
+// an `activity` level (0 = fully at rest, 1 = just got hit). Activity is
+// the actual perf lever this file exists to use: a particle only ever gets
+// activated by proximity to the pointer (the only trigger this codebase
+// has — there's no separate shockwave/explosion pulse mechanic, "pointer
+// radius" is it). Once active, it decays on its own afterward, and only
+// ever SUPPRESSES the spring pulling it back to rest — it never adds force
+// itself. The moment a particle is both out of pointer range AND its
+// activity has decayed under ACTIVITY_THRESHOLD, it skips the spring/idle-
+// wobble/damping/integration math completely: position is snapped exactly
+// to target, velocity to zero, and it's left alone until reactivated. On a
+// typical frame only a small fraction of particles are within pointer
+// range or still settling from a recent hit, so skipping the expensive
+// part (three sin() calls plus the spring/damping arithmetic) for
+// everything else is the difference this makes — the cheap distance check
+// itself still has to run for every particle every frame (finding "is
+// anything near the cursor" without it needs a spatial index, which is a
+// separate, bigger change from what was asked here).
 const SPRING_K = 26;
 const DAMPING = 3.2;
 const CARRY_GAIN = 1.3;
 const SCATTER_GAIN = 26;
 const SPRING_SUPPRESSION = 0.9;
-const IDLE_FORCE = 8; // small ambient wobble, constant whether disturbed or not
-const DISTURB_RISE = 30;
-const DISTURB_DECAY = 0.9;
+const IDLE_FORCE = 8; // ambient wobble while active; rest particles get none (see file header)
+const ACTIVITY_RISE = 30;
+const ACTIVITY_DECAY = 0.9;
+const ACTIVITY_THRESHOLD = 0.02;
 
 // sin(i * constant) alone is NOT per-particle randomness (see this file's
 // git history) — this hash properly decorrelates each particle.
@@ -43,9 +48,9 @@ export function createParticlePhysics({
   interactionRadius = 7,
   noiseComplexity = 1, // 0..1 — veryLow tier sets this to 0 to skip idle-wobble sin() calls entirely
 }) {
-  const positions = new Float32Array(basePositions); // mutable, what actually gets rendered
+  const positions = new Float32Array(basePositions); // currentPosition, mutable, what actually gets rendered
   const velocities = new Float32Array(count * 3);
-  const disturbance = new Float32Array(count);
+  const activity = new Float32Array(count); // 0..1, see file header
 
   const idlePhase = new Float32Array(count * 3);
   const idleFreq = new Float32Array(count * 3);
@@ -73,34 +78,59 @@ export function createParticlePhysics({
   function update(dt, cursor, time) {
     if (dt <= 0) return;
     const damp = Math.exp(-DAMPING * dt);
-    const disturbDecay = Math.exp(-DISTURB_DECAY * dt);
+    const activityDecay = Math.exp(-ACTIVITY_DECAY * dt);
 
     for (let i = 0; i < count; i++) {
       const ix = i * 3, iy = ix + 1, iz = ix + 2;
       const px = positions[ix], py = positions[iy], pz = positions[iz];
-      const variance = responseVariance[i];
 
-      let vx = velocities[ix], vy = velocities[iy], vz = velocities[iz];
-      let dist = disturbance[i];
-      let contactScale = 1;
-
+      // Cheap check every particle needs regardless of its current state:
+      // is the pointer close enough to (re)activate it this frame?
+      let nearCursor = false;
+      let falloff = 0;
       if (cursor) {
         const dx = px - cursor.x, dy = py - cursor.y, dz = pz - cursor.z;
         const d2 = dx * dx + dy * dy + dz * dz;
         if (d2 < r2) {
-          const falloff = 1 - Math.sqrt(d2) / interactionRadius;
-          contactScale = 1 - falloff * SPRING_SUPPRESSION * Math.min(1, variance);
-
-          const kick = falloff * variance * dt;
-          vx += (cursor.vx * CARRY_GAIN + scatterDir[ix] * SCATTER_GAIN) * kick;
-          vy += (cursor.vy * CARRY_GAIN + scatterDir[iy] * SCATTER_GAIN) * kick;
-          vz += (cursor.vz * CARRY_GAIN + scatterDir[iz] * SCATTER_GAIN) * kick;
-
-          dist = Math.min(1, dist + DISTURB_RISE * falloff * dt);
+          nearCursor = true;
+          falloff = 1 - Math.sqrt(d2) / interactionRadius;
         }
       }
 
-      const springScale = contactScale * (1 - dist * 0.7);
+      let act = activity[i];
+
+      // Fast path: not being touched and already settled — skip the spring,
+      // idle wobble and integration entirely, just pin it down.
+      if (!nearCursor && act < ACTIVITY_THRESHOLD) {
+        if (act !== 0 || px !== basePositions[ix] || py !== basePositions[iy] || pz !== basePositions[iz]) {
+          positions[ix] = basePositions[ix];
+          positions[iy] = basePositions[iy];
+          positions[iz] = basePositions[iz];
+          velocities[ix] = 0;
+          velocities[iy] = 0;
+          velocities[iz] = 0;
+          activity[i] = 0;
+        }
+        continue;
+      }
+
+      // Active path: near the pointer, or still settling from a recent hit.
+      const variance = responseVariance[i];
+      let vx = velocities[ix], vy = velocities[iy], vz = velocities[iz];
+      let contactScale = 1;
+
+      if (nearCursor) {
+        contactScale = 1 - falloff * SPRING_SUPPRESSION * Math.min(1, variance);
+
+        const kick = falloff * variance * dt;
+        vx += (cursor.vx * CARRY_GAIN + scatterDir[ix] * SCATTER_GAIN) * kick;
+        vy += (cursor.vy * CARRY_GAIN + scatterDir[iy] * SCATTER_GAIN) * kick;
+        vz += (cursor.vz * CARRY_GAIN + scatterDir[iz] * SCATTER_GAIN) * kick;
+
+        act = Math.min(1, act + ACTIVITY_RISE * falloff * dt);
+      }
+
+      const springScale = contactScale * (1 - act * 0.7);
       let ax = (basePositions[ix] - px) * SPRING_K * springScale;
       let ay = (basePositions[iy] - py) * SPRING_K * springScale;
       let az = (basePositions[iz] - pz) * SPRING_K * springScale;
@@ -123,7 +153,7 @@ export function createParticlePhysics({
       positions[iy] = py + vy * dt;
       positions[iz] = pz + vz * dt;
 
-      disturbance[i] = dist * disturbDecay;
+      activity[i] = act * activityDecay;
     }
   }
 
