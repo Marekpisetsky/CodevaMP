@@ -17,7 +17,8 @@ import * as heroVoxel from './three/hero-voxel.js';
 import * as ctaVoxel from './three/cta-voxel.js';
 import * as videoVoxel from './three/video-voxel.js';
 import * as modalidadCarousel from './js/modalidad-carousel.js';
-import { createScrollOrchestrator } from './js/scroll-orchestrator.js';
+import { createWorldPanels } from './js/world-panels.js';
+import { createNavVisibility } from './js/nav-visibility.js';
 
 youtubeSubs.init();
 youtubeLatestVideos.init();
@@ -38,24 +39,21 @@ counters.init();
 pointerInteractions.init();
 emberTrail.init();
 
-const scrollOrchestrator = createScrollOrchestrator();
+// destacado/modalidades/cta build their own small canvases same as before
+// (video-voxel.js/cta-voxel.js/modalidad-carousel.js, still on the older
+// stage.js pipeline) — they're just mounted inside fixed world-panel
+// overlays now instead of normal-flow sections, cross-faded in step with
+// the hero's cinematic camera (world-panels.js) rather than scrolled past.
+ctaVoxel.init(document.getElementById('cta-voxel'));
+videoVoxel.init(document.getElementById('video-voxel'));
+modalidadCarousel.init();
 
-// Hero now owns its own single-world scene (terrain + mist + hero figure,
-// see world-scene.js) — no longer one of the orchestrator's independent
-// per-section stages.
-heroVoxel.init(document.getElementById('hero-voxel'));
+const worldPanels = createWorldPanels(document.querySelectorAll('[data-station]'));
+const navVisibility = createNavVisibility(document.getElementById('main-nav'));
 
-const ctaSection = document.querySelector('.cta-section');
-ctaVoxel.init(document.getElementById('cta-voxel')).then((stage) => {
-  if (stage && ctaSection) scrollOrchestrator.register(ctaSection, stage);
-});
-
-const videoSection = document.getElementById('destacado');
-videoVoxel.init(document.getElementById('video-voxel')).then((stage) => {
-  if (stage && videoSection) scrollOrchestrator.register(videoSection, stage);
-});
-
-const modalidadesSection = document.getElementById('modalidades');
-modalidadCarousel.init().then((stage) => {
-  if (stage && modalidadesSection) scrollOrchestrator.register(modalidadesSection, stage);
+heroVoxel.init(document.getElementById('hero-voxel'), {
+  onStationChange(progress, engaged) {
+    worldPanels.apply(progress, engaged);
+    navVisibility.setEngaged(engaged);
+  },
 });

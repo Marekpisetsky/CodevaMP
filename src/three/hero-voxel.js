@@ -5,10 +5,10 @@ import skinUrl from '../assets/minecraft-skin.png';
 
 // Resolves to the world handle ({ dispose, camera }), or null when a
 // fallback was shown instead (no WebGL, data-saver, or scene construction
-// failed). The hero is no longer one of scroll-orchestrator's independent
-// per-section stages (see plan: mundo 3D continuo) — it owns its own
-// static-for-now camera, no setFocus hook.
-export async function init(container) {
+// failed). `onStationChange(progress, engaged)` fires every frame the
+// cinematic camera is active — main.js uses it to drive world-panels.js
+// and nav-visibility.js in step with the camera.
+export async function init(container, options) {
   if (!container) return null;
 
   if (dataSaver || !isWebGLAvailable()) {
@@ -17,7 +17,7 @@ export async function init(container) {
   }
 
   try {
-    return await createWorldScene(container, skinUrl);
+    return await createWorldScene(container, skinUrl, options);
   } catch (e) {
     container.replaceChildren();
     showStaticFallback(container, '/codevamp-logo.png');

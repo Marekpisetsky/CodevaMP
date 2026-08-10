@@ -3,8 +3,8 @@ import { isWebGLAvailable, showStaticFallback } from './fallback.js';
 import { dataSaver } from '../js/utils/motion-prefs.js';
 import skinUrl from '../assets/minecraft-skin.png';
 
-// Mirrors hero-voxel.js's init() contract: resolves to the stage handle for
-// scroll-orchestrator.js registration, or null when a fallback was shown.
+// Resolves to the stage handle (see stage.js), or null when a fallback was
+// shown instead.
 export async function init(container) {
   if (!container) return null;
 

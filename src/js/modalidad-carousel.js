@@ -3,8 +3,8 @@ import { isWebGLAvailable, showStaticFallback } from '../three/fallback.js';
 import { dataSaver } from './utils/motion-prefs.js';
 import { PORTFOLIO_ITEMS } from '../three/portfolio-items.js';
 
-// Resolves to the stage handle (for scroll-orchestrator registration) or
-// null on fallback — same contract as hero-voxel.js / cta-voxel.js.
+// Resolves to the stage handle, or null on fallback — same contract as
+// hero-voxel.js / cta-voxel.js.
 export async function init() {
   const stageContainer = document.getElementById('modalidad-voxel');
   const prevBtn = document.getElementById('modalidad-prev');

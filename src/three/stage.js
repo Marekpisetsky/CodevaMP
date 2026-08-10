@@ -4,11 +4,13 @@ import { TIERS, guessInitialTier, stepDownTier, fpsFloorFor, measureFps, resolve
 import { reduceMotion, hoverCapable } from '../js/utils/motion-prefs.js';
 
 // Generic renderer/camera/loop/tier-calibration bootstrap, extracted from
-// what used to be hero-only code in scene.js. Every section that wants its
-// own isolated Three.js "environment" (hero, CTA, featured video, each
-// Modalidades item) gets one of these — independent canvas, independent
-// render loop, independent device-tier calibration — coordinated from the
-// outside only via `setFocus()` (driven by scroll-orchestrator.js).
+// what used to be hero-only code in scene.js. CTA, featured video and each
+// Modalidades item get one of these — independent canvas, independent
+// render loop, independent device-tier calibration. (The hero itself has
+// since moved to world-scene.js's single continuous 3D world — see the
+// plan — so it's no longer one of this module's consumers.) `setFocus()`
+// is still here for an idle/settled camera-zoom distinction, just currently
+// unused now that nothing drives it — harmless, not wired to anything.
 //
 // `buildContent(tier)` must resolve to `{ points, physics, extraObjects? }`:
 // `points` a THREE.Points added to the scene, `physics.update(dt, cursor, t)`
