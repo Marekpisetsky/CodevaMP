@@ -14,6 +14,7 @@ import * as counters from './js/counters.js';
 import * as pointerInteractions from './js/pointer-interactions.js';
 import * as emberTrail from './js/ember-trail.js';
 import * as heroVoxel from './three/hero-voxel.js';
+import { createScrollOrchestrator } from './js/scroll-orchestrator.js';
 
 youtubeSubs.init();
 youtubeLatestVideos.init();
@@ -33,4 +34,9 @@ scrollReveal.init();
 counters.init();
 pointerInteractions.init();
 emberTrail.init();
-heroVoxel.init(document.getElementById('hero-voxel'));
+
+const scrollOrchestrator = createScrollOrchestrator();
+const heroSection = document.querySelector('.hero');
+heroVoxel.init(document.getElementById('hero-voxel')).then((stage) => {
+  if (stage && heroSection) scrollOrchestrator.register(heroSection, stage);
+});
