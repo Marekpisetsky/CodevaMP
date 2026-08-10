@@ -116,24 +116,35 @@
     </div>
   </section>
 
-  <section class="fade-up">
-    <span class="section-sigil" aria-hidden="true">火</span>
-    <div class="section-label glitch-text">Destacado</div>
-    <h2>Lo último del canal</h2>
-    <p class="section-copy">La partida más reciente.</p>
-    <div class="video-frame" id="video-frame" role="button" tabindex="0" aria-label="Reproducir video destacado de CodevaMP">
-      <div class="ratio" id="video-ratio">
-        <img src="https://img.youtube.com/vi/Ch9qbFszYt8/maxresdefault.jpg" alt="Video destacado de CodevaMP" loading="lazy">
-        <div class="play-button">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 4L20 12L6 20V4Z" fill="var(--white)"/></svg>
+  <section class="fade-up video-section" id="destacado">
+    <div class="video-portrait" aria-hidden="true">
+      <div id="video-voxel" class="hero-voxel"></div>
+    </div>
+    <div class="video-scrim" aria-hidden="true"></div>
+    <div class="video-inner">
+      <span class="section-sigil" aria-hidden="true">火</span>
+      <div class="section-label glitch-text">Destacado</div>
+      <h2>Lo último del canal</h2>
+      <p class="section-copy">La partida más reciente.</p>
+      <div class="video-frame" id="video-frame" role="button" tabindex="0" aria-label="Reproducir video destacado de CodevaMP">
+        <div class="video-tag">
+          <span class="video-tag__marker"></span>
+          <div class="video-tag__title">ÚLTIMO_UPLOAD</div>
+          <div class="video-tag__sub">CLICK TO WATCH</div>
+        </div>
+        <div class="ratio" id="video-ratio">
+          <img src="https://img.youtube.com/vi/Ch9qbFszYt8/maxresdefault.jpg" alt="Video destacado de CodevaMP" loading="lazy">
+          <div class="play-button">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 4L20 12L6 20V4Z" fill="var(--white)"/></svg>
+          </div>
+        </div>
+        <div class="video-caption">
+          <a href="https://youtu.be/Ch9qbFszYt8" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver en YouTube</a>
+          <span class="watch">▶ Reproducir →</span>
         </div>
       </div>
-      <div class="video-caption">
-        <a href="https://youtu.be/Ch9qbFszYt8" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver en YouTube</a>
-        <span class="watch">▶ Reproducir →</span>
-      </div>
+      <div class="more-videos" id="more-videos"></div>
     </div>
-    <div class="more-videos" id="more-videos"></div>
   </section>
 
   <section class="fade-up" id="modalidades">

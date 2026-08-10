@@ -15,6 +15,7 @@ import * as pointerInteractions from './js/pointer-interactions.js';
 import * as emberTrail from './js/ember-trail.js';
 import * as heroVoxel from './three/hero-voxel.js';
 import * as ctaVoxel from './three/cta-voxel.js';
+import * as videoVoxel from './three/video-voxel.js';
 import { createScrollOrchestrator } from './js/scroll-orchestrator.js';
 
 youtubeSubs.init();
@@ -46,4 +47,9 @@ heroVoxel.init(document.getElementById('hero-voxel')).then((stage) => {
 const ctaSection = document.querySelector('.cta-section');
 ctaVoxel.init(document.getElementById('cta-voxel')).then((stage) => {
   if (stage && ctaSection) scrollOrchestrator.register(ctaSection, stage);
+});
+
+const videoSection = document.getElementById('destacado');
+videoVoxel.init(document.getElementById('video-voxel')).then((stage) => {
+  if (stage && videoSection) scrollOrchestrator.register(videoSection, stage);
 });
