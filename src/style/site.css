@@ -210,6 +210,12 @@
     align-items:center;
     padding:120px 0 70px;
     position:relative;
+    /* Break out of <main class="wrap">'s 1080px max-width — the 3D world
+       should read as full-screen/game-like, not boxed like the rest of the
+       page's content columns. .hero-inner keeps its own max-width below so
+       the text itself stays a readable, centered column. */
+    width:100vw;
+    margin-left:calc(50% - 50vw);
   }
   .hero-stripe{
     position:absolute;
