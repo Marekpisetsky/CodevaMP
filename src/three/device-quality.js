@@ -6,10 +6,10 @@
 // anything renders, then a short real-FPS probe once the scene is actually
 // running, which can demote (never promote) the tier once.
 export const TIERS = {
-  high:    { particleBudget: 55000, pixelRatioCap: 1.5, pointSize: 2.0, noiseComplexity: 1,   interactionRadius: 7.0 },
-  medium:  { particleBudget: 27000, pixelRatioCap: 1.5, pointSize: 2.3, noiseComplexity: 1,   interactionRadius: 6.5 },
-  low:     { particleBudget: 13000, pixelRatioCap: 1.0, pointSize: 2.7, noiseComplexity: 0.6, interactionRadius: 6.0 },
-  veryLow: { particleBudget: 6000,  pixelRatioCap: 1.0, pointSize: 3.2, noiseComplexity: 0,   interactionRadius: 5.0 },
+  high:    { particleBudget: 55000, pixelRatioCap: 1.5, pointSize: 2.7, noiseComplexity: 1,   interactionRadius: 7.0 },
+  medium:  { particleBudget: 27000, pixelRatioCap: 1.5, pointSize: 3.1, noiseComplexity: 1,   interactionRadius: 6.5 },
+  low:     { particleBudget: 13000, pixelRatioCap: 1.0, pointSize: 3.6, noiseComplexity: 0.6, interactionRadius: 6.0 },
+  veryLow: { particleBudget: 6000,  pixelRatioCap: 1.0, pointSize: 4.2, noiseComplexity: 0,   interactionRadius: 5.0 },
 };
 
 const TIER_ORDER = ['high', 'medium', 'low', 'veryLow'];
