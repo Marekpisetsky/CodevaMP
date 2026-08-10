@@ -40,10 +40,10 @@ emberTrail.init();
 
 const scrollOrchestrator = createScrollOrchestrator();
 
-const heroSection = document.querySelector('.hero');
-heroVoxel.init(document.getElementById('hero-voxel')).then((stage) => {
-  if (stage && heroSection) scrollOrchestrator.register(heroSection, stage);
-});
+// Hero now owns its own single-world scene (terrain + mist + hero figure,
+// see world-scene.js) — no longer one of the orchestrator's independent
+// per-section stages.
+heroVoxel.init(document.getElementById('hero-voxel'));
 
 const ctaSection = document.querySelector('.cta-section');
 ctaVoxel.init(document.getElementById('cta-voxel')).then((stage) => {
