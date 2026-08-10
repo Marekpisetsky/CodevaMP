@@ -2,6 +2,7 @@ export default /* glsl */ `
 varying vec3 vColor;
 varying float vShimmer;
 varying float vDepth;
+varying float vFaceLight;
 
 void main() {
   vec2 uv = gl_PointCoord - 0.5;
@@ -25,8 +26,14 @@ void main() {
   float shade = 0.55 + 0.45 * diff;
   float specular = pow(diff, 24.0) * 0.18;
 
+  // The actual orientation cue: front-facing particles (skin faces pointing
+  // toward camera) get lit, back-facing ones fall into shadow — this is what
+  // makes "is it facing away or sideways" readable, independent of the
+  // per-sprite bump shading above which only fakes volume for a single point.
+  float faceShade = mix(0.3, 1.05, smoothstep(-1.0, 1.0, vFaceLight));
+
   float alpha = smoothstep(0.5, 0.42, d);
-  vec3 color = vColor * shade * (0.85 + 0.7 * vShimmer) * (0.55 + 0.65 * vDepth) + specular;
+  vec3 color = vColor * shade * faceShade * (0.85 + 0.7 * vShimmer) * (0.6 + 0.5 * vDepth) + specular * faceShade;
   gl_FragColor = vec4(color * alpha, alpha);
 }
 `;

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import vertexShader from './shaders/particle.vert.js';
 import fragmentShader from './shaders/particle.frag.js';
 
-export function createVoxelModel({ positions, colors, seeds, pointSize, pixelRatio, ambientJitter = 0.11 }) {
+export function createVoxelModel({ positions, colors, normals, seeds, pointSize, pixelRatio, ambientJitter = 0.11 }) {
   const geometry = new THREE.BufferGeometry();
   // `positions` is the physics sim's own buffer — mutated in place every
   // frame, so this attribute needs re-uploading (not a static geometry).
@@ -10,6 +10,7 @@ export function createVoxelModel({ positions, colors, seeds, pointSize, pixelRat
   positionAttribute.setUsage(THREE.DynamicDrawUsage);
   geometry.setAttribute('position', positionAttribute);
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute('aNormal', new THREE.BufferAttribute(normals, 3));
   geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1));
 
   const material = new THREE.ShaderMaterial({

@@ -1,5 +1,6 @@
 export default /* glsl */ `
 attribute float aSeed;
+attribute vec3 aNormal;
 
 uniform float uTime;
 uniform float uPointSize;
@@ -9,8 +10,18 @@ uniform float uAmbientJitter;
 varying vec3 vColor;
 varying float vShimmer;
 varying float vDepth;
+varying float vFaceLight;
 
 void main() {
+  // Real geometric lighting, not just screen-space depth: each particle
+  // carries the true outward normal of the skin face it was sampled from
+  // (front/back/left/right/top/bottom, from skin-parser.js). Lighting by
+  // that — not by how close to the camera a point merely happens to sit —
+  // is what actually tells front, side and back apart as the figure
+  // rotates, the way a real lit voxel sculpture would.
+  vec3 viewNormal = normalize(normalMatrix * aNormal);
+  vFaceLight = dot(viewNormal, normalize(vec3(0.3, 0.45, 0.85)));
+
   // Always-on per-particle motion, regardless of whether the CPU-side
   // physics (particle-physics.js) currently has this particle activated —
   // free on the GPU, since the vertex shader already runs once per particle

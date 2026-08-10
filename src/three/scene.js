@@ -33,6 +33,7 @@ async function buildParticleSystem(skinUrl, tier) {
   const points = createVoxelModel({
     positions: physics.positions,
     colors: skinData.colors,
+    normals: skinData.normals,
     seeds: skinData.seeds,
     pointSize: config.pointSize,
     pixelRatio: resolvePixelRatio(tier),

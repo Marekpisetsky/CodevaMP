@@ -90,6 +90,7 @@ function sampleFace(data, imgW, rect, box, face, samplesPerTexel, out) {
 
         out.positions.push(x, y, z);
         out.colors.push(r, g, b);
+        out.normals.push(nx, ny, nz);
       }
     }
   }
@@ -146,7 +147,7 @@ export async function parseSkin(url, { targetCount = 30000 } = {}) {
   for (const { rect } of regions) opaqueTexels += countOpaquePixels(data, size, rect);
   const samplesPerTexel = Math.max(1, Math.round(targetCount / Math.max(1, opaqueTexels)));
 
-  const out = { positions: [], colors: [] };
+  const out = { positions: [], colors: [], normals: [] };
   for (const { rect, box, face } of regions) {
     sampleFace(data, size, rect, box, face, samplesPerTexel, out);
   }
@@ -158,6 +159,7 @@ export async function parseSkin(url, { targetCount = 30000 } = {}) {
   return {
     positions: new Float32Array(out.positions),
     colors: new Float32Array(out.colors),
+    normals: new Float32Array(out.normals),
     seeds,
     count,
   };
