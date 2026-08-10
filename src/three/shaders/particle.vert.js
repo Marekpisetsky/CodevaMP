@@ -46,10 +46,14 @@ void main() {
   float depthFactor = smoothstep(-7.0, 7.0, mvPosition.z);
   vDepth = depthFactor;
 
-  // Floors raised from the previous version (which could multiply down to
-  // ~26% of uPointSize in the worst case) — too many small points at once
-  // is what read as visible gaps in the surface instead of a solid, foamy
-  // volume.
-  gl_PointSize = uPointSize * uPixelRatio * (0.85 + 0.45 * shimmer) * (0.85 + 0.3 * aSeed) * (0.55 + 0.65 * depthFactor);
+  // The relative floors above still multiply down to ~40% of uPointSize in
+  // the worst case (all three factors at their minimum simultaneously) —
+  // on a pixelRatio-1 display that's under 1 actual device pixel, and a
+  // sub-pixel point sprite doesn't reliably rasterize every frame: it can
+  // flicker in and out depending on where its center lands relative to the
+  // pixel grid, which reads as points randomly disappearing rather than
+  // just looking small. Clamp to an absolute pixel floor so no point can
+  // ever shrink below something a screen can actually render consistently.
+  gl_PointSize = max(1.8, uPointSize * uPixelRatio * (0.85 + 0.45 * shimmer) * (0.85 + 0.3 * aSeed) * (0.55 + 0.65 * depthFactor));
 }
 `;
