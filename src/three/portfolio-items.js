@@ -1,7 +1,7 @@
 // Single source of truth for the Modalidades carousel — add/edit a mode
 // here, nothing else needs to change. `glbUrl: null` means "use the
 // procedural placeholder shape"; set it once the real Blender export for
-// that mode exists and modalidad-scene.js picks it up automatically.
+// that mode exists and modalidad-object.js picks it up automatically.
 export const PORTFOLIO_ITEMS = [
   {
     id: 'bedwars',

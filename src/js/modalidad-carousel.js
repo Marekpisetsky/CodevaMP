@@ -1,18 +1,18 @@
-import { createModalidadScene } from '../three/modalidad-scene.js';
-import { isWebGLAvailable, showStaticFallback } from '../three/fallback.js';
-import { dataSaver } from './utils/motion-prefs.js';
 import { PORTFOLIO_ITEMS } from '../three/portfolio-items.js';
 
-// Resolves to the stage handle, or null on fallback — same contract as
-// hero-voxel.js / cta-voxel.js.
-export async function init() {
-  const stageContainer = document.getElementById('modalidad-voxel');
+// Wires the prev/next buttons and text panel — the 3D object itself lives
+// in the shared world now (world-scene.js's modalidadGroup, Fase 5), not a
+// separate canvas here. `worldHandle` is the object hero-voxel.js's init()
+// resolves to ({ setModalidadItem, getModalidadIndex, ... }), or null if
+// the world never rendered (no WebGL / data-saver / reduceMotion fallback
+// already handled upstream) — text still cycles on its own in that case,
+// just without any 3D to swap alongside it.
+export function init(worldHandle) {
   const prevBtn = document.getElementById('modalidad-prev');
   const nextBtn = document.getElementById('modalidad-next');
   const countEl = document.getElementById('modalidad-count');
   const titleEl = document.getElementById('modalidad-title');
   const descEl = document.getElementById('modalidad-desc');
-  if (!stageContainer) return null;
 
   function renderPanel(index) {
     const item = PORTFOLIO_ITEMS[index];
@@ -22,22 +22,7 @@ export async function init() {
     if (descEl) descEl.textContent = item.description;
   }
 
-  if (dataSaver || !isWebGLAvailable()) {
-    showStaticFallback(stageContainer, '/codevamp-logo.png');
-    renderPanel(0);
-    return null;
-  }
-
-  let scene;
-  try {
-    scene = await createModalidadScene(stageContainer);
-  } catch (e) {
-    stageContainer.replaceChildren();
-    showStaticFallback(stageContainer, '/codevamp-logo.png');
-    renderPanel(0);
-    return null;
-  }
-
+  let textIndex = 0;
   renderPanel(0);
 
   let navigating = false;
@@ -45,8 +30,12 @@ export async function init() {
     if (navigating) return; // ignore rapid double-clicks mid-transition
     navigating = true;
     try {
-      await scene.setItem(scene.getCurrentIndex() + delta);
-      renderPanel(scene.getCurrentIndex());
+      if (worldHandle) {
+        textIndex = await worldHandle.setModalidadItem(worldHandle.getModalidadIndex() + delta);
+      } else {
+        textIndex = ((textIndex + delta) % PORTFOLIO_ITEMS.length + PORTFOLIO_ITEMS.length) % PORTFOLIO_ITEMS.length;
+      }
+      renderPanel(textIndex);
     } finally {
       navigating = false;
     }
@@ -54,6 +43,4 @@ export async function init() {
 
   prevBtn?.addEventListener('click', () => go(-1));
   nextBtn?.addEventListener('click', () => go(1));
-
-  return scene;
 }

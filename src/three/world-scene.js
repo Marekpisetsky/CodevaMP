@@ -6,6 +6,9 @@ import { createCursorTracker } from './cursor-interaction.js';
 import { TIERS, guessInitialTier, stepDownTier, fpsFloorFor, measureFps, resolvePixelRatio } from './device-quality.js';
 import { createTerrain, createMovingMist } from './terrain.js';
 import { createCameraRig } from './camera-rig.js';
+import { createHudLabel } from './hud-label.js';
+import { buildModalidadContent } from './modalidad-object.js';
+import { PORTFOLIO_ITEMS } from './portfolio-items.js';
 import { createVirtualScroll } from '../js/virtual-scroll.js';
 import { reduceMotion, hoverCapable } from '../js/utils/motion-prefs.js';
 
@@ -18,11 +21,9 @@ import { reduceMotion, hoverCapable } from '../js/utils/motion-prefs.js';
 // view" treatment (hero-blocks.js, still in the repo) was tried here first
 // but didn't read right on the character; that technique is earmarked for
 // a Bedwars-themed structure at a later station instead (see plan/tasks).
-// destacado/modalidades/cta don't have bespoke 3D scenery of their own in
-// the shared world yet — world-panels.js cross-fades their real DOM content
-// on arrival instead (Modalidades' own object migrates into this world in
-// Fase 5; the other two still render their small canvases via the older
-// stage.js pipeline for now, just repositioned into fixed overlay panels).
+// Modalidades' own object now lives in this same world too (Fase 5,
+// modalidad-object.js) — destacado/cta still don't have bespoke 3D scenery
+// of their own, world-panels.js cross-fades their real DOM content instead.
 async function buildHero(skinUrl, tier) {
   const config = TIERS[tier];
   const skinData = await parseSkin(skinUrl, { targetCount: config.particleBudget });
@@ -79,6 +80,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   mist2.rotation.y = Math.PI / 3;
   scene.add(mist2);
 
+  // --- Hero (station 0) ---
   async function buildHeroContent(t) {
     return buildHero(skinUrl, t);
   }
@@ -89,31 +91,68 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   heroGroup.add(points);
   scene.add(heroGroup);
 
+  // --- Modalidades object (station 2) — its own spot on the terrain, not
+  // stacked on top of the hero. ---
+  let modalidadIndex = 0;
+  async function buildModalidadItemContent(t) {
+    return buildModalidadContent(PORTFOLIO_ITEMS[modalidadIndex], modalidadIndex, t);
+  }
+
+  let { points: modalidadPoints, physics: modalidadPhysics } = await buildModalidadItemContent(tier);
+  const modalidadCenter = new THREE.Vector3(60, terrain.standingHeight + 9, 42);
+  const modalidadGroup = new THREE.Group();
+  modalidadGroup.position.copy(modalidadCenter);
+  modalidadGroup.add(modalidadPoints);
+  scene.add(modalidadGroup);
+
+  const modalidadLabel = createHudLabel({
+    container,
+    camera,
+    getObject: () => modalidadGroup,
+    anchor: new THREE.Vector3(0, 7, 0),
+    title: PORTFOLIO_ITEMS[0].tag,
+    sub: PORTFOLIO_ITEMS[0].stat,
+  });
+
+  async function setModalidadItem(index) {
+    modalidadIndex = ((index % PORTFOLIO_ITEMS.length) + PORTFOLIO_ITEMS.length) % PORTFOLIO_ITEMS.length;
+    const item = PORTFOLIO_ITEMS[modalidadIndex];
+    const rebuilt = await buildModalidadItemContent(tier);
+    modalidadGroup.remove(modalidadPoints);
+    modalidadPoints.geometry.dispose();
+    modalidadPoints.material.dispose();
+
+    modalidadPoints = rebuilt.points;
+    modalidadPhysics = rebuilt.physics;
+    modalidadGroup.add(modalidadPoints);
+    modalidadLabel.setText(item.tag, item.stat);
+    return modalidadIndex;
+  }
+
   // Four stations, one per section of the site (hero/destacado/modalidades/
-  // cta) — the camera orbits around the same terrain world instead of
-  // jumping between unrelated scenes, so each arrival still reads as part
-  // of one continuous place. destacado/modalidades/cta don't have bespoke
-  // 3D scenery of their own yet (that's mesh-sampler.js's job for
-  // Modalidades in Fase 5); their real DOM content is what actually changes
-  // per station for now (world-panels.js), the camera move is the "you've
-  // arrived somewhere new" cue.
-  function orbitStation(angleDeg, distance, heightMul, lookHeightMul = 0.4) {
+  // cta) — the camera orbits around a `center` point instead of jumping
+  // between unrelated scenes, so each arrival still reads as part of one
+  // continuous place. destacado/cta orbit the hero's own spot (no bespoke
+  // object there yet, see file header); modalidades orbits its own object.
+  function orbitStation(center, angleDeg, distance, heightAboveCenter, lookAtOffsetY = 0) {
     const rad = (angleDeg * Math.PI) / 180;
     return {
       position: new THREE.Vector3(
-        Math.sin(rad) * distance,
-        terrain.standingHeight + FIGURE_HEIGHT * heightMul,
-        Math.cos(rad) * distance,
+        center.x + Math.sin(rad) * distance,
+        center.y + heightAboveCenter,
+        center.z + Math.cos(rad) * distance,
       ),
-      lookAt: new THREE.Vector3(0, terrain.standingHeight + FIGURE_HEIGHT * lookHeightMul, 0),
+      lookAt: new THREE.Vector3(center.x, center.y + lookAtOffsetY, center.z),
     };
   }
 
+  const heroCenter = new THREE.Vector3(0, terrain.standingHeight, 0);
+
   const stations = [
-    orbitStation(0, 46, 0.6, 0.5),     // hero
-    orbitStation(55, 85, 1.0),         // destacado
-    orbitStation(135, 95, 1.15),       // modalidades
-    orbitStation(220, 62, 0.7, 0.45),  // cta — closer again, "coming home"
+    orbitStation(heroCenter, 0, 46, FIGURE_HEIGHT * 0.6, FIGURE_HEIGHT * 0.5),        // hero
+    orbitStation(heroCenter, 55, 85, FIGURE_HEIGHT * 1.0, FIGURE_HEIGHT * 0.4),        // destacado
+    orbitStation(modalidadCenter, 30, 42, 15, 6),                                      // modalidades — its own object
+    orbitStation(heroCenter, 220, 62, FIGURE_HEIGHT * 0.7, FIGURE_HEIGHT * 0.45),      // cta — closer again, "coming home"
   ];
   const cameraRig = createCameraRig({ camera, stations });
   cameraRig.applyProgress(0);
@@ -152,14 +191,19 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     lastTime = now;
 
     points.rotation.y += delta * 0.2;
+    modalidadGroup.rotation.y += delta * 0.25;
     const t = now / 1000;
     points.material.uniforms.uTime.value = t;
+    modalidadPoints.material.uniforms.uTime.value = t;
     mist.material.uniforms.uTime.value = t;
     mist2.material.uniforms.uTime.value = t;
 
     const cursorState = cursor ? cursor.update(delta) : null;
     physics.update(delta, cursorState, t);
     points.geometry.attributes.position.needsUpdate = true;
+
+    modalidadPhysics.update(delta, null, t);
+    modalidadPoints.geometry.attributes.position.needsUpdate = true;
 
     if (virtualScroll) virtualScroll.update(delta);
 
@@ -203,6 +247,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
 
   if (reduceMotion) {
     points.material.uniforms.uTime.value = performance.now() / 1000;
+    modalidadPoints.material.uniforms.uTime.value = performance.now() / 1000;
     renderer.render(scene, camera);
   } else {
     ensureLoop();
@@ -220,6 +265,9 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     if (cursor) cursor.dispose();
     points.geometry.dispose();
     points.material.dispose();
+    modalidadPoints.geometry.dispose();
+    modalidadPoints.material.dispose();
+    modalidadLabel.dispose();
     terrain.geometry.dispose();
     terrain.material.dispose();
     mist.geometry.dispose();
@@ -229,5 +277,10 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     renderer.dispose();
   }
 
-  return { dispose, camera };
+  return {
+    dispose,
+    camera,
+    setModalidadItem,
+    getModalidadIndex: () => modalidadIndex,
+  };
 }

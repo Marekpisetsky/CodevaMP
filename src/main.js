@@ -39,14 +39,15 @@ counters.init();
 pointerInteractions.init();
 emberTrail.init();
 
-// destacado/modalidades/cta build their own small canvases same as before
-// (video-voxel.js/cta-voxel.js/modalidad-carousel.js, still on the older
-// stage.js pipeline) — they're just mounted inside fixed world-panel
-// overlays now instead of normal-flow sections, cross-faded in step with
-// the hero's cinematic camera (world-panels.js) rather than scrolled past.
+// destacado/cta build their own small canvases same as before
+// (video-voxel.js/cta-voxel.js, still on the older stage.js pipeline) —
+// they're just mounted inside fixed world-panel overlays now instead of
+// normal-flow sections, cross-faded in step with the hero's cinematic
+// camera (world-panels.js) rather than scrolled past. Modalidades' object
+// lives in the shared world itself (Fase 5) — modalidad-carousel.js just
+// wires its prev/next buttons to whatever the world hands back below.
 ctaVoxel.init(document.getElementById('cta-voxel'));
 videoVoxel.init(document.getElementById('video-voxel'));
-modalidadCarousel.init();
 
 const worldPanels = createWorldPanels(document.querySelectorAll('[data-station]'));
 const navVisibility = createNavVisibility(document.getElementById('main-nav'));
@@ -56,4 +57,6 @@ heroVoxel.init(document.getElementById('hero-voxel'), {
     worldPanels.apply(progress, engaged);
     navVisibility.setEngaged(engaged);
   },
+}).then((worldHandle) => {
+  modalidadCarousel.init(worldHandle);
 });

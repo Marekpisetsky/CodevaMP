@@ -930,16 +930,15 @@
   .video-tag__sub{ color:var(--gray-dim); }
   @media (max-width:640px){ .video-tag__sub{ display:none; } }
 
-  /* Modalidades carousel — one stage instance, content swapped per item
-     (modalidad-scene.js) instead of a static 6-card grid. */
+  /* Modalidades carousel — the object itself lives in the shared world
+     behind this panel (world-scene.js's modalidadGroup, Fase 5), swapped
+     per item instead of a static 6-card grid. This box stays transparent
+     so that object shows through; it only positions the UI chrome. */
   .modalidad-carousel{
     position:relative;
     min-height:56vh;
     margin-top:24px;
-    border:1px solid var(--border);
-    background:var(--bg);
   }
-  .modalidad-stage{ position:absolute; inset:0; z-index:0; }
   .modalidad-scrim{
     position:absolute;
     inset:0;
