@@ -1,44 +1,21 @@
 import * as THREE from 'three';
-import { parseSkin, FIGURE_HEIGHT } from './skin-parser.js';
-import { createVoxelModel } from './voxel-model.js';
-import { createParticlePhysics } from './particle-physics.js';
+import { FIGURE_HEIGHT } from './skin-parser.js';
+import { createHeroBlocks } from './hero-blocks.js';
 import { createCursorTracker } from './cursor-interaction.js';
-import { TIERS, guessInitialTier, stepDownTier, fpsFloorFor, measureFps, resolvePixelRatio } from './device-quality.js';
+import { guessInitialTier, resolvePixelRatio } from './device-quality.js';
 import { createTerrain, createMovingMist } from './terrain.js';
 import { reduceMotion, hoverCapable } from '../js/utils/motion-prefs.js';
 
-// Fase 1 of the world-as-a-single-scene pivot (see plan): the hero now
-// stands in a real 3D environment (voxel terrain + moving mist) instead of
-// a flat background, viewed with a PerspectiveCamera instead of the old
-// orthographic hero-only setup in scene.js. Still a static camera and still
-// particles for the hero figure — camera choreography and the rigid-block
-// hero come in later phases. CTA/destacado/modalidades still use the older
-// stage.js pipeline for now; they migrate into this world in Fase 4/5.
-async function buildHero(skinUrl, tier) {
-  const config = TIERS[tier];
-  const skinData = await parseSkin(skinUrl, { targetCount: config.particleBudget });
-  if (skinData.count === 0) throw new Error('empty skin: no opaque pixels parsed');
-
-  const physics = createParticlePhysics({
-    basePositions: skinData.positions,
-    count: skinData.count,
-    interactionRadius: config.interactionRadius,
-    noiseComplexity: config.noiseComplexity,
-  });
-  const points = createVoxelModel({
-    positions: physics.positions,
-    colors: skinData.colors,
-    normals: skinData.normals,
-    seeds: skinData.seeds,
-    pointSize: config.pointSize,
-    pixelRatio: resolvePixelRatio(tier),
-  });
-
-  return { points, physics };
-}
-
+// Fase 1+2 of the world-as-a-single-scene pivot (see plan): the hero stands
+// in a real 3D environment (voxel terrain + moving mist), viewed with a
+// PerspectiveCamera, and is now built from real rigid Minecraft-block
+// meshes (hero-blocks.js) instead of particles — the blocks separate into
+// an "exploded view" near the cursor instead of scattering like particles.
+// Camera choreography (Fase 3) still lands later; this camera is static.
+// CTA/destacado/modalidades still use the older stage.js pipeline for now;
+// they migrate into this world in Fase 4/5.
 export async function createWorldScene(container, skinUrl) {
-  let tier = guessInitialTier();
+  const tier = guessInitialTier();
   const fogColor = 0x0a0a0c;
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -70,17 +47,14 @@ export async function createWorldScene(container, skinUrl) {
   mist2.rotation.y = Math.PI / 3;
   scene.add(mist2);
 
-  async function buildHeroContent(t) {
-    return buildHero(skinUrl, t);
-  }
-
-  let { points, physics } = await buildHeroContent(tier);
   const heroGroup = new THREE.Group();
   heroGroup.position.set(0, terrain.standingHeight, 0);
-  heroGroup.add(points);
   scene.add(heroGroup);
 
-  // Static for Fase 1 — elevated, pulled-back angle so terrain/mist read
+  const heroBlocks = await createHeroBlocks(skinUrl, { hudContainer: container, camera });
+  heroGroup.add(heroBlocks.group);
+
+  // Static for Fase 1/2 — elevated, pulled-back angle so terrain/mist read
   // clearly behind the figure. Camera choreography lands in Fase 3.
   camera.position.set(0, terrain.standingHeight + FIGURE_HEIGHT * 0.6, 46);
   camera.lookAt(0, terrain.standingHeight + FIGURE_HEIGHT * 0.5, 0);
@@ -96,24 +70,31 @@ export async function createWorldScene(container, skinUrl) {
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(container);
 
-  let cursor = hoverCapable ? createCursorTracker({ camera, points, renderer }) : null;
+  // Reused across cursor.update() calls — see hero-blocks.js's update(),
+  // which wants a Vector3 in the group's local space, not the
+  // {x,y,z,vx,vy,vz} shape cursor-interaction.js returns.
+  const cursorPoint = new THREE.Vector3();
+  const cursor = hoverCapable ? createCursorTracker({ camera, points: heroBlocks.group, renderer }) : null;
+
   let raf = null;
   let lastTime = performance.now();
-  let downgradeChecked = false;
 
   function frame(now) {
     const delta = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
 
-    points.rotation.y += delta * 0.2;
+    heroBlocks.group.rotation.y += delta * 0.15;
     const t = now / 1000;
-    points.material.uniforms.uTime.value = t;
     mist.material.uniforms.uTime.value = t;
     mist2.material.uniforms.uTime.value = t;
 
     const cursorState = cursor ? cursor.update(delta) : null;
-    physics.update(delta, cursorState, t);
-    points.geometry.attributes.position.needsUpdate = true;
+    if (cursorState) {
+      cursorPoint.set(cursorState.x, cursorState.y, cursorState.z);
+      heroBlocks.update(delta, cursorPoint);
+    } else {
+      heroBlocks.update(delta, null);
+    }
 
     renderer.render(scene, camera);
     raf = requestAnimationFrame(frame);
@@ -130,35 +111,10 @@ export async function createWorldScene(container, skinUrl) {
     raf = null;
   }
 
-  async function calibrateOnce() {
-    if (downgradeChecked || reduceMotion) return;
-    downgradeChecked = true;
-    const fps = await measureFps(1500);
-    if (fps >= fpsFloorFor(tier)) return;
-
-    const nextTier = stepDownTier(tier);
-    if (nextTier === tier) return;
-    tier = nextTier;
-
-    const rebuilt = await buildHeroContent(tier);
-    heroGroup.remove(points);
-    points.geometry.dispose();
-    points.material.dispose();
-    if (cursor) cursor.dispose();
-
-    points = rebuilt.points;
-    physics = rebuilt.physics;
-    heroGroup.add(points);
-    cursor = hoverCapable ? createCursorTracker({ camera, points, renderer }) : null;
-    renderer.setPixelRatio(resolvePixelRatio(tier));
-  }
-
   if (reduceMotion) {
-    points.material.uniforms.uTime.value = performance.now() / 1000;
     renderer.render(scene, camera);
   } else {
     ensureLoop();
-    calibrateOnce();
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) stopLoop();
       else ensureLoop();
@@ -169,8 +125,7 @@ export async function createWorldScene(container, skinUrl) {
     stopLoop();
     resizeObserver.disconnect();
     if (cursor) cursor.dispose();
-    points.geometry.dispose();
-    points.material.dispose();
+    heroBlocks.dispose();
     terrain.geometry.dispose();
     terrain.material.dispose();
     mist.geometry.dispose();

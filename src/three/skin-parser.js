@@ -3,7 +3,7 @@
 // unwrap formula, which is the same for every box regardless of size.
 // armL/legL mirror armR/legR when the modern (1.8+) left-side regions are
 // fully transparent, which is how legacy skins without that data behave.
-const PARTS = [
+export const PARTS = [
   { name: 'head',  u: 0,  v: 0,  w: 8, h: 8,  d: 8, cx: 0,  cy: 28, cz: 0 },
   { name: 'torso', u: 16, v: 16, w: 8, h: 12, d: 4, cx: 0,  cy: 18, cz: 0 },
   { name: 'armR',  u: 40, v: 16, w: 4, h: 12, d: 4, cx: -6, cy: 18, cz: 0 },
@@ -15,7 +15,7 @@ const PARTS = [
 export const FIGURE_HEIGHT = 32;
 export const FIGURE_CENTER_Y = 16;
 
-function faceRects(u, v, w, h, d) {
+export function faceRects(u, v, w, h, d) {
   return {
     top:    { u: u + d,       v,         w, h: d },
     bottom: { u: u + d + w,   v,         w, h: d },
@@ -123,6 +123,38 @@ function resolveRegions(data, size) {
     }
   }
   return regions;
+}
+
+// For the rigid-block hero (hero-blocks.js): one entry per body part with
+// its box dimensions/position and its 6 face UV rects already resolved for
+// the legacy-vs-modern arm/leg mirroring — same resolution logic
+// parseSkin() uses via resolveRegions(), just grouped by part instead of
+// flattened to one entry per face.
+export async function resolvePartRegions(url) {
+  const img = await loadImage(url);
+  const size = img.width;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, 0, 0, size, size);
+  const { data } = ctx.getImageData(0, 0, size, size);
+
+  return PARTS.map((part) => {
+    let source = part;
+    if (part.mirrorOf) {
+      const rects = faceRects(part.u, part.v, part.w, part.h, part.d);
+      const hasData = Object.values(rects).some((r) => regionHasOpaquePixel(data, size, r));
+      if (!hasData) source = PARTS.find((p) => p.name === part.mirrorOf);
+    }
+    return {
+      name: part.name,
+      box: { w: part.w, h: part.h, d: part.d, cx: part.cx, cy: part.cy, cz: part.cz },
+      rects: faceRects(source.u, source.v, source.w, source.h, source.d),
+    };
+  });
 }
 
 // `targetCount` is a budget, not an exact result: samples-per-texel has to
