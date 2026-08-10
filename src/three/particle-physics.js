@@ -29,11 +29,13 @@ const SPRING_K = 26;
 const DAMPING = 3.2;
 const CARRY_GAIN = 1.3;
 const SCATTER_GAIN = 26;
+const SCATTER_SPEED_REF = 6; // cursor speed (units/s) at which scatter reaches full strength
 const SPRING_SUPPRESSION = 0.9;
 const IDLE_FORCE = 8; // ambient wobble while active; rest particles get none (see file header)
 const ACTIVITY_RISE = 30;
 const ACTIVITY_DECAY = 0.9;
 const ACTIVITY_THRESHOLD = 0.02;
+const MAX_DISPLACEMENT = 24; // safety cap: nothing should be able to drift farther than this from its target, ever
 
 // sin(i * constant) alone is NOT per-particle randomness (see this file's
 // git history) — this hash properly decorrelates each particle.
@@ -79,6 +81,9 @@ export function createParticlePhysics({
     if (dt <= 0) return;
     const damp = Math.exp(-DAMPING * dt);
     const activityDecay = Math.exp(-ACTIVITY_DECAY * dt);
+    const cursorSpeed = cursor
+      ? Math.sqrt(cursor.vx * cursor.vx + cursor.vy * cursor.vy + cursor.vz * cursor.vz)
+      : 0;
 
     for (let i = 0; i < count; i++) {
       const ix = i * 3, iy = ix + 1, iz = ix + 2;
@@ -122,10 +127,21 @@ export function createParticlePhysics({
       if (nearCursor) {
         contactScale = 1 - falloff * SPRING_SUPPRESSION * Math.min(1, variance);
 
+        // Scatter is a "got swatted" kick, not an ambient field — it has to
+        // scale with how fast the cursor is actually moving (same idea as
+        // CARRY_GAIN, which already does this naturally since cursor.vx/vy/vz
+        // are 0 for a motionless cursor). Without this, a cursor that's
+        // merely resting near the figure (not moving, e.g. the user reading
+        // something with the mouse left in place) kept injecting this every
+        // single frame regardless — with the spring simultaneously
+        // suppressed by proximity, that drifted particles steadily outward
+        // with nothing pulling them back for as long as the cursor sat
+        // still, instead of a stationary cursor having ~no effect.
+        const speedFactor = Math.min(1, cursorSpeed / SCATTER_SPEED_REF);
         const kick = falloff * variance * dt;
-        vx += (cursor.vx * CARRY_GAIN + scatterDir[ix] * SCATTER_GAIN) * kick;
-        vy += (cursor.vy * CARRY_GAIN + scatterDir[iy] * SCATTER_GAIN) * kick;
-        vz += (cursor.vz * CARRY_GAIN + scatterDir[iz] * SCATTER_GAIN) * kick;
+        vx += (cursor.vx * CARRY_GAIN + scatterDir[ix] * SCATTER_GAIN * speedFactor) * kick;
+        vy += (cursor.vy * CARRY_GAIN + scatterDir[iy] * SCATTER_GAIN * speedFactor) * kick;
+        vz += (cursor.vz * CARRY_GAIN + scatterDir[iz] * SCATTER_GAIN * speedFactor) * kick;
 
         act = Math.min(1, act + ACTIVITY_RISE * falloff * dt);
       }
@@ -145,13 +161,31 @@ export function createParticlePhysics({
       vy = (vy + ay * dt) * damp;
       vz = (vz + az * dt) * damp;
 
+      let nx = px + vx * dt;
+      let ny = py + vy * dt;
+      let nz = pz + vz * dt;
+
+      // Safety net independent of the scatter fix above: nothing should
+      // ever be able to drift further than this from its target, whatever
+      // combination of forces caused it — clamp back onto the sphere of
+      // radius MAX_DISPLACEMENT around basePositions instead of silently
+      // trusting every force term to always be well-behaved.
+      const ox = nx - basePositions[ix], oy = ny - basePositions[iy], oz = nz - basePositions[iz];
+      const distSq = ox * ox + oy * oy + oz * oz;
+      if (distSq > MAX_DISPLACEMENT * MAX_DISPLACEMENT) {
+        const scale = MAX_DISPLACEMENT / Math.sqrt(distSq);
+        nx = basePositions[ix] + ox * scale;
+        ny = basePositions[iy] + oy * scale;
+        nz = basePositions[iz] + oz * scale;
+      }
+
       velocities[ix] = vx;
       velocities[iy] = vy;
       velocities[iz] = vz;
 
-      positions[ix] = px + vx * dt;
-      positions[iy] = py + vy * dt;
-      positions[iz] = pz + vz * dt;
+      positions[ix] = nx;
+      positions[iy] = ny;
+      positions[iz] = nz;
 
       activity[i] = act * activityDecay;
     }
