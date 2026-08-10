@@ -54,6 +54,6 @@ void main() {
   // pixel grid, which reads as points randomly disappearing rather than
   // just looking small. Clamp to an absolute pixel floor so no point can
   // ever shrink below something a screen can actually render consistently.
-  gl_PointSize = max(2.4, uPointSize * uPixelRatio * (0.85 + 0.45 * shimmer) * (0.85 + 0.3 * aSeed) * (0.55 + 0.65 * depthFactor));
+  gl_PointSize = max(3.0, uPointSize * uPixelRatio * (0.85 + 0.45 * shimmer) * (0.85 + 0.3 * aSeed) * (0.55 + 0.65 * depthFactor));
 }
 `;
