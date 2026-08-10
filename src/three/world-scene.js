@@ -6,6 +6,7 @@ import { createCursorTracker } from './cursor-interaction.js';
 import { TIERS, guessInitialTier, stepDownTier, fpsFloorFor, measureFps, resolvePixelRatio } from './device-quality.js';
 import { createTerrain, createMovingMist } from './terrain.js';
 import { createCameraRig } from './camera-rig.js';
+import { createPostProcessing } from './post-processing.js';
 import { createHudLabel } from './hud-label.js';
 import { buildModalidadContent } from './modalidad-object.js';
 import { PORTFOLIO_ITEMS } from './portfolio-items.js';
@@ -157,12 +158,18 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   const cameraRig = createCameraRig({ camera, stations });
   cameraRig.applyProgress(0);
 
+  // Only built when transitions can actually happen — with reduceMotion
+  // there's no virtual-scroll, progress never changes, so the composer
+  // would just be pure overhead for a passthrough render.
+  const postProcessing = reduceMotion ? null : createPostProcessing(renderer, scene, camera);
+
   function resize() {
     const width = Math.max(1, container.clientWidth);
     const height = Math.max(1, container.clientHeight);
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
+    if (postProcessing) postProcessing.setSize(width, height);
   }
   resize();
   const resizeObserver = new ResizeObserver(resize);
@@ -182,6 +189,13 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     stationCount: stations.length,
     onProgress: (progress, engaged) => {
       cameraRig.applyProgress(progress);
+      if (postProcessing) {
+        // 0 exactly on a station, peaking halfway through a transition —
+        // the "solo durante una transición" cue from the plan, with no
+        // separate velocity tracking needed.
+        const distFromStation = Math.abs(progress - Math.round(progress));
+        postProcessing.setIntensity(Math.min(1, distFromStation * 2.2));
+      }
       if (onStationChange) onStationChange(progress, engaged);
     },
   });
@@ -207,7 +221,8 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
 
     if (virtualScroll) virtualScroll.update(delta);
 
-    renderer.render(scene, camera);
+    if (postProcessing) postProcessing.render();
+    else renderer.render(scene, camera);
     raf = requestAnimationFrame(frame);
   }
 
@@ -262,6 +277,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     stopLoop();
     resizeObserver.disconnect();
     if (virtualScroll) virtualScroll.dispose();
+    if (postProcessing) postProcessing.dispose();
     if (cursor) cursor.dispose();
     points.geometry.dispose();
     points.material.dispose();
