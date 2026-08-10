@@ -16,6 +16,7 @@ import * as emberTrail from './js/ember-trail.js';
 import * as heroVoxel from './three/hero-voxel.js';
 import * as ctaVoxel from './three/cta-voxel.js';
 import * as videoVoxel from './three/video-voxel.js';
+import * as modalidadCarousel from './js/modalidad-carousel.js';
 import { createScrollOrchestrator } from './js/scroll-orchestrator.js';
 
 youtubeSubs.init();
@@ -52,4 +53,9 @@ ctaVoxel.init(document.getElementById('cta-voxel')).then((stage) => {
 const videoSection = document.getElementById('destacado');
 videoVoxel.init(document.getElementById('video-voxel')).then((stage) => {
   if (stage && videoSection) scrollOrchestrator.register(videoSection, stage);
+});
+
+const modalidadesSection = document.getElementById('modalidades');
+modalidadCarousel.init().then((stage) => {
+  if (stage && modalidadesSection) scrollOrchestrator.register(modalidadesSection, stage);
 });

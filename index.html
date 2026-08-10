@@ -152,42 +152,17 @@
     <div class="section-label glitch-text">Contenido</div>
     <h2>Qué vas a encontrar</h2>
 
-    <div class="game-grid stagger">
-      <div class="game-card stagger-item">
-        <div class="glare"></div>
-        <span class="game-tag">01</span>
-        <h3>Bedwars</h3>
-        <p>Defender la cama, romper la ajena, sobrevivir a la isla vecina.</p>
+    <div class="modalidad-carousel">
+      <div class="modalidad-stage" aria-hidden="true">
+        <div id="modalidad-voxel" class="hero-voxel"></div>
       </div>
-      <div class="game-card stagger-item">
-        <div class="glare"></div>
-        <span class="game-tag">02</span>
-        <h3>Skywars</h3>
-        <p>Islas flotantes, loot limitado y decisiones sin segunda oportunidad.</p>
-      </div>
-      <div class="game-card stagger-item">
-        <div class="glare"></div>
-        <span class="game-tag">03</span>
-        <h3>Eggwars</h3>
-        <p>El huevo rival, no la cama: rómpelo antes de que rompan el tuyo.</p>
-      </div>
-      <div class="game-card stagger-item">
-        <div class="glare"></div>
-        <span class="game-tag">04</span>
-        <h3>Lucky Islands</h3>
-        <p>Bloques de la suerte: pueden salvar la partida o arruinarla.</p>
-      </div>
-      <div class="game-card stagger-item">
-        <div class="glare"></div>
-        <span class="game-tag">05</span>
-        <h3>Juegos del Hambre</h3>
-        <p>Supervivencia entre varios, recursos limitados y el círculo que no perdona.</p>
-      </div>
-      <div class="game-card stagger-item">
-        <div class="glare"></div>
-        <span class="game-tag">06</span>
-        <h3>Arena PvP</h3>
-        <p>Combate directo, sin vueltas: gana el que lee mejor al rival.</p>
+      <div class="modalidad-scrim" aria-hidden="true"></div>
+      <button class="modalidad-nav modalidad-nav--prev" id="modalidad-prev" type="button" aria-label="Modalidad anterior">‹</button>
+      <button class="modalidad-nav modalidad-nav--next" id="modalidad-next" type="button" aria-label="Modalidad siguiente">›</button>
+      <div class="modalidad-panel">
+        <span class="modalidad-count" id="modalidad-count">01 / 06</span>
+        <h3 id="modalidad-title">Bedwars</h3>
+        <p id="modalidad-desc">Defender la cama, romper la ajena, sobrevivir a la isla vecina.</p>
       </div>
     </div>
 

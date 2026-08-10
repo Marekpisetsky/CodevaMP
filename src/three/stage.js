@@ -111,6 +111,26 @@ export async function createStage({
     raf = null;
   }
 
+  // Tears down the current points/extraObjects/cursor and replaces them
+  // with freshly-built ones — shared by the tier-downgrade path below and
+  // by the public setContent() (e.g. the Modalidades carousel swapping to a
+  // different item without recreating the renderer/camera/loop).
+  async function swapContent(buildFn, tierForBuild) {
+    const rebuilt = await buildFn(tierForBuild);
+    scene.remove(points);
+    for (const obj of extraObjects) scene.remove(obj);
+    points.geometry.dispose();
+    points.material.dispose();
+    if (cursor) cursor.dispose();
+
+    points = rebuilt.points;
+    physics = rebuilt.physics;
+    extraObjects = rebuilt.extraObjects || [];
+    scene.add(points);
+    for (const obj of extraObjects) scene.add(obj);
+    cursor = useCursor && hoverCapable ? createCursorTracker({ camera, points, renderer }) : null;
+  }
+
   // One-shot: confirm the static tier guess against real achieved fps a
   // couple seconds in, and step down (never back up) if it's not holding —
   // rebuilds the content in place at the lower budget/settings.
@@ -124,20 +144,15 @@ export async function createStage({
     if (nextTier === tier) return; // already at the floor (veryLow)
     tier = nextTier;
 
-    const rebuilt = await buildContent(tier);
-    scene.remove(points);
-    for (const obj of extraObjects) scene.remove(obj);
-    points.geometry.dispose();
-    points.material.dispose();
-    if (cursor) cursor.dispose();
-
-    points = rebuilt.points;
-    physics = rebuilt.physics;
-    extraObjects = rebuilt.extraObjects || [];
-    scene.add(points);
-    for (const obj of extraObjects) scene.add(obj);
-    cursor = useCursor && hoverCapable ? createCursorTracker({ camera, points, renderer }) : null;
+    await swapContent(buildContent, tier);
     renderer.setPixelRatio(resolvePixelRatio(tier));
+  }
+
+  // Public: swap this stage's content for something else entirely (its own
+  // buildContent-shaped function, ignoring the stage's own `tier` since the
+  // caller — e.g. the carousel — already knows what budget it wants).
+  async function setContent(newBuildContent) {
+    await swapContent(() => newBuildContent(tier), tier);
   }
 
   if (reduceMotion) {
@@ -168,5 +183,5 @@ export async function createStage({
   // A getter, not a snapshot: `points` gets swapped wholesale on a
   // tier-downgrade rebuild (calibrateOnce), so callers holding onto the
   // object directly (e.g. hud-label.js anchoring to it) would go stale.
-  return { dispose, setFocus, camera, getContentObject: () => points };
+  return { dispose, setFocus, setContent, camera, getContentObject: () => points };
 }
