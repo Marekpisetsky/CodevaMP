@@ -59,16 +59,24 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(fogColor);
-  scene.fog = new THREE.FogExp2(fogColor, 0.0032);
+  scene.fog = new THREE.FogExp2(fogColor, 0.0021);
 
-  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 500);
+  // Wider than a "look at one figure" framing on purpose — on a wide
+  // viewport the old 42° left huge dead-black margins on either side (the
+  // terrain was technically there, just too dim/far to read), which
+  // defeated the whole point of the hero being full-viewport. This plus
+  // the lighting bump below is what makes it actually read as a wallpaper
+  // world instead of one figure floating in black.
+  const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 600);
 
-  const ambient = new THREE.AmbientLight(0xaaaab4, 1.4);
+  const ambient = new THREE.AmbientLight(0xaaaab4, 2);
   const key = new THREE.DirectionalLight(0xffe8d8, 1.8);
   key.position.set(-30, 40, 20);
-  const rim = new THREE.DirectionalLight(0x8a3028, 1.1);
+  const rim = new THREE.DirectionalLight(0x8a3028, 1.3);
   rim.position.set(40, 15, -50);
-  scene.add(ambient, key, rim);
+  const fill = new THREE.DirectionalLight(0x5a6a8a, 0.7);
+  fill.position.set(0, 25, 60);
+  scene.add(ambient, key, rim, fill);
 
   const terrain = createTerrain({});
   scene.add(terrain);

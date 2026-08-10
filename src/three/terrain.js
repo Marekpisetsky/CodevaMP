@@ -52,8 +52,12 @@ export function createTerrain({
   const mesh = new THREE.InstancedMesh(geometry, material, count);
   mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
 
-  const colorLow = new THREE.Color(0x141416); // --bg-panel
-  const colorMid = new THREE.Color(0x3a1210); // dark red blend
+  // Brighter floor than a literal "--bg-panel" match on purpose — a low
+  // block that reads as near-pure-black on a wide viewport just vanishes
+  // into the background, which is exactly what made the world read as a
+  // narrow figure floating in empty space instead of a full wallpaper.
+  const colorLow = new THREE.Color(0x232228);
+  const colorMid = new THREE.Color(0x4a1814); // dark red blend
   const colorHigh = new THREE.Color(0xe8342a); // --red, ridge highlight
 
   const dummy = new THREE.Object3D();

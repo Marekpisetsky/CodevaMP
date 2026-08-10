@@ -1,6 +1,7 @@
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 // Radial zoom-blur + chromatic aberration, combined into one pass — the
 // "camera cinemática" cue during a station-to-station transition (see
@@ -49,6 +50,13 @@ export function createPostProcessing(renderer, scene, camera) {
   composer.addPass(new RenderPass(scene, camera));
   const transitionPass = new ShaderPass(TRANSITION_SHADER);
   composer.addPass(transitionPass);
+  // EffectComposer's intermediate render targets are linear-space — without
+  // this final pass converting back to sRGB (what renderer.render() does
+  // automatically for you, but a raw ShaderPass chain doesn't), dark values
+  // crush toward black disproportionately more than bright ones, which is
+  // exactly why the terrain nearly vanished while the bright hero figure
+  // still mostly read fine.
+  composer.addPass(new OutputPass());
 
   function setIntensity(t) {
     transitionPass.uniforms.uIntensity.value = t;
