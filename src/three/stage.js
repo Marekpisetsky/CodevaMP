@@ -165,5 +165,8 @@ export async function createStage({
     renderer.dispose();
   }
 
-  return { dispose, setFocus, camera };
+  // A getter, not a snapshot: `points` gets swapped wholesale on a
+  // tier-downgrade rebuild (calibrateOnce), so callers holding onto the
+  // object directly (e.g. hud-label.js anchoring to it) would go stale.
+  return { dispose, setFocus, camera, getContentObject: () => points };
 }

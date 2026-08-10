@@ -4,6 +4,7 @@ import { createVoxelModel } from './voxel-model.js';
 import { createParticlePhysics } from './particle-physics.js';
 import { TIERS, resolvePixelRatio } from './device-quality.js';
 import { createStage } from './stage.js';
+import { createHudLabel } from './hud-label.js';
 
 function createGroundRing() {
   const geometry = new THREE.RingGeometry(9, 12, 6, 1);
@@ -42,18 +43,34 @@ async function buildParticleSystem(skinUrl, tier) {
 }
 
 export async function createHeroScene(container, skinUrl) {
-  return createStage({
+  const stage = await createStage({
     container,
     buildContent: (tier) => buildParticleSystem(skinUrl, tier),
     cameraConfig: {
       centerY: FIGURE_CENTER_Y,
       halfHeight: FIGURE_HEIGHT * 0.66,
-      // Neutral for now (Fase 1: hero must look/behave identical to before
-      // the stage.js extraction) — scroll-orchestrator.js still drives
-      // setFocus() so the wiring is proven end-to-end, it just has no
-      // visible effect yet. Fase 2 gives this real idle/settled values.
+      // Smaller frustum = tighter framing = figure reads larger on screen.
+      // Settling (hero centered + scroll stopped) eases in a bit tighter
+      // than the idle/scrolling framing — the "encuadra al centro" cue.
       idleZoom: 1,
-      settledZoom: 1,
+      settledZoom: 0.9,
     },
   });
+
+  const label = createHudLabel({
+    container,
+    camera: stage.camera,
+    getObject: stage.getContentObject,
+    anchor: new THREE.Vector3(0, FIGURE_HEIGHT, 0), // top of the head
+    title: 'CODEVAMP_01',
+    sub: 'VOXEL.RENDER',
+  });
+
+  const dispose = stage.dispose;
+  stage.dispose = () => {
+    label.dispose();
+    dispose();
+  };
+
+  return stage;
 }

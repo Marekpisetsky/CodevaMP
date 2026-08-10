@@ -205,8 +205,12 @@
   .nav-cta:hover{ border-color:var(--red); background:rgba(232,52,42,0.08); }
 
   .hero{
-    padding:80px 0 70px;
+    min-height:92vh;
+    display:flex;
+    align-items:center;
+    padding:120px 0 70px;
     position:relative;
+    overflow:hidden;
   }
   .hero-stripe{
     position:absolute;
@@ -230,10 +234,14 @@
   @media (hover:none){ .hero-glow{ display:none; } }
 
   .hero-inner{
-    display:grid;
-    grid-template-columns:1fr auto;
-    gap:48px;
-    align-items:start;
+    position:relative;
+    z-index:2;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    max-width:760px;
+    margin:0 auto;
   }
 
   .reveal{
@@ -358,10 +366,18 @@
   }
 
   .hero-portrait{
-    width:min(280px, 38vw);
-    aspect-ratio:3 / 4;
-    position:relative;
-    flex-shrink:0;
+    position:absolute;
+    inset:0;
+    z-index:0;
+  }
+  .hero-scrim{
+    position:absolute;
+    inset:0;
+    z-index:1;
+    pointer-events:none;
+    background:radial-gradient(ellipse 46% 60% at 50% 50%,
+      rgba(10,10,12,0.94) 0%, rgba(10,10,12,0.88) 55%,
+      rgba(10,10,12,0.4) 76%, transparent 92%);
   }
   .hero-voxel{
     width:100%;
@@ -374,17 +390,75 @@
     height:100%;
   }
   .hero-voxel-fallback{
+    position:absolute;
+    inset:0;
     display:flex;
     align-items:center;
     justify-content:center;
   }
   .hero-voxel-fallback img{
-    width:56%;
+    width:min(280px, 38vw);
     height:auto;
     opacity:0.85;
   }
 
+  /* HUD label anchored to a projected 3D point (hud-label.js) — marker dot
+     at the exact point, a fixed-angle connector line, text offset up-left,
+     matching the igloo.inc "PORTFOLIO_CO_03 / ABSTRACT" tag look. */
+  .hud-label{
+    position:absolute;
+    top:0; left:0;
+    pointer-events:none;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    opacity:0;
+    transition:opacity .5s ease;
+    z-index:3;
+  }
+  .hud-label.is-visible{ opacity:1; }
+  @media (prefers-reduced-motion: reduce){ .hud-label{ transition:none; } }
+  .hud-label__marker{
+    position:absolute;
+    top:-3px; left:-3px;
+    width:6px; height:6px;
+    border:1px solid var(--red);
+    transform:rotate(45deg);
+  }
+  .hud-label__line{
+    position:absolute;
+    top:0; left:0;
+    width:90px;
+    height:1px;
+    background:var(--border);
+    transform-origin:0 0;
+    transform:rotate(-28deg);
+  }
+  .hud-label__text{
+    position:absolute;
+    top:-58px; left:-98px;
+    min-width:140px;
+    text-align:right;
+    border-bottom:1px solid var(--border);
+    padding-bottom:6px;
+  }
+  .hud-label__title{ color:var(--white); font-weight:600; }
+  .hud-label__sub{ color:var(--gray-dim); margin-top:2px; }
+
   section{ padding:80px 0; border-bottom:1px solid var(--border); position:relative; }
+
+  /* Applied by scroll-orchestrator.js to whichever stage-bearing section
+     isn't the one currently centered — de-emphasizes it so the active
+     "environment" reads as isolated, per the igloo.inc reference. */
+  .is-unfocused{
+    filter:blur(6px);
+    opacity:0.5;
+    transition:filter .5s ease, opacity .5s ease;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .is-unfocused{ filter:none; opacity:1; }
+  }
   .section-sigil{
     position:absolute;
     top:24px; right:24px;
@@ -910,13 +984,12 @@
   }
 
   @media (max-width:760px){
-    .hero-inner{ grid-template-columns:1fr; }
-    .hero-portrait{ width:min(200px, 55vw); order:-1; margin:0 auto 8px; }
+    .hero{ min-height:80vh; }
     .proof-strip{ grid-template-columns:1fr; }
   }
   @media (max-width:640px){
     section{ padding:56px 0; }
-    .hero{ padding:56px 0 46px; }
+    .hero{ min-height:76vh; padding:96px 0 46px; }
     .hud-row{ width:100%; }
     .hud-chip{ flex:1 1 auto; }
     .wrap{ padding:0 20px; }
