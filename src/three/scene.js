@@ -19,7 +19,7 @@ function createGroundRing() {
   return ring;
 }
 
-async function buildParticleSystem(skinUrl, tier) {
+export async function buildParticleSystem(skinUrl, tier) {
   const config = TIERS[tier];
   const skinData = await parseSkin(skinUrl, { targetCount: config.particleBudget });
   if (skinData.count === 0) throw new Error('empty skin: no opaque pixels parsed');

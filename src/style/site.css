@@ -210,7 +210,6 @@
     align-items:center;
     padding:120px 0 70px;
     position:relative;
-    overflow:hidden;
   }
   .hero-stripe{
     position:absolute;
@@ -894,9 +893,23 @@
 
   .cta-section{
     text-align:center;
-    padding:100px 0;
+    padding:140px 0;
     position:relative;
+    min-height:70vh;
+    display:flex;
+    align-items:center;
   }
+  .cta-portrait{ position:absolute; inset:0; z-index:0; }
+  .cta-scrim{
+    position:absolute;
+    inset:0;
+    z-index:1;
+    pointer-events:none;
+    background:radial-gradient(ellipse 54% 66% at 50% 50%,
+      rgba(10,10,12,0.97) 0%, rgba(10,10,12,0.94) 62%,
+      rgba(10,10,12,0.5) 80%, transparent 94%);
+  }
+  .cta-inner{ position:relative; z-index:2; width:100%; }
   .cta-section h2{ margin:0 auto 16px; }
   .cta-section .section-copy{ margin:0 auto 38px; }
 
