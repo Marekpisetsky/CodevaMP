@@ -135,7 +135,12 @@
   }
   @media (hover:none){ .scanline{ display:none; } }
 
-  header, main, footer{ position:relative; z-index:1; }
+  main, footer{ position:relative; z-index:1; }
+  /* Its own (higher) stacking context, not tied with main's — main can now
+     contain position:fixed full-viewport elements (the cinematic hero
+     world, see .hero-portrait.is-pinned) that must never paint over the
+     nav regardless of DOM order. */
+  header{ position:relative; z-index:30; }
 
   nav{
     display:flex;
@@ -145,7 +150,7 @@
     border-bottom:1px solid transparent;
     position:sticky;
     top:0;
-    z-index:20;
+    z-index:50;
     transition:background-color .25s, border-color .25s, box-shadow .25s;
   }
   @media (hover:none){
@@ -205,7 +210,7 @@
   .nav-cta:hover{ border-color:var(--red); background:rgba(232,52,42,0.08); }
 
   .hero{
-    min-height:92vh;
+    min-height:100vh;
     display:flex;
     align-items:center;
     padding:120px 0 70px;
@@ -380,6 +385,13 @@
     position:absolute;
     inset:0;
     z-index:0;
+  }
+  /* Toggled by virtual-scroll.js while it's capturing wheel/touch input —
+     pins the 3D canvas to the actual viewport instead of just .hero's own
+     (scrollable) box, so the cinematic camera sequence reads as a fixed
+     "scene" the page scrolls INTO rather than content scrolling past. */
+  .hero-portrait.is-pinned{
+    position:fixed;
   }
   .hero-scrim{
     position:absolute;
@@ -1037,12 +1049,11 @@
   }
 
   @media (max-width:760px){
-    .hero{ min-height:80vh; }
     .proof-strip{ grid-template-columns:1fr; }
   }
   @media (max-width:640px){
     section{ padding:56px 0; }
-    .hero{ min-height:76vh; padding:96px 0 46px; }
+    .hero{ padding:96px 0 46px; }
     .hud-row{ width:100%; }
     .hud-chip{ flex:1 1 auto; }
     .wrap{ padding:0 20px; }

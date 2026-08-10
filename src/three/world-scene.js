@@ -5,6 +5,8 @@ import { createParticlePhysics } from './particle-physics.js';
 import { createCursorTracker } from './cursor-interaction.js';
 import { TIERS, guessInitialTier, stepDownTier, fpsFloorFor, measureFps, resolvePixelRatio } from './device-quality.js';
 import { createTerrain, createMovingMist } from './terrain.js';
+import { createCameraRig } from './camera-rig.js';
+import { createVirtualScroll } from '../js/virtual-scroll.js';
 import { reduceMotion, hoverCapable } from '../js/utils/motion-prefs.js';
 
 // Fase 1 of the world-as-a-single-scene pivot (see plan): the hero stands
@@ -83,10 +85,22 @@ export async function createWorldScene(container, skinUrl) {
   heroGroup.add(points);
   scene.add(heroGroup);
 
-  // Static for Fase 1 — elevated, pulled-back angle so terrain/mist read
-  // clearly behind the figure. Camera choreography lands in Fase 3.
-  camera.position.set(0, terrain.standingHeight + FIGURE_HEIGHT * 0.6, 46);
-  camera.lookAt(0, terrain.standingHeight + FIGURE_HEIGHT * 0.5, 0);
+  // Two stations for Fase 3's proof-of-concept: station 0 is the original
+  // static hero framing, station 1 is a pulled-back aerial overview of the
+  // terrain — a placeholder "next scene" vantage point until Fase 4 gives
+  // destacado/modalidades/cta real content of their own to arrive at.
+  const stations = [
+    {
+      position: new THREE.Vector3(0, terrain.standingHeight + FIGURE_HEIGHT * 0.6, 46),
+      lookAt: new THREE.Vector3(0, terrain.standingHeight + FIGURE_HEIGHT * 0.5, 0),
+    },
+    {
+      position: new THREE.Vector3(0, terrain.standingHeight + FIGURE_HEIGHT * 2.2, 150),
+      lookAt: new THREE.Vector3(0, terrain.standingHeight + FIGURE_HEIGHT * 0.2, 0),
+    },
+  ];
+  const cameraRig = createCameraRig({ camera, stations });
+  cameraRig.applyProgress(0);
 
   function resize() {
     const width = Math.max(1, container.clientWidth);
@@ -104,6 +118,16 @@ export async function createWorldScene(container, skinUrl) {
   let lastTime = performance.now();
   let downgradeChecked = false;
 
+  // Scroll-jacking is an invasive technique — it's only ever wired up when
+  // reduceMotion is false. With reduceMotion, none of this exists and the
+  // page behaves as a completely normal scrolling document; that's the real
+  // accessibility fallback, not a try/catch around the jacking itself.
+  const virtualScroll = reduceMotion ? null : createVirtualScroll({
+    pinTarget: container.parentElement, // .hero-portrait
+    stationCount: stations.length,
+    onProgress: (progress) => cameraRig.applyProgress(progress),
+  });
+
   function frame(now) {
     const delta = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
@@ -117,6 +141,8 @@ export async function createWorldScene(container, skinUrl) {
     const cursorState = cursor ? cursor.update(delta) : null;
     physics.update(delta, cursorState, t);
     points.geometry.attributes.position.needsUpdate = true;
+
+    if (virtualScroll) virtualScroll.update(delta);
 
     renderer.render(scene, camera);
     raf = requestAnimationFrame(frame);
@@ -171,6 +197,7 @@ export async function createWorldScene(container, skinUrl) {
   function dispose() {
     stopLoop();
     resizeObserver.disconnect();
+    if (virtualScroll) virtualScroll.dispose();
     if (cursor) cursor.dispose();
     points.geometry.dispose();
     points.material.dispose();
