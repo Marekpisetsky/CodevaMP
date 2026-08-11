@@ -13,7 +13,16 @@
 
   *{ box-sizing:border-box; margin:0; padding:0; }
 
-  html{ scroll-behavior:smooth; overflow-x:hidden; }
+  /* No nav, no footer, nothing past the hero's own 100vh in the document —
+     virtual-scroll.js already prevents wheel/touch from moving the page,
+     this is belt-and-suspenders against any other input (keyboard,
+     scrollbar drag) doing it instead. The one real exception: reduceMotion
+     never builds the cinematic world at all, so it needs actual page
+     scroll to reach content past the hero — see the override below. */
+  html{ scroll-behavior:smooth; overflow-x:hidden; overflow-y:hidden; }
+  @media (prefers-reduced-motion: reduce){
+    html{ overflow-y:auto; }
+  }
 
   ::-webkit-scrollbar{ width:10px; }
   ::-webkit-scrollbar-track{ background:var(--bg); }
@@ -42,13 +51,14 @@
     line-height:1.6;
     -webkit-font-smoothing:antialiased;
     overflow-x:hidden;
+    overflow-y:hidden;
     touch-action:pan-y;
     opacity:0;
     transition:opacity .25s ease;
   }
   body.fonts-ready{ opacity:1; }
   @media (prefers-reduced-motion: reduce){
-    body{ transition:none; }
+    body{ transition:none; overflow-y:auto; }
   }
 
   .preloader{
@@ -135,19 +145,7 @@
   }
   @media (hover:none){ .scanline{ display:none; } }
 
-  main, footer{ position:relative; z-index:1; }
-  /* Its own (higher) stacking context, not tied with main's — main can now
-     contain position:fixed full-viewport elements (the cinematic hero
-     world, see .hero-portrait.is-pinned) that must never paint over the
-     nav regardless of DOM order. */
-  header{ position:relative; z-index:30; }
-
-  /* Toggled by nav-visibility.js: hidden by default during the cinematic
-     hero sequence (world-scene.js's virtual-scroll), reappears on mouse
-     proximity to the top edge or once the sequence hands off to normal
-     scroll — matching igloo.inc's minimal-chrome, game-like read. */
-  /* nav-visibility.js toggles this on #main-nav itself, not on <header>. */
-  nav.is-hidden{ opacity:0; transform:translateY(-100%); pointer-events:none; }
+  main{ position:relative; z-index:1; }
 
   /* Destacado/Modalidades/CTA: stations 1-3 of the same cinematic world as
      the hero (station 0) — fixed full-viewport overlays cross-faded by
@@ -183,74 +181,6 @@
       overflow-y:visible;
     }
   }
-
-  nav{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:22px 0;
-    border-bottom:1px solid transparent;
-    position:sticky;
-    top:0;
-    z-index:50;
-    transition:background-color .25s, border-color .25s, box-shadow .25s, opacity .3s ease, transform .3s ease;
-  }
-  @media (hover:none){
-    nav{ position:static; }
-  }
-  @media (prefers-reduced-motion: reduce){ nav{ transition:none; } }
-  nav.scrolled{
-    background:linear-gradient(180deg, rgba(10,10,12,0.96) 60%, rgba(10,10,12,0.75));
-    border-bottom:1px solid transparent;
-    border-image:linear-gradient(90deg, transparent, rgba(232,52,42,0.4) 50%, transparent) 1;
-    box-shadow:0 20px 40px -20px rgba(0,0,0,0.5);
-  }
-  .logo-group{
-    display:flex;
-    align-items:center;
-    gap:12px;
-  }
-  .logo-badge{
-    width:40px; height:40px;
-    border-radius:50%;
-    display:block;
-  }
-  .logo{
-    font-family:'Oswald',sans-serif;
-    font-weight:700;
-    font-size:21px;
-    letter-spacing:0.03em;
-    text-transform:uppercase;
-  }
-  .logo span{ color:var(--red); }
-
-  .nav-links{
-    display:flex;
-    gap:28px;
-  }
-  .nav-links a{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12.5px;
-    letter-spacing:0.04em;
-    color:var(--gray);
-    transition:color .2s;
-  }
-  .nav-links a:hover{ color:var(--white); }
-  @media (max-width:760px){
-    .nav-links{ display:none; }
-  }
-
-  .nav-cta{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12.5px;
-    letter-spacing:0.03em;
-    padding:11px 20px;
-    border:1px solid var(--border);
-    color:var(--white);
-    transition:all .2s;
-    clip-path:polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
-  }
-  .nav-cta:hover{ border-color:var(--red); background:rgba(232,52,42,0.08); }
 
   .hero{
     min-height:100vh;
@@ -1013,66 +943,6 @@
   }
   .cta-section h2{ margin:0 auto 16px; }
   .cta-section .section-copy{ margin:0 auto 38px; }
-
-  footer{
-    padding:44px 0 40px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    flex-wrap:wrap;
-    gap:14px;
-    border-top:1px solid transparent;
-    border-image:linear-gradient(90deg, transparent, rgba(232,52,42,0.4) 50%, transparent) 1;
-  }
-
-  .back-to-top{
-    position:fixed;
-    bottom:24px;
-    right:24px;
-    z-index:30;
-    width:48px; height:48px;
-    border-radius:50%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background:var(--bg-panel);
-    border:none;
-    color:var(--white);
-    cursor:pointer;
-    opacity:0;
-    transform:translateY(10px);
-    pointer-events:none;
-    transition:opacity .25s, transform .25s, background .2s;
-  }
-  .back-to-top.show{
-    opacity:1;
-    transform:translateY(0);
-    pointer-events:auto;
-  }
-  .back-to-top:hover{ background:var(--bg-panel-alt); }
-  .back-to-top svg.btt-icon{ position:relative; z-index:1; transition:transform .2s; }
-  .back-to-top:hover svg.btt-icon{ transform:translateY(-2px); }
-  .btt-ring-track{ fill:none; stroke:var(--border); stroke-width:2; }
-  .btt-ring-progress{
-    fill:none;
-    stroke:var(--red);
-    stroke-width:2;
-    stroke-linecap:round;
-    transition:stroke-dashoffset .1s linear;
-  }
-  @media (prefers-reduced-motion: reduce){
-    .back-to-top{ transition:opacity .1s; }
-    .btt-ring-progress{ transition:none; }
-  }
-  footer .logo{ font-size:16px; }
-  .footer-link{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12.5px;
-    color:var(--gray);
-    border-bottom:1px solid transparent;
-    transition:border-color .2s, color .2s;
-  }
-  .footer-link:hover{ color:var(--red); border-color:var(--red); }
 
   a:focus-visible, button:focus-visible{
     outline:2px solid var(--red);

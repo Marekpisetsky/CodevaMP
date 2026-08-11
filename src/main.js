@@ -7,7 +7,6 @@ import * as featuredVideo from './js/featured-video.js';
 import * as igniteText from './js/ignite-text.js';
 import * as tabTitle from './js/tab-title.js';
 import * as preloader from './js/preloader.js';
-import * as navScroll from './js/nav-scroll.js';
 import * as glitchText from './js/glitch-text.js';
 import * as scrollReveal from './js/scroll-reveal.js';
 import * as counters from './js/counters.js';
@@ -17,7 +16,6 @@ import * as heroVoxel from './three/hero-voxel.js';
 import * as videoVoxel from './three/video-voxel.js';
 import * as modalidadCarousel from './js/modalidad-carousel.js';
 import { createWorldPanels } from './js/world-panels.js';
-import { createNavVisibility } from './js/nav-visibility.js';
 
 youtubeSubs.init();
 youtubeLatestVideos.init();
@@ -31,7 +29,6 @@ if (dataSaver) {
   document.documentElement.classList.add('data-saver');
 }
 
-navScroll.init();
 glitchText.init();
 scrollReveal.init();
 counters.init();
@@ -47,12 +44,10 @@ emberTrail.init();
 videoVoxel.init(document.getElementById('video-voxel'));
 
 const worldPanels = createWorldPanels(document.querySelectorAll('[data-station]'));
-const navVisibility = createNavVisibility(document.getElementById('main-nav'));
 
 heroVoxel.init(document.getElementById('hero-voxel'), {
   onStationChange(progress, engaged) {
     worldPanels.apply(progress, engaged);
-    navVisibility.setEngaged(engaged);
   },
 }).then((worldHandle) => {
   modalidadCarousel.init(worldHandle);

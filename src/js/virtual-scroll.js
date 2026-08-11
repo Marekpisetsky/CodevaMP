@@ -1,13 +1,11 @@
-// Scroll-jacking for the hero's cinematic camera: while "engaged", wheel/
-// touch input drives a virtual progress value instead of scrolling the
-// real page — the only way to get a non-linear camera path (pull back
-// before advancing) and an auto-completing snap when the user lets go
-// mid-transition. Forward past the last station hands control back to
-// native scroll so the rest of the page (destacado, modalidades, cta)
-// scrolls normally beneath the pinned hero; backward past the first
-// station wraps around to the last one instead of dead-ending — "como si
-// nunca se terminara de dar vueltas" — camera-rig.js's progress
-// interpolation is modulo-based specifically so this is meaningful.
+// Scroll-jacking for the hero's cinematic camera: wheel/touch input drives
+// a virtual progress value instead of scrolling the real page — the only
+// way to get a non-linear camera path (pull back before advancing) and an
+// auto-completing snap when the user lets go mid-transition. Progress
+// wraps in both directions (camera-rig.js's interpolation is fully
+// modulo-based) — there's nothing on the page to hand off to anymore (no
+// nav, no footer, nothing past .hero's own 100vh), so scrolling never
+// actually moves the real page at all, in either direction.
 //
 // This is an invasive technique — see the plan's explicit callout that the
 // accessibility fallback isn't optional. Callers must not construct this
@@ -26,41 +24,27 @@ const DAMPING_SETTLE = 1.6;
 export function createVirtualScroll({ pinTarget, stationCount, onProgress }) {
   let rawProgress = 0;
   let displayProgress = 0;
-  let engaged = true;
   let settled = false;
   let settleTimer = null;
-
-  function setEngaged(next) {
-    if (engaged === next) return;
-    engaged = next;
-    pinTarget.classList.toggle('is-pinned', engaged);
-  }
 
   function scheduleSettle() {
     settled = false;
     if (settleTimer) clearTimeout(settleTimer);
     settleTimer = setTimeout(() => {
-      rawProgress = Math.round(rawProgress);
+      rawProgress = Math.round(rawProgress) % stationCount;
       settled = true;
     }, SETTLE_DELAY_MS);
   }
 
   function advance(deltaY) {
-    const forward = deltaY > 0;
-    if (forward && rawProgress >= stationCount - 1 - 0.001) {
-      setEngaged(false);
-      return false; // not consumed — let this scroll reach the real page
-    }
     rawProgress += deltaY * SENSITIVITY;
-    if (rawProgress < 0) rawProgress += stationCount; // loop backward into the last station
-    if (rawProgress > stationCount - 1) rawProgress = stationCount - 1;
+    rawProgress = ((rawProgress % stationCount) + stationCount) % stationCount;
     scheduleSettle();
-    return true;
   }
 
   function onWheel(e) {
-    if (!engaged) return;
-    if (advance(e.deltaY)) e.preventDefault();
+    e.preventDefault();
+    advance(e.deltaY);
   }
 
   let touchStartY = null;
@@ -68,32 +52,17 @@ export function createVirtualScroll({ pinTarget, stationCount, onProgress }) {
     touchStartY = e.touches[0].clientY;
   }
   function onTouchMove(e) {
-    if (!engaged || touchStartY === null) return;
+    if (touchStartY === null) return;
+    e.preventDefault();
     const dy = touchStartY - e.touches[0].clientY;
     touchStartY = e.touches[0].clientY;
-    if (advance(dy * (TOUCH_SENSITIVITY / SENSITIVITY))) e.preventDefault();
+    advance(dy * (TOUCH_SENSITIVITY / SENSITIVITY));
   }
   function onTouchEnd() {
     touchStartY = null;
   }
 
-  // Re-engage when native scroll brings the page back to the very top —
-  // symmetric to the forward hand-off above. The hero is the first section
-  // on the page, so "scrollY back at 0" unambiguously means it's back;
-  // that's a simpler, more robust signal here than an IntersectionObserver
-  // ratio threshold, which .hero's own text content can keep from ever
-  // reaching (its rendered height can exceed 100vh on shorter viewports).
-  function onNativeScroll() {
-    if (!engaged && window.scrollY <= 2) {
-      setEngaged(true);
-      rawProgress = stationCount - 1;
-      displayProgress = stationCount - 1;
-      settled = true;
-    }
-  }
-  window.addEventListener('scroll', onNativeScroll, { passive: true });
-
-  pinTarget.classList.toggle('is-pinned', engaged); // setEngaged() only syncs on *changes* — apply the initial state explicitly
+  pinTarget.classList.add('is-pinned'); // permanent — nothing to unpin for anymore
 
   window.addEventListener('wheel', onWheel, { passive: false });
   window.addEventListener('touchstart', onTouchStart, { passive: true });
@@ -103,7 +72,7 @@ export function createVirtualScroll({ pinTarget, stationCount, onProgress }) {
   function update(dt) {
     const damping = settled ? DAMPING_SETTLE : DAMPING_ACTIVE;
     displayProgress += (rawProgress - displayProgress) * (1 - Math.exp(-damping * dt));
-    onProgress(displayProgress, engaged);
+    onProgress(displayProgress, true);
   }
 
   function dispose() {
@@ -111,7 +80,6 @@ export function createVirtualScroll({ pinTarget, stationCount, onProgress }) {
     window.removeEventListener('touchstart', onTouchStart);
     window.removeEventListener('touchmove', onTouchMove);
     window.removeEventListener('touchend', onTouchEnd);
-    window.removeEventListener('scroll', onNativeScroll);
     if (settleTimer) clearTimeout(settleTimer);
     pinTarget.classList.remove('is-pinned');
   }
