@@ -7,10 +7,21 @@ function igniteSplit(el, baseDelay, step, className) {
   let i = 0;
   const out = parts.map(part => {
     if (/^<br/i.test(part)) return part;
-    return part.split('').map(ch => {
-      if (ch === ' ') return ' ';
-      const delay = (baseDelay + i++ * step).toFixed(2);
-      return `<span class="${className}" style="animation-delay:${delay}s">${ch}</span>`;
+    // Each letter is its own inline-block span (needed so the per-letter
+    // translateY animation actually applies — transforms don't affect
+    // plain inline elements). With no whitespace between them, adjacent
+    // inline-blocks are still a line-break opportunity in Chrome, so on a
+    // narrow column a word can wrap mid-letter. Grouping each word's
+    // letters under a white-space:nowrap wrapper keeps the word intact;
+    // wrapping can still happen at the real space between words.
+    return part.split(/( )/).map(word => {
+      if (word === ' ') return ' ';
+      if (!word) return '';
+      const letters = word.split('').map(ch => {
+        const delay = (baseDelay + i++ * step).toFixed(2);
+        return `<span class="${className}" style="animation-delay:${delay}s">${ch}</span>`;
+      }).join('');
+      return `<span class="ignite-word">${letters}</span>`;
     }).join('');
   }).join('');
   el.innerHTML = '<span class="ignite-wrap">' + out + '</span>';

@@ -221,14 +221,16 @@
     z-index:2;
     display:flex;
     flex-direction:column;
-    align-items:center;
-    text-align:center;
-    max-width:760px;
-    margin:0 auto;
-    /* Text sits on top of the 3D canvas but shouldn't block the cursor
-       interaction underneath it (hero-blocks.js's exploded-view effect) —
-       let hover/click pass straight through except on the one real
-       interactive element, the subscribe button. */
+    align-items:flex-start;
+    text-align:left;
+    max-width:480px;
+    margin:0;
+    padding-left:clamp(24px, 6vw, 80px);
+    /* Left-anchored, not centered: camera-rig.js's hero station looks
+       straight at the figure, so it's always dead-center in frame —
+       centered text used to sit directly on top of it. Keeping this
+       column out of the middle third of the viewport is what actually
+       lets the figure show through instead of getting buried under text. */
     pointer-events:none;
     /* world-panels.js treats the hero's own text as "station 0" of the
        same cross-fade system driving destacado/modalidades/cta — without
@@ -381,9 +383,12 @@
     inset:0;
     z-index:1;
     pointer-events:none;
-    background:radial-gradient(ellipse 46% 58% at 50% 48%,
-      rgba(10,10,12,0.6) 0%, rgba(10,10,12,0.4) 55%,
-      rgba(10,10,12,0.15) 76%, transparent 92%);
+    /* Darkens the left column behind the text, not the figure itself —
+       the old radial version darkened dead-center, which is exactly
+       where the figure stands. */
+    background:linear-gradient(90deg,
+      rgba(10,10,12,0.68) 0%, rgba(10,10,12,0.4) 32%,
+      rgba(10,10,12,0.1) 52%, transparent 66%);
     opacity:1;
     transition:opacity .5s ease;
   }
@@ -502,6 +507,7 @@
     max-width:640px;
     line-height:1.08;
   }
+  .ignite-word{ display:inline-block; white-space:nowrap; }
   .ignite-char{
     display:inline-block;
     opacity:0;
@@ -823,7 +829,7 @@
   }
 
   .cta-section{
-    text-align:center;
+    text-align:left;
     padding:140px 0;
     min-height:70vh;
     display:flex;
@@ -834,11 +840,18 @@
     inset:0;
     z-index:1;
     pointer-events:none;
-    background:radial-gradient(ellipse 46% 58% at 50% 48%,
-      rgba(10,10,12,0.6) 0%, rgba(10,10,12,0.4) 55%,
-      rgba(10,10,12,0.15) 76%, transparent 92%);
+    /* Same reasoning as .hero-scrim: darken behind the text column, not
+       the bed/camper standing dead-center in the station's camera. */
+    background:linear-gradient(90deg,
+      rgba(10,10,12,0.68) 0%, rgba(10,10,12,0.4) 32%,
+      rgba(10,10,12,0.1) 52%, transparent 66%);
   }
-  .cta-inner{ position:relative; z-index:2; width:100%; }
+  .cta-inner{
+    position:relative;
+    z-index:2;
+    max-width:480px;
+    padding-left:clamp(24px, 6vw, 80px);
+  }
 
   .video-portrait{ position:absolute; inset:0; z-index:0; opacity:0.55; }
   .video-scrim{
@@ -941,8 +954,8 @@
     .modalidad-panel{ padding:20px 56px 24px; }
     .modalidad-nav{ width:36px; height:36px; font-size:18px; }
   }
-  .cta-section h2{ margin:0 auto 16px; }
-  .cta-section .section-copy{ margin:0 auto 38px; }
+  .cta-section h2{ margin:0 0 16px; }
+  .cta-section .section-copy{ margin:0 0 38px; }
 
   a:focus-visible, button:focus-visible{
     outline:2px solid var(--red);
@@ -969,6 +982,14 @@
 
   @media (max-width:760px){
     .proof-strip{ grid-template-columns:1fr; }
+  }
+  @media (max-width:640px){
+    /* world-scene.js pans the camera to push the hero/bed toward the right
+       edge on narrow viewports — narrowing this column keeps text from
+       stretching back into it. The button is exempt: nothing sits below it
+       at that width, so letting it overflow the column beats wrapping mid-word. */
+    .hero-inner, .cta-inner{ max-width:74%; }
+    .hero-inner .btn-primary, .cta-inner .btn-primary{ white-space:nowrap; }
   }
   @media (max-width:640px){
     section{ padding:56px 0; }

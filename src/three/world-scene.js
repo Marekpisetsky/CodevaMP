@@ -199,7 +199,8 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     orbitStation(bedCenter, 25, 52, 19, 4),                                            // cta — the Bedwars bed + camper
   ];
   const cameraRig = createCameraRig({ camera, stations });
-  cameraRig.applyProgress(0);
+  let currentProgress = 0;
+  cameraRig.applyProgress(currentProgress);
 
   // Only built when transitions can actually happen — with reduceMotion
   // there's no virtual-scroll, progress never changes, so the composer
@@ -210,8 +211,18 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     const width = Math.max(1, container.clientWidth);
     const height = Math.max(1, container.clientHeight);
     renderer.setSize(width, height, false);
-    camera.aspect = width / height;
+    const aspect = width / height;
+    camera.aspect = aspect;
     camera.updateProjectionMatrix();
+    // Portrait viewports see a much narrower horizontal slice at this fixed
+    // vertical FOV, so the dead-center hero/bed balloons to fill the width
+    // and swallows any text placed beside it — dolly the camera back as
+    // aspect narrows to keep its on-screen size roughly stable instead.
+    cameraRig.setDistanceScale(aspect < 1 ? Math.min(2.2, 1 / aspect) : 1);
+    // Pushes the dead-center subject toward the right edge on narrow
+    // screens, opening up the left column for the DOM text panel.
+    cameraRig.setLateralPan(aspect < 1 ? 0.27 : 0);
+    cameraRig.applyProgress(currentProgress);
     if (postProcessing) postProcessing.setSize(width, height);
   }
   resize();
@@ -231,6 +242,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     pinTarget: container.parentElement, // .hero-portrait
     stationCount: stations.length,
     onProgress: (progress, engaged) => {
+      currentProgress = progress;
       cameraRig.applyProgress(progress);
       if (postProcessing) {
         // 0 exactly on a station, peaking halfway through a transition —
