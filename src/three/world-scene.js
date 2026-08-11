@@ -9,6 +9,7 @@ import { createCameraRig } from './camera-rig.js';
 import { createPostProcessing } from './post-processing.js';
 import { createHudLabel } from './hud-label.js';
 import { buildModalidadContent } from './modalidad-object.js';
+import { buildBedwarsContent } from './bedwars-object.js';
 import { PORTFOLIO_ITEMS } from './portfolio-items.js';
 import { createVirtualScroll } from '../js/virtual-scroll.js';
 import { reduceMotion, hoverCapable } from '../js/utils/motion-prefs.js';
@@ -17,14 +18,15 @@ import { reduceMotion, hoverCapable } from '../js/utils/motion-prefs.js';
 // environment (voxel terrain + moving mist), one PerspectiveCamera orbiting
 // between 4 stations (hero/destacado/modalidades/cta) driven by
 // virtual-scroll.js's scroll-jacking, instead of 4 independent per-section
-// canvases. The hero itself is the already-tuned particle figure
-// (skin-parser/particle-physics/voxel-model) — a rigid-block "exploded
-// view" treatment (hero-blocks.js, still in the repo) was tried here first
-// but didn't read right on the character; that technique is earmarked for
-// a Bedwars-themed structure at a later station instead (see plan/tasks).
-// Modalidades' own object now lives in this same world too (Fase 5,
-// modalidad-object.js) — destacado/cta still don't have bespoke 3D scenery
-// of their own, world-panels.js cross-fades their real DOM content instead.
+// canvases. Every object in the world — hero, Modalidades item, the
+// Bedwars bed at the cta station — is built from the same particle
+// pipeline (skin-parser or mesh-sampler.js → particle-physics.js →
+// voxel-model.js). A rigid-block "exploded view" treatment
+// (hero-blocks.js, still in the repo but unused) was tried on the hero
+// character first and didn't read right there; per feedback everything
+// stays in this one particle language instead. destacado is still just
+// world-panels.js cross-fading its real DOM content, no bespoke 3D object
+// of its own yet.
 async function buildHero(skinUrl, tier) {
   const config = TIERS[tier];
   const skinData = await parseSkin(skinUrl, { targetCount: config.particleBudget });
@@ -138,6 +140,39 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     return modalidadIndex;
   }
 
+  // --- Bedwars bed (station 3, replaces "orbit the hero again") — the
+  // structure the plan's rigid-block idea was meant for, kept in the same
+  // particle language as everything else instead. A small reprise of the
+  // hero figure stands beside it, "defending" it, tying the CTA's closing
+  // beat back to the actual game the channel is about. ---
+  const bedCenter = new THREE.Vector3(-58, terrain.standingHeight, 52);
+
+  const { points: bedPoints, physics: bedPhysics } = await buildBedwarsContent(tier);
+  const bedGroup = new THREE.Group();
+  bedGroup.position.copy(bedCenter);
+  bedGroup.add(bedPoints);
+  scene.add(bedGroup);
+
+  const { points: camperPoints, physics: camperPhysics } = await buildHero(skinUrl, tier);
+  const camperGroup = new THREE.Group();
+  // Offset diagonally, not just along one axis — purely-sideways placement
+  // put it directly in front of the bed from the station's own camera
+  // angle, merging the two into one blob instead of reading as two things.
+  camperGroup.position.set(bedCenter.x + 11, terrain.standingHeight, bedCenter.z + 9);
+  camperGroup.scale.setScalar(0.6);
+  camperGroup.rotation.y = -Math.PI / 3;
+  camperGroup.add(camperPoints);
+  scene.add(camperGroup);
+
+  const bedLabel = createHudLabel({
+    container,
+    camera,
+    getObject: () => bedGroup,
+    anchor: new THREE.Vector3(0, 5, 0),
+    title: 'CODEVAMP_04',
+    sub: 'DEFEND.BED',
+  });
+
   // Four stations, one per section of the site (hero/destacado/modalidades/
   // cta) — the camera orbits around a `center` point instead of jumping
   // between unrelated scenes, so each arrival still reads as part of one
@@ -161,7 +196,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     orbitStation(heroCenter, 0, 46, FIGURE_HEIGHT * 0.6, FIGURE_HEIGHT * 0.5),        // hero
     orbitStation(heroCenter, 55, 85, FIGURE_HEIGHT * 1.0, FIGURE_HEIGHT * 0.4),        // destacado
     orbitStation(modalidadCenter, 30, 42, 15, 6),                                      // modalidades — its own object
-    orbitStation(heroCenter, 220, 62, FIGURE_HEIGHT * 0.7, FIGURE_HEIGHT * 0.45),      // cta — closer again, "coming home"
+    orbitStation(bedCenter, 25, 52, 19, 4),                                            // cta — the Bedwars bed + camper
   ];
   const cameraRig = createCameraRig({ camera, stations });
   cameraRig.applyProgress(0);
@@ -214,9 +249,13 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
 
     points.rotation.y += delta * 0.2;
     modalidadGroup.rotation.y += delta * 0.25;
+    bedGroup.rotation.y += delta * 0.08;
+    camperPoints.rotation.y += delta * 0.3;
     const t = now / 1000;
     points.material.uniforms.uTime.value = t;
     modalidadPoints.material.uniforms.uTime.value = t;
+    bedPoints.material.uniforms.uTime.value = t;
+    camperPoints.material.uniforms.uTime.value = t;
     mist.material.uniforms.uTime.value = t;
     mist2.material.uniforms.uTime.value = t;
 
@@ -226,6 +265,12 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
 
     modalidadPhysics.update(delta, null, t);
     modalidadPoints.geometry.attributes.position.needsUpdate = true;
+
+    bedPhysics.update(delta, null, t);
+    bedPoints.geometry.attributes.position.needsUpdate = true;
+
+    camperPhysics.update(delta, null, t);
+    camperPoints.geometry.attributes.position.needsUpdate = true;
 
     if (virtualScroll) virtualScroll.update(delta);
 
@@ -269,8 +314,11 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   }
 
   if (reduceMotion) {
-    points.material.uniforms.uTime.value = performance.now() / 1000;
-    modalidadPoints.material.uniforms.uTime.value = performance.now() / 1000;
+    const staticT = performance.now() / 1000;
+    points.material.uniforms.uTime.value = staticT;
+    modalidadPoints.material.uniforms.uTime.value = staticT;
+    bedPoints.material.uniforms.uTime.value = staticT;
+    camperPoints.material.uniforms.uTime.value = staticT;
     renderer.render(scene, camera);
   } else {
     ensureLoop();
@@ -292,6 +340,11 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     modalidadPoints.geometry.dispose();
     modalidadPoints.material.dispose();
     modalidadLabel.dispose();
+    bedPoints.geometry.dispose();
+    bedPoints.material.dispose();
+    bedLabel.dispose();
+    camperPoints.geometry.dispose();
+    camperPoints.material.dispose();
     terrain.geometry.dispose();
     terrain.material.dispose();
     mist.geometry.dispose();

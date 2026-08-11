@@ -14,7 +14,6 @@ import * as counters from './js/counters.js';
 import * as pointerInteractions from './js/pointer-interactions.js';
 import * as emberTrail from './js/ember-trail.js';
 import * as heroVoxel from './three/hero-voxel.js';
-import * as ctaVoxel from './three/cta-voxel.js';
 import * as videoVoxel from './three/video-voxel.js';
 import * as modalidadCarousel from './js/modalidad-carousel.js';
 import { createWorldPanels } from './js/world-panels.js';
@@ -39,14 +38,12 @@ counters.init();
 pointerInteractions.init();
 emberTrail.init();
 
-// destacado/cta build their own small canvases same as before
-// (video-voxel.js/cta-voxel.js, still on the older stage.js pipeline) —
-// they're just mounted inside fixed world-panel overlays now instead of
-// normal-flow sections, cross-faded in step with the hero's cinematic
-// camera (world-panels.js) rather than scrolled past. Modalidades' object
-// lives in the shared world itself (Fase 5) — modalidad-carousel.js just
-// wires its prev/next buttons to whatever the world hands back below.
-ctaVoxel.init(document.getElementById('cta-voxel'));
+// destacado still builds its own small canvas (video-voxel.js, on the
+// older stage.js pipeline) — mounted inside a fixed world-panel overlay,
+// cross-faded in step with the hero's cinematic camera (world-panels.js)
+// rather than scrolled past. Modalidades' and the CTA's (the Bedwars bed)
+// objects both live in the shared world itself now — modalidad-carousel.js
+// just wires its prev/next buttons to whatever the world hands back below.
 videoVoxel.init(document.getElementById('video-voxel'));
 
 const worldPanels = createWorldPanels(document.querySelectorAll('[data-station]'));
