@@ -1,9 +1,10 @@
-// Cross-fades whatever DOM content each station still has (destacado's
-// video panel, modalidades' carousel — hero and cta are pure 3D world now,
-// no DOM overlay) based on the same camera progress value driving
-// world-scene.js's camera-rig. Elements are found generically by a
-// `data-station` attribute; .is-active is what site.css keys each one's
-// opacity off of.
+// Cross-fades whatever DOM content each station still has, based on the
+// same camera progress value driving world-scene.js's camera-rig. Every
+// station is pure 3D world now (no DOM overlay left anywhere), so this
+// currently has nothing to toggle — kept as the plumbing in case any
+// station gets DOM content back. Elements are found generically by a
+// `data-station` attribute; .is-active is what site.css would key an
+// element's opacity off of.
 //
 // `stationCount` wraps the rounded progress the same way camera-rig.js
 // wraps it for rendering — virtual-scroll.js's progress value is

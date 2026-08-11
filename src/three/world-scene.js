@@ -24,9 +24,9 @@ import { reduceMotion, hoverCapable } from '../js/utils/motion-prefs.js';
 // voxel-model.js). A rigid-block "exploded view" treatment
 // (hero-blocks.js, still in the repo but unused) was tried on the hero
 // character first and didn't read right there; per feedback everything
-// stays in this one particle language instead. destacado is still just
-// world-panels.js cross-fading its real DOM content, no bespoke 3D object
-// of its own yet.
+// stays in this one particle language instead. Every station is now pure
+// 3D world — no DOM overlay content anywhere, per feedback that any
+// element in front of the world should be deleted, not just repositioned.
 async function buildHero(skinUrl, tier) {
   const config = TIERS[tier];
   const skinData = await parseSkin(skinUrl, { targetCount: config.particleBudget });
@@ -64,12 +64,14 @@ const STATION_ZONES = [
     fogColor: 0x0a0a0c,
   },
   {
-    // Behind hero's own camera (station 0 looks toward -z from x≈0) and
-    // outside modalidades'/cta's forward view too (both look roughly
-    // toward -x/-z from the opposite side of the map) — otherwise the
-    // icebergs sit in the background of another station's shot instead of
-    // staying hidden until progress actually carries the camera here.
-    key: 'destacado', x: 0, z: 100, radius: 32,
+    // Far to the +x side, roughly level with hero in z — checked against
+    // every other station's camera forward direction so the icebergs stay
+    // out of frame until progress actually carries the camera here (an
+    // earlier placement along hero's own -z line of sight, then one
+    // further +z past modalidades/cta, both leaked into other stations'
+    // shots since those cameras end up looking back roughly toward -z
+    // regardless of which station they belong to).
+    key: 'destacado', x: 120, z: 0, radius: 30,
     colorLow: 0x141c28, colorMid: 0x2c4a60, colorHigh: 0xbfe6f5,
     fogColor: 0x0e1620,
   },
@@ -242,7 +244,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
 
   const stations = [
     orbitStation(heroCenter, 0, 46, FIGURE_HEIGHT * 0.6, FIGURE_HEIGHT * 0.5),  // hero
-    orbitStation(destacadoCenter, 15, 46, 22, 10),                             // destacado — the icebergs
+    orbitStation(destacadoCenter, 15, 44, 22, 10),                             // destacado — the icebergs
     orbitStation(modalidadCenter, 30, 42, 15, 6),                               // modalidades — its own object
     orbitStation(bedCenter, 25, 52, 19, 4),                                     // cta — the Bedwars bed + camper
   ];

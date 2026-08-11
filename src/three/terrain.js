@@ -97,10 +97,27 @@ export function createTerrain({
       const worldX = nx * cellSize, worldZ = nz * cellSize;
 
       let n = Math.pow(fbm(nx * noiseScale, nz * noiseScale), 1.5);
-      if (distFromCenter < clearingRadius) {
-        const t = distFromCenter / clearingRadius;
-        n *= t * t; // flatten toward 0 height right at the center
+      // Flatten toward 0 height around the grid origin AND around every
+      // zone center, not just the origin — every station's object/camera
+      // is placed using the shared `terrain.standingHeight` (the height at
+      // the grid origin) as its Y baseline, so unflattened noise elsewhere
+      // could put a station's own camera underneath, or its object
+      // floating above, a tall random peak that has nothing to do with
+      // that baseline.
+      let flatten = distFromCenter < clearingRadius
+        ? (distFromCenter / clearingRadius) ** 2
+        : 1;
+      for (const zone of zones) {
+        // distFromCenter above is in grid-cell units (nx/nz), not world
+        // units — zone.x/zone.z are world units, so convert before
+        // comparing, or clearingRadius ends up ~3x too small here.
+        const zdx = nx - zone.x / cellSize, zdz = nz - zone.z / cellSize;
+        const zoneDist = Math.sqrt(zdx * zdx + zdz * zdz);
+        if (zoneDist < clearingRadius) {
+          flatten = Math.min(flatten, (zoneDist / clearingRadius) ** 2);
+        }
       }
+      n *= flatten;
 
       const level = Math.round(n * maxLevels);
       const y = level * cellSize;
