@@ -184,14 +184,10 @@
 
   .hero{
     min-height:100vh;
-    display:flex;
-    align-items:flex-end;
-    padding:120px 0 110px;
     position:relative;
     /* Break out of <main class="wrap">'s 1080px max-width — the 3D world
        should read as full-screen/game-like, not boxed like the rest of the
-       page's content columns. .hero-inner keeps its own max-width below so
-       the text itself stays a readable, centered column. */
+       page's content columns. */
     width:100vw;
     margin-left:calc(50% - 50vw);
   }
@@ -216,51 +212,6 @@
   .hero:hover .hero-glow{ opacity:1; }
   @media (hover:none){ .hero-glow{ display:none; } }
 
-  .hero-inner{
-    position:relative;
-    z-index:2;
-    display:flex;
-    flex-direction:column;
-    align-items:flex-start;
-    text-align:left;
-    max-width:480px;
-    margin:0;
-    padding-left:clamp(24px, 6vw, 80px);
-    /* Left-anchored, not centered: camera-rig.js's hero station looks
-       straight at the figure, so it's always dead-center in frame —
-       centered text used to sit directly on top of it. Keeping this
-       column out of the middle third of the viewport is what actually
-       lets the figure show through instead of getting buried under text. */
-    pointer-events:none;
-    /* world-panels.js treats the hero's own text as "station 0" of the
-       same cross-fade system driving destacado/modalidades/cta — without
-       this it stayed on screen for every other station too. */
-    opacity:1;
-    transition:opacity .5s ease;
-  }
-  .hero-inner:not(.is-active){ opacity:0; }
-  .hero-inner .btn-primary{ pointer-events:auto; }
-  @media (prefers-reduced-motion: reduce){
-    .hero-inner{ transition:none; }
-    .hero-inner:not(.is-active){ opacity:1; }
-  }
-
-  .reveal{
-    opacity:0;
-    transform:translateY(16px);
-    animation:reveal .7s cubic-bezier(.16,1,.3,1) forwards;
-  }
-  .reveal.d0{ animation-delay:.05s; }
-  .reveal.d1{ animation-delay:.15s; }
-  .reveal.d2{ animation-delay:.4s; }
-  .reveal.d3{ animation-delay:.55s; }
-  .reveal.d4{ animation-delay:.7s; }
-  .reveal.d5{ animation-delay:.85s; }
-  @keyframes reveal{ to{ opacity:1; transform:translateY(0); } }
-  @media (prefers-reduced-motion: reduce){
-    .reveal{ opacity:1; transform:none; animation:none; }
-  }
-
   .fade-up{
     opacity:0;
     transform:translateY(24px);
@@ -274,98 +225,6 @@
     .fade-up{ opacity:1; transform:none; transition:none; }
   }
 
-  .eyebrow{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12.5px;
-    letter-spacing:0.16em;
-    text-transform:uppercase;
-    color:var(--red);
-    margin-bottom:22px;
-    display:flex;
-    align-items:center;
-    gap:10px;
-  }
-  .eyebrow::before{
-    content:'';
-    width:22px; height:2px;
-    background:var(--red);
-    display:inline-block;
-  }
-
-  h1{
-    font-family:'Oswald',sans-serif;
-    font-weight:700;
-    font-size:clamp(48px, 8vw, 88px);
-    line-height:0.94;
-    letter-spacing:0.005em;
-    text-transform:uppercase;
-    margin-bottom:26px;
-    position:relative;
-    transition:text-shadow .3s ease;
-    animation:h1-materialize 1.4s steps(1) .45s both;
-  }
-  @keyframes h1-materialize{
-    0%{ text-shadow:0 0 0px rgba(232,52,42,0); }
-    20%{ text-shadow:0 0 18px rgba(232,52,42,.9); }
-    28%{ text-shadow:0 0 2px rgba(232,52,42,.2); }
-    45%{ text-shadow:0 0 22px rgba(232,52,42,1); }
-    55%{ text-shadow:0 0 3px rgba(232,52,42,.15); }
-    100%{ text-shadow:0 0 0px rgba(232,52,42,0); }
-  }
-  @media (prefers-reduced-motion: reduce){ h1{ animation:none; } }
-  h1:hover{
-    text-shadow: -2px 0 rgba(232,52,42,0.7), 2px 0 rgba(70,190,215,0.55);
-  }
-  @media (hover:none){ h1:hover{ text-shadow:none; } }
-  @media (prefers-reduced-motion: reduce){ h1{ transition:none; } }
-  h1 .accent{ color:var(--red); }
-
-  .hero-sub{
-    font-size:18.5px;
-    color:var(--gray);
-    max-width:540px;
-    margin-bottom:38px;
-  }
-
-  .hud-row{
-    display:flex;
-    flex-wrap:wrap;
-    gap:0;
-    margin-bottom:40px;
-    border:1px solid var(--border);
-    width:fit-content;
-  }
-  .hud-chip{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12.5px;
-    padding:11px 18px;
-    color:var(--gray);
-    border-right:1px solid var(--border);
-  }
-  .hud-chip:last-child{ border-right:none; }
-  .hud-chip strong{ color:var(--white); font-weight:600; }
-
-  .btn-primary{
-    display:inline-flex;
-    align-items:center;
-    gap:12px;
-    background:var(--red);
-    color:var(--white);
-    font-family:'Oswald',sans-serif;
-    font-weight:600;
-    letter-spacing:0.03em;
-    text-transform:uppercase;
-    font-size:19px;
-    padding:17px 30px;
-    clip-path:polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
-    transition:transform .15s, box-shadow .15s, background .15s;
-  }
-  .btn-primary:hover{
-    background:#FF4438;
-    transform:translateY(-2px);
-    box-shadow:0 12px 32px rgba(232,52,42,0.35);
-  }
-
   .hero-portrait{
     position:absolute;
     inset:0;
@@ -377,25 +236,6 @@
      "scene" the page scrolls INTO rather than content scrolling past. */
   .hero-portrait.is-pinned{
     position:fixed;
-  }
-  .hero-scrim{
-    position:absolute;
-    inset:0;
-    z-index:1;
-    pointer-events:none;
-    /* Darkens the left column behind the text, not the figure itself —
-       the old radial version darkened dead-center, which is exactly
-       where the figure stands. */
-    background:linear-gradient(90deg,
-      rgba(10,10,12,0.68) 0%, rgba(10,10,12,0.4) 32%,
-      rgba(10,10,12,0.1) 52%, transparent 66%);
-    opacity:1;
-    transition:opacity .5s ease;
-  }
-  .hero-scrim:not(.is-active){ opacity:0; }
-  @media (prefers-reduced-motion: reduce){
-    .hero-scrim{ transition:none; }
-    .hero-scrim:not(.is-active){ opacity:1; }
   }
   .hero-voxel{
     width:100%;
@@ -513,9 +353,7 @@
     opacity:0;
   }
   .fade-up.in-view .ignite-char,
-  .reveal .ignite-char,
-  .world-panel.is-active .ignite-char,
-  .hero-inner.is-active .ignite-char{
+  .world-panel.is-active .ignite-char{
     animation-name:char-ignite;
     animation-duration:.55s;
     animation-timing-function:steps(1);
@@ -558,9 +396,7 @@
   @media (prefers-reduced-motion: reduce){
     .ignite-char{ opacity:1; }
     .fade-up.in-view .ignite-char,
-    .reveal .ignite-char,
-    .world-panel.is-active .ignite-char,
-    .hero-inner.is-active .ignite-char{ animation:none; }
+    .world-panel.is-active .ignite-char{ animation:none; }
   }
   .section-copy{
     color:var(--gray);
@@ -828,31 +664,6 @@
     color:var(--gray);
   }
 
-  .cta-section{
-    text-align:left;
-    padding:140px 0;
-    min-height:70vh;
-    display:flex;
-    align-items:center;
-  }
-  .cta-scrim{
-    position:absolute;
-    inset:0;
-    z-index:1;
-    pointer-events:none;
-    /* Same reasoning as .hero-scrim: darken behind the text column, not
-       the bed/camper standing dead-center in the station's camera. */
-    background:linear-gradient(90deg,
-      rgba(10,10,12,0.68) 0%, rgba(10,10,12,0.4) 32%,
-      rgba(10,10,12,0.1) 52%, transparent 66%);
-  }
-  .cta-inner{
-    position:relative;
-    z-index:2;
-    max-width:480px;
-    padding-left:clamp(24px, 6vw, 80px);
-  }
-
   .video-portrait{ position:absolute; inset:0; z-index:0; opacity:0.55; }
   .video-scrim{
     position:absolute;
@@ -954,9 +765,6 @@
     .modalidad-panel{ padding:20px 56px 24px; }
     .modalidad-nav{ width:36px; height:36px; font-size:18px; }
   }
-  .cta-section h2{ margin:0 0 16px; }
-  .cta-section .section-copy{ margin:0 0 38px; }
-
   a:focus-visible, button:focus-visible{
     outline:2px solid var(--red);
     outline-offset:3px;
@@ -984,17 +792,6 @@
     .proof-strip{ grid-template-columns:1fr; }
   }
   @media (max-width:640px){
-    /* world-scene.js pans the camera to push the hero/bed toward the right
-       edge on narrow viewports — narrowing this column keeps text from
-       stretching back into it. The button is exempt: nothing sits below it
-       at that width, so letting it overflow the column beats wrapping mid-word. */
-    .hero-inner, .cta-inner{ max-width:74%; }
-    .hero-inner .btn-primary, .cta-inner .btn-primary{ white-space:nowrap; }
-  }
-  @media (max-width:640px){
     section{ padding:56px 0; }
-    .hero{ padding:96px 0 46px; }
-    .hud-row{ width:100%; }
-    .hud-chip{ flex:1 1 auto; }
     .wrap{ padding:0 20px; }
   }

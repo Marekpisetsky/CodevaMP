@@ -4,7 +4,7 @@ import { createVoxelModel } from './voxel-model.js';
 import { createParticlePhysics } from './particle-physics.js';
 import { createCursorTracker } from './cursor-interaction.js';
 import { TIERS, guessInitialTier, stepDownTier, fpsFloorFor, measureFps, resolvePixelRatio } from './device-quality.js';
-import { createTerrain, createMovingMist } from './terrain.js';
+import { createTerrain, createMovingMist, createCrystalCluster } from './terrain.js';
 import { createCameraRig } from './camera-rig.js';
 import { createPostProcessing } from './post-processing.js';
 import { createHudLabel } from './hud-label.js';
@@ -50,9 +50,44 @@ async function buildHero(skinUrl, tier) {
   return { points, physics };
 }
 
+// Each station claims its own patch of the shared ground, its own palette,
+// and its own fog tint — instead of the camera just changing angle on one
+// uniform surface. Arriving at a station is meant to read as arriving
+// somewhere new, the way igloo.inc cuts from its igloo to icebergs to its
+// pointillist-figure scene and back around. Order matches `stations` below
+// (index i's zone is station i's zone) so fog/terrain lookups can share
+// the same index.
+const STATION_ZONES = [
+  {
+    key: 'hero', x: 0, z: 0, radius: 38,
+    colorLow: 0x312f38, colorMid: 0x4a1814, colorHigh: 0xe8342a,
+    fogColor: 0x0a0a0c,
+  },
+  {
+    // Behind hero's own camera (station 0 looks toward -z from x≈0) and
+    // outside modalidades'/cta's forward view too (both look roughly
+    // toward -x/-z from the opposite side of the map) — otherwise the
+    // icebergs sit in the background of another station's shot instead of
+    // staying hidden until progress actually carries the camera here.
+    key: 'destacado', x: 0, z: 100, radius: 32,
+    colorLow: 0x141c28, colorMid: 0x2c4a60, colorHigh: 0xbfe6f5,
+    fogColor: 0x0e1620,
+  },
+  {
+    key: 'modalidades', x: 60, z: 42, radius: 30,
+    colorLow: 0x201830, colorMid: 0x4a2f6b, colorHigh: 0xab6ff0,
+    fogColor: 0x130e1e,
+  },
+  {
+    key: 'cta', x: -58, z: 52, radius: 30,
+    colorLow: 0x1c1414, colorMid: 0x5c1210, colorHigh: 0xff4433,
+    fogColor: 0x120a0a,
+  },
+];
+
 export async function createWorldScene(container, skinUrl, { onStationChange } = {}) {
   let tier = guessInitialTier();
-  const fogColor = 0x0a0a0c;
+  const fogColor = STATION_ZONES[0].fogColor;
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(resolvePixelRatio(tier));
@@ -80,7 +115,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   fill.position.set(0, 25, 60);
   scene.add(ambient, key, rim, fill);
 
-  const terrain = createTerrain({});
+  const terrain = createTerrain({ zones: STATION_ZONES });
   scene.add(terrain);
 
   const mist = createMovingMist({ color: fogColor });
@@ -91,6 +126,20 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   mist2.rotation.y = Math.PI / 3;
   scene.add(mist2);
 
+  const [heroZone, destacadoZone, modalidadZone, bedZone] = STATION_ZONES;
+
+  // --- Destacado (station 1) — its own spot on the terrain, not the
+  // hero's spot viewed from further back. The video content itself is
+  // still DOM (world-panels.js cross-fades it in), but the icebergs give
+  // the station its own silhouette instead of empty ground underneath it. ---
+  const destacadoCenter = new THREE.Vector3(destacadoZone.x, terrain.standingHeight, destacadoZone.z);
+  const icebergs = createCrystalCluster({
+    center: destacadoCenter,
+    colorLow: destacadoZone.colorLow,
+    colorHigh: destacadoZone.colorHigh,
+  });
+  scene.add(icebergs);
+
   // --- Hero (station 0) ---
   async function buildHeroContent(t) {
     return buildHero(skinUrl, t);
@@ -98,7 +147,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
 
   let { points, physics } = await buildHeroContent(tier);
   const heroGroup = new THREE.Group();
-  heroGroup.position.set(0, terrain.standingHeight, 0);
+  heroGroup.position.set(heroZone.x, terrain.standingHeight, heroZone.z);
   heroGroup.add(points);
   scene.add(heroGroup);
 
@@ -110,7 +159,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   }
 
   let { points: modalidadPoints, physics: modalidadPhysics } = await buildModalidadItemContent(tier);
-  const modalidadCenter = new THREE.Vector3(60, terrain.standingHeight + 9, 42);
+  const modalidadCenter = new THREE.Vector3(modalidadZone.x, terrain.standingHeight + 9, modalidadZone.z);
   const modalidadGroup = new THREE.Group();
   modalidadGroup.position.copy(modalidadCenter);
   modalidadGroup.add(modalidadPoints);
@@ -145,7 +194,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   // particle language as everything else instead. A small reprise of the
   // hero figure stands beside it, "defending" it, tying the CTA's closing
   // beat back to the actual game the channel is about. ---
-  const bedCenter = new THREE.Vector3(-58, terrain.standingHeight, 52);
+  const bedCenter = new THREE.Vector3(bedZone.x, terrain.standingHeight, bedZone.z);
 
   const { points: bedPoints, physics: bedPhysics } = await buildBedwarsContent(tier);
   const bedGroup = new THREE.Group();
@@ -174,10 +223,9 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   });
 
   // Four stations, one per section of the site (hero/destacado/modalidades/
-  // cta) — the camera orbits around a `center` point instead of jumping
-  // between unrelated scenes, so each arrival still reads as part of one
-  // continuous place. destacado/cta orbit the hero's own spot (no bespoke
-  // object there yet, see file header); modalidades orbits its own object.
+  // cta), each orbiting its own zone's center (STATION_ZONES above) — a
+  // real change of place each time progress crosses a station, not just a
+  // wider-angle look at the same spot the hero stands on.
   function orbitStation(center, angleDeg, distance, heightAboveCenter, lookAtOffsetY = 0) {
     const rad = (angleDeg * Math.PI) / 180;
     return {
@@ -190,17 +238,37 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     };
   }
 
-  const heroCenter = new THREE.Vector3(0, terrain.standingHeight, 0);
+  const heroCenter = new THREE.Vector3(heroZone.x, terrain.standingHeight, heroZone.z);
 
   const stations = [
-    orbitStation(heroCenter, 0, 46, FIGURE_HEIGHT * 0.6, FIGURE_HEIGHT * 0.5),        // hero
-    orbitStation(heroCenter, 55, 85, FIGURE_HEIGHT * 1.0, FIGURE_HEIGHT * 0.4),        // destacado
-    orbitStation(modalidadCenter, 30, 42, 15, 6),                                      // modalidades — its own object
-    orbitStation(bedCenter, 25, 52, 19, 4),                                            // cta — the Bedwars bed + camper
+    orbitStation(heroCenter, 0, 46, FIGURE_HEIGHT * 0.6, FIGURE_HEIGHT * 0.5),  // hero
+    orbitStation(destacadoCenter, 15, 46, 22, 10),                             // destacado — the icebergs
+    orbitStation(modalidadCenter, 30, 42, 15, 6),                               // modalidades — its own object
+    orbitStation(bedCenter, 25, 52, 19, 4),                                     // cta — the Bedwars bed + camper
   ];
   const cameraRig = createCameraRig({ camera, stations });
   let currentProgress = 0;
-  cameraRig.applyProgress(currentProgress);
+
+  const _fogA = new THREE.Color();
+  const _fogB = new THREE.Color();
+  function applyFogForProgress(progress) {
+    const n = STATION_ZONES.length;
+    const wrapped = ((progress % n) + n) % n;
+    const i0 = Math.floor(wrapped);
+    const i1 = (i0 + 1) % n;
+    const t = wrapped - i0;
+    _fogA.set(STATION_ZONES[i0].fogColor);
+    _fogB.set(STATION_ZONES[i1].fogColor);
+    scene.fog.color.copy(_fogA).lerp(_fogB, t);
+    scene.background.copy(scene.fog.color);
+  }
+
+  function setProgress(progress) {
+    currentProgress = progress;
+    cameraRig.applyProgress(progress);
+    applyFogForProgress(progress);
+  }
+  setProgress(currentProgress);
 
   // Only built when transitions can actually happen — with reduceMotion
   // there's no virtual-scroll, progress never changes, so the composer
@@ -216,13 +284,10 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     camera.updateProjectionMatrix();
     // Portrait viewports see a much narrower horizontal slice at this fixed
     // vertical FOV, so the dead-center hero/bed balloons to fill the width
-    // and swallows any text placed beside it — dolly the camera back as
-    // aspect narrows to keep its on-screen size roughly stable instead.
+    // and gets awkwardly cropped — dolly the camera back as aspect narrows
+    // to keep its on-screen size roughly stable instead.
     cameraRig.setDistanceScale(aspect < 1 ? Math.min(2.2, 1 / aspect) : 1);
-    // Pushes the dead-center subject toward the right edge on narrow
-    // screens, opening up the left column for the DOM text panel.
-    cameraRig.setLateralPan(aspect < 1 ? 0.27 : 0);
-    cameraRig.applyProgress(currentProgress);
+    setProgress(currentProgress);
     if (postProcessing) postProcessing.setSize(width, height);
   }
   resize();
@@ -242,8 +307,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     pinTarget: container.parentElement, // .hero-portrait
     stationCount: stations.length,
     onProgress: (progress, engaged) => {
-      currentProgress = progress;
-      cameraRig.applyProgress(progress);
+      setProgress(progress);
       if (postProcessing) {
         // 0 exactly on a station, peaking halfway through a transition —
         // the "solo durante una transición" cue from the plan, with no
@@ -359,6 +423,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     camperPoints.material.dispose();
     terrain.geometry.dispose();
     terrain.material.dispose();
+    icebergs.userData.dispose();
     mist.geometry.dispose();
     mist.material.dispose();
     mist2.geometry.dispose();

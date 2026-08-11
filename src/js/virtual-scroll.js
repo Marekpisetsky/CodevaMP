@@ -31,14 +31,20 @@ export function createVirtualScroll({ pinTarget, stationCount, onProgress }) {
     settled = false;
     if (settleTimer) clearTimeout(settleTimer);
     settleTimer = setTimeout(() => {
-      rawProgress = Math.round(rawProgress) % stationCount;
+      // Deliberately not wrapped into [0, stationCount) here — rawProgress
+      // is left to grow/shrink without bound. camera-rig.js already wraps
+      // internally for rendering, so wrapping again here bought nothing
+      // except a bug: displayProgress's easing below is a plain linear
+      // difference, and snapping rawProgress from e.g. 3.8 down to 0 makes
+      // it ease the "long way around" backward through every station
+      // instead of continuing forward past the wrap point.
+      rawProgress = Math.round(rawProgress);
       settled = true;
     }, SETTLE_DELAY_MS);
   }
 
   function advance(deltaY) {
     rawProgress += deltaY * SENSITIVITY;
-    rawProgress = ((rawProgress % stationCount) + stationCount) % stationCount;
     scheduleSettle();
   }
 

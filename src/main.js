@@ -43,7 +43,10 @@ emberTrail.init();
 // just wires its prev/next buttons to whatever the world hands back below.
 videoVoxel.init(document.getElementById('video-voxel'));
 
-const worldPanels = createWorldPanels(document.querySelectorAll('[data-station]'));
+// 4 stations total (hero/destacado/modalidades/cta) — must match
+// world-scene.js's `stations` array length, even though only 2 of them
+// still have a DOM panel to cross-fade (hero and cta are pure 3D now).
+const worldPanels = createWorldPanels(document.querySelectorAll('[data-station]'), 4);
 
 heroVoxel.init(document.getElementById('hero-voxel'), {
   onStationChange(progress, engaged) {

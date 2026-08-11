@@ -22,22 +22,12 @@ export function createCameraRig({ camera, stations, pullBackDistance = 16 }) {
   // world-scene.js dials this up on narrow/portrait viewports. A fixed
   // vertical FOV shows a much narrower horizontal slice as aspect drops,
   // so a dead-center subject (hero, Bedwars bed) balloons to fill the
-  // width and buries any text placed beside it. Dollying the camera back
-  // (scaling its distance from the lookAt point) shrinks the subject
-  // without the fisheye distortion widening the FOV would introduce.
+  // width and gets awkwardly cropped. Dollying the camera back (scaling
+  // its distance from the lookAt point) shrinks the subject without the
+  // fisheye distortion widening the FOV would introduce.
   let distanceScale = 1;
   function setDistanceScale(scale) {
     distanceScale = scale;
-  }
-
-  // Shrinking the subject alone still leaves it dead-center — on a narrow
-  // phone screen a centered subject still sits on top of any full-width
-  // text column. Panning the view (rotating the camera after it looks at
-  // the subject, not moving the lookAt point itself) shoves the subject
-  // toward one screen edge, freeing the other side for text.
-  let lateralPan = 0;
-  function setLateralPan(rad) {
-    lateralPan = rad;
   }
 
   function applyProgress(progress) {
@@ -64,8 +54,7 @@ export function createCameraRig({ camera, stations, pullBackDistance = 16 }) {
     }
 
     camera.lookAt(_lookAt);
-    if (lateralPan !== 0) camera.rotateY(lateralPan);
   }
 
-  return { applyProgress, setDistanceScale, setLateralPan };
+  return { applyProgress, setDistanceScale };
 }
