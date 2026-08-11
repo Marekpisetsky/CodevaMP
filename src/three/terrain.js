@@ -36,9 +36,9 @@ function fbm(x, y, octaves = 4) {
 export function createTerrain({
   gridSize = 90,
   cellSize = 3,
-  maxLevels = 16,
+  maxLevels = 10,
   noiseScale = 0.045,
-  clearingRadius = 6,
+  clearingRadius = 14,
 } = {}) {
   const geometry = new THREE.BoxGeometry(cellSize * 0.96, cellSize, cellSize * 0.96);
   const material = new THREE.MeshStandardMaterial({
@@ -56,7 +56,7 @@ export function createTerrain({
   // block that reads as near-pure-black on a wide viewport just vanishes
   // into the background, which is exactly what made the world read as a
   // narrow figure floating in empty space instead of a full wallpaper.
-  const colorLow = new THREE.Color(0x232228);
+  const colorLow = new THREE.Color(0x312f38);
   const colorMid = new THREE.Color(0x4a1814); // dark red blend
   const colorHigh = new THREE.Color(0xe8342a); // --red, ridge highlight
 
@@ -71,7 +71,7 @@ export function createTerrain({
       const nx = gx - half, nz = gz - half;
       const distFromCenter = Math.sqrt(nx * nx + nz * nz);
 
-      let n = Math.pow(fbm(nx * noiseScale, nz * noiseScale), 1.7); // bias toward low ground, occasional peaks
+      let n = Math.pow(fbm(nx * noiseScale, nz * noiseScale), 1.5);
       if (distFromCenter < clearingRadius) {
         const t = distFromCenter / clearingRadius;
         n *= t * t; // flatten toward 0 height right at the center

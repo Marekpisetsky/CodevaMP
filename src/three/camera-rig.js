@@ -8,17 +8,23 @@ function easeInOutCubic(t) {
 }
 
 // Drives a camera through a sequence of "stations" ({position, lookAt}) by
-// a continuous progress value (0..stations.length-1), fed each frame by
-// virtual-scroll.js. Mid-transition the camera bumps further back than
-// either endpoint before settling in — the "se aleja antes de avanzar,
-// viendo que todo es parte integral" cue from the igloo.inc reference,
-// not just a straight lerp between two poses.
+// a continuous progress value, fed each frame by virtual-scroll.js.
+// Mid-transition the camera bumps further back than either endpoint before
+// settling in — the "se aleja antes de avanzar, viendo que todo es parte
+// integral" cue from the igloo.inc reference, not just a straight lerp
+// between two poses. Progress wraps modulo stations.length in both
+// directions — scrolling backward past station 0 continues into the last
+// station instead of dead-ending, "como si nunca se terminara de dar
+// vueltas" — virtual-scroll.js is what decides whether a given direction
+// is actually allowed to wrap versus handing off to native scroll; this
+// only needs to make an out-of-range progress value meaningful.
 export function createCameraRig({ camera, stations, pullBackDistance = 16 }) {
   function applyProgress(progress) {
-    const clamped = THREE.MathUtils.clamp(progress, 0, stations.length - 1);
-    const i0 = Math.min(stations.length - 2, Math.floor(clamped));
-    const i1 = i0 + 1;
-    const localT = clamped - i0;
+    const n = stations.length;
+    const wrapped = ((progress % n) + n) % n;
+    const i0 = Math.floor(wrapped);
+    const i1 = (i0 + 1) % n;
+    const localT = wrapped - i0;
     const a = stations[i0], b = stations[i1];
 
     const t = easeInOutCubic(localT);

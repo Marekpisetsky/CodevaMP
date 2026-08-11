@@ -255,8 +255,8 @@
   .hero{
     min-height:100vh;
     display:flex;
-    align-items:center;
-    padding:120px 0 70px;
+    align-items:flex-end;
+    padding:120px 0 110px;
     position:relative;
     /* Break out of <main class="wrap">'s 1080px max-width — the 3D world
        should read as full-screen/game-like, not boxed like the rest of the
