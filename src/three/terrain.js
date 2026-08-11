@@ -35,6 +35,52 @@ function smoothstep(edge0, edge1, x) {
   return t * t * (3 - 2 * t);
 }
 
+function paintNoiseBand(ctx, { x, y, w, h, base, variance, edgeBand = 0 }) {
+  const imageData = ctx.createImageData(w, h);
+  for (let row = 0; row < h; row++) {
+    for (let col = 0; col < w; col++) {
+      const idx = (row * w + col) * 4;
+      let v = base + (Math.random() - 0.5) * variance;
+      if (edgeBand > 0 && row < edgeBand) {
+        v += 110 * (1 - row / edgeBand);
+      }
+      v = Math.max(0, Math.min(255, v));
+      imageData.data[idx] = v;
+      imageData.data[idx + 1] = v;
+      imageData.data[idx + 2] = v;
+      imageData.data[idx + 3] = 255;
+    }
+  }
+  ctx.putImageData(imageData, x, y);
+}
+
+// One neutral/grayscale texture atlas — top half a "grass-top" noise band,
+// bottom half a "dirt-side" noise band with a lighter fringe right at the
+// seam (the strip that actually reads as "grass growing over dirt").
+// InstancedMesh doesn't render per-face multi-material via geometry groups
+// the way a regular Mesh does (a real Three.js limitation, not something
+// tunable) — a single shared atlas plus remapped UVs on the shared
+// geometry (see below) is what makes distinct top/side faces possible
+// while keeping this as one InstancedMesh, one draw call. Grayscale is
+// deliberate too: the per-instance tint (see the custom `aTint` attribute
+// below) multiplies against this, so real per-face texture detail doesn't
+// fight each station's own height/zone tint. NearestFilter keeps the
+// pixels crisp instead of blurring into a smooth gradient, matching the
+// blocky look everywhere else in this scene.
+function createTerrainAtlas({ size = 16 } = {}) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size * 2;
+  const ctx = canvas.getContext('2d');
+  paintNoiseBand(ctx, { x: 0, y: 0, w: size, h: size, base: 225, variance: 90 });
+  paintNoiseBand(ctx, { x: 0, y: size, w: size, h: size, base: 165, variance: 80, edgeBand: 5 });
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
 // One cube "block" per grid column, height quantized to discrete levels —
 // this (plus flat shading) is what reads as voxel/Minecraft terrain rather
 // than a smoothly-deformed hill. A flattened clearing at the center gives
@@ -54,17 +100,60 @@ export function createTerrain({
   clearingRadius = 14,
   zones = [],
 } = {}) {
-  const geometry = new THREE.BoxGeometry(cellSize * 0.96, cellSize, cellSize * 0.96);
+  // Flush against each other (no shrink factor) — a small per-instance gap
+  // reads as a deliberate render choice ("floating voxels"), but here it
+  // just showed as broken seams with nothing between them. Real terrain
+  // blocks sit flush.
+  const geometry = new THREE.BoxGeometry(cellSize, cellSize, cellSize);
+  // Remap the top face's V range onto the atlas's top half, every other
+  // face onto the bottom half — BoxGeometry's fixed vertex layout is 4 UVs
+  // per face in order [+x, -x, +y, -y, +z, -z], so face 2 (+y, top) is
+  // vertices 8-11.
+  const uv = geometry.attributes.uv;
+  for (let face = 0; face < 6; face++) {
+    const isTop = face === 2;
+    for (let v = 0; v < 4; v++) {
+      const idx = face * 4 + v;
+      const origV = uv.getY(idx);
+      uv.setY(idx, isTop ? 0.5 + origV * 0.5 : origV * 0.5);
+    }
+  }
+  uv.needsUpdate = true;
+
+  const atlas = createTerrainAtlas();
+  // Not vertexColors/setColorAt — in this three.js version that combined
+  // with a `map` on an InstancedMesh silently drops the texture entirely
+  // (confirmed by testing: MeshBasicMaterial/MeshStandardMaterial with
+  // only `map` render it fine; adding vertexColors:true, with per-instance
+  // tint coming only from instanceColor rather than a real geometry color
+  // attribute, makes the map vanish — a real bug in this combination, not
+  // a config mistake). A custom per-instance attribute wired through
+  // onBeforeCompile sidesteps it entirely.
   const material = new THREE.MeshStandardMaterial({
-    vertexColors: true,
+    map: atlas,
     flatShading: true,
     roughness: 0.92,
     metalness: 0.04,
   });
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('void main() {', 'attribute vec3 aTint;\nvarying vec3 vTint;\nvoid main() {\n  vTint = aTint;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('void main() {', 'varying vec3 vTint;\nvoid main() {')
+      .replace('#include <map_fragment>', '#include <map_fragment>\n  diffuseColor.rgb *= vTint;');
+  };
 
   const count = gridSize * gridSize;
+  const tintArray = new Float32Array(count * 3);
+  geometry.setAttribute('aTint', new THREE.InstancedBufferAttribute(tintArray, 3));
+
   const mesh = new THREE.InstancedMesh(geometry, material, count);
   mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  mesh.userData.dispose = () => {
+    geometry.dispose();
+    atlas.dispose();
+    material.dispose();
+  };
 
   // Brighter floor than a literal "--bg-panel" match on purpose — a low
   // block that reads as near-pure-black on a wide viewport just vanishes
@@ -140,7 +229,9 @@ export function createTerrain({
         color.lerp(zoneColor, weight);
       }
 
-      mesh.setColorAt(i, color);
+      tintArray[i * 3] = color.r;
+      tintArray[i * 3 + 1] = color.g;
+      tintArray[i * 3 + 2] = color.b;
 
       if (distFromCenter < 0.5) centerHeight = y;
       i++;
@@ -148,7 +239,7 @@ export function createTerrain({
   }
 
   mesh.instanceMatrix.needsUpdate = true;
-  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  geometry.attributes.aTint.needsUpdate = true;
   mesh.frustumCulled = false;
 
   // Top of the terrain's center column, in world Y — where the hero should

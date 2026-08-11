@@ -423,8 +423,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     bedLabel.dispose();
     camperPoints.geometry.dispose();
     camperPoints.material.dispose();
-    terrain.geometry.dispose();
-    terrain.material.dispose();
+    terrain.userData.dispose();
     icebergs.userData.dispose();
     mist.geometry.dispose();
     mist.material.dispose();
