@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { createCrystalCluster } from './terrain.js';
 
 function mergeColoredBoxes(pieces) {
   for (const { geo, color } of pieces) {
@@ -20,68 +19,57 @@ function mergeColoredBoxes(pieces) {
   return mesh;
 }
 
-// A clump of solid-colored wool blocks — the most literal "real Bedwars
-// element" there is (team color, no texture needed to read correctly).
-// Irregular per-block size/offset so it reads as a dropped clump of blocks
-// rather than one uniform slab.
-export function createWoolCluster({ position, color = 0xe8342a, count = 6, spread = 3 } = {}) {
-  const woolColor = new THREE.Color(color);
+// The island's one piece of content for now — a simple Minecraft-style
+// house (solid-block walls, a peaked roof, a door, a chimney), no explosion/
+// separation animation yet (that idea, and the pointillist hero standing
+// here, are deliberately deferred to a later scene per feedback — this pass
+// is meant to stay simple: walls, roof, done).
+export function createMinecraftHouse({ position } = {}) {
+  const wallColor = new THREE.Color(0xcbbd96); // oak-plank tan
+  const roofColor = new THREE.Color(0x7a231c); // brand-adjacent dark red, also a classic Minecraft roof tone
+  const doorColor = new THREE.Color(0x4a2f1a);
+  const chimneyColor = new THREE.Color(0x8a8a8a);
   const pieces = [];
-  for (let i = 0; i < count; i++) {
-    const s = 1.3 + Math.random() * 0.9;
-    const geo = new THREE.BoxGeometry(s, s, s);
-    const ox = (Math.random() - 0.5) * spread * 2;
-    const oz = (Math.random() - 0.5) * spread * 2;
-    geo.translate(ox, s / 2, oz);
-    pieces.push({ geo, color: woolColor });
-  }
+
+  const w = 12, d = 10, wallH = 7;
+
+  const walls = new THREE.BoxGeometry(w, wallH, d);
+  walls.translate(0, wallH / 2, 0);
+  pieces.push({ geo: walls, color: wallColor });
+
+  // Roof: two slabs angled up from the eaves to meet at a ridge above the
+  // center — the standard two-plane peaked-roof trick, no custom geometry.
+  const roofRise = 4.2;
+  const roofRun = d / 2 + 1.2; // overhangs the walls slightly
+  const roofAngle = Math.atan2(roofRise, roofRun);
+  const roofLen = Math.hypot(roofRise, roofRun);
+  const roofW = w + 1.6;
+  const roofThickness = 0.8;
+
+  const roofFront = new THREE.BoxGeometry(roofW, roofThickness, roofLen);
+  roofFront.rotateX(roofAngle);
+  roofFront.translate(0, wallH + roofRise / 2, roofRun / 2);
+  pieces.push({ geo: roofFront, color: roofColor });
+
+  const roofBack = new THREE.BoxGeometry(roofW, roofThickness, roofLen);
+  roofBack.rotateX(-roofAngle);
+  roofBack.translate(0, wallH + roofRise / 2, -roofRun / 2);
+  pieces.push({ geo: roofBack, color: roofColor });
+
+  // Door — flush against the front wall face, not a real cutout (no CSG),
+  // but reads correctly at this scale.
+  const door = new THREE.BoxGeometry(2.2, 3.4, 0.3);
+  door.translate(0, 1.7, d / 2 + 0.05);
+  pieces.push({ geo: door, color: doorColor });
+
+  // Chimney — the one extra silhouette detail that reads as "house" from
+  // any angle, including straight down the ridge line where the roof alone
+  // is a flat triangle.
+  const chimney = new THREE.BoxGeometry(1.4, 4.5, 1.4);
+  chimney.translate(w / 2 - 2.4, wallH + roofRise * 0.55 + 1.6, 0);
+  pieces.push({ geo: chimney, color: chimneyColor });
+
   const mesh = mergeColoredBoxes(pieces);
   mesh.position.copy(position);
   return mesh;
-}
-
-// The Modalidades anchor's real element — a small market stall (counter +
-// two posts + a sign) for the floating carousel item to sit above, instead
-// of floating alone over bare ground.
-export function createShopStall({ position } = {}) {
-  const wood = new THREE.Color(0x8a5a34);
-  const sign = new THREE.Color(0xe8342a);
-  const pieces = [];
-
-  const counter = new THREE.BoxGeometry(6, 2.4, 3);
-  counter.translate(0, 1.2, 0);
-  pieces.push({ geo: counter, color: wood });
-
-  const postL = new THREE.BoxGeometry(0.6, 4, 0.6);
-  postL.translate(-2.6, 2, -1.6);
-  pieces.push({ geo: postL, color: wood });
-
-  const postR = new THREE.BoxGeometry(0.6, 4, 0.6);
-  postR.translate(2.6, 2, -1.6);
-  pieces.push({ geo: postR, color: wood });
-
-  const signBoard = new THREE.BoxGeometry(6.4, 1.6, 0.4);
-  signBoard.translate(0, 4.4, -1.6);
-  pieces.push({ geo: signBoard, color: sign });
-
-  const mesh = mergeColoredBoxes(pieces);
-  mesh.position.copy(position);
-  return mesh;
-}
-
-// The Destacado anchor's real element — a resource generator, the natural
-// focal point of any Bedwars island. Reuses createCrystalCluster's cone-
-// cluster technique as-is (it's already just "colored spikes around a
-// point" — a generator is a smaller, tighter, brighter-colored version of
-// the same shape, not a different one), tuned down from the icebergs' scale.
-export function createGenerator({ position, colorLow = 0x0e3d3a, colorHigh = 0x5ef2c8 } = {}) {
-  return createCrystalCluster({
-    center: position,
-    count: 9,
-    spread: 7,
-    minHeight: 6,
-    maxHeight: 15,
-    colorLow,
-    colorHigh,
-  });
 }

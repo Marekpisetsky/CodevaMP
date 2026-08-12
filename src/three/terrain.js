@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Small self-contained value-noise (no dependency) — smooth-interpolated
 // hashed lattice, fractal-summed for natural-looking rolling terrain before
@@ -51,12 +50,26 @@ function flattenFactor(dist, radius) {
   return smoothstep(flatRadius, radius, dist);
 }
 
-function paintNoiseBand(ctx, { x, y, w, h, base, variance, edgeBand = 0 }) {
+// Random per-*pixel* (the original version of this function) reads as fine
+// TV static up close — confirmed by a zoomed-in crop of the live terrain,
+// per feedback that the grass "doesn't look like Minecraft's texture". Real
+// Minecraft grass/dirt textures are clumps of a few tones a few pixels
+// wide, not independent noise per pixel. Assigning one random tone per
+// `blotch`-sized cell (and holding it across every pixel in that cell)
+// instead of per pixel is what actually gets that clumped, hand-painted
+// read.
+function paintNoiseBand(ctx, { x, y, w, h, base, variance, edgeBand = 0, blotch = 3 }) {
   const imageData = ctx.createImageData(w, h);
+  const cols = Math.ceil(w / blotch), rows = Math.ceil(h / blotch);
+  const tones = new Float32Array(cols * rows);
+  for (let i = 0; i < tones.length; i++) tones[i] = base + (Math.random() - 0.5) * variance;
+
   for (let row = 0; row < h; row++) {
+    const cellY = Math.min(rows - 1, Math.floor(row / blotch));
     for (let col = 0; col < w; col++) {
       const idx = (row * w + col) * 4;
-      let v = base + (Math.random() - 0.5) * variance;
+      const cellX = Math.min(cols - 1, Math.floor(col / blotch));
+      let v = tones[cellY * cols + cellX];
       if (edgeBand > 0 && row < edgeBand) {
         v += 110 * (1 - row / edgeBand);
       }
@@ -83,13 +96,13 @@ function paintNoiseBand(ctx, { x, y, w, h, base, variance, edgeBand = 0 }) {
 // fight each station's own height/zone tint. NearestFilter keeps the
 // pixels crisp instead of blurring into a smooth gradient, matching the
 // blocky look everywhere else in this scene.
-function createTerrainAtlas({ size = 16 } = {}) {
+function createTerrainAtlas({ size = 32 } = {}) {
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size * 2;
   const ctx = canvas.getContext('2d');
-  paintNoiseBand(ctx, { x: 0, y: 0, w: size, h: size, base: 225, variance: 90 });
-  paintNoiseBand(ctx, { x: 0, y: size, w: size, h: size, base: 165, variance: 80, edgeBand: 5 });
+  paintNoiseBand(ctx, { x: 0, y: 0, w: size, h: size, base: 225, variance: 70, blotch: 4 });
+  paintNoiseBand(ctx, { x: 0, y: size, w: size, h: size, base: 165, variance: 65, edgeBand: 10, blotch: 4 });
   const texture = new THREE.CanvasTexture(canvas);
   texture.magFilter = THREE.NearestFilter;
   texture.minFilter = THREE.NearestFilter;
@@ -315,130 +328,4 @@ export function createIsland({
   }
 
   return mesh;
-}
-
-// A cheap, low-detail island for the horizon — same grass-top/dirt-bottom
-// read as the real island, but built from a handful of merged primitives
-// (mergeGeometries, same technique createCrystalCluster below already uses)
-// instead of per-block InstancedMesh instances. These are far enough away
-// that per-block detail would never actually be visible, so paying for it
-// would be pure waste; what sells "there's a world of these out here" is
-// silhouette and count, not fidelity.
-export function createBackgroundIsland({ center, radius = 14, seed = 0 } = {}) {
-  const material = new THREE.MeshStandardMaterial({
-    vertexColors: true,
-    flatShading: true,
-    roughness: 0.9,
-    metalness: 0.02,
-  });
-  const grassColor = new THREE.Color(0x5c9c3e);
-  const dirtColor = new THREE.Color(0x6b4a30);
-
-  const geometries = [];
-
-  // Top: a few overlapping slabs at slightly different sizes/heights instead
-  // of one flat box — an irregular silhouette reads as "island" even at a
-  // distance; a single perfect box reads as a floating brick.
-  const topCount = 3 + Math.floor(hash(seed, 1) * 3);
-  for (let i = 0; i < topCount; i++) {
-    const w = radius * (1.1 + hash(seed + i, 2) * 0.9);
-    const d = radius * (1.1 + hash(seed + i, 5) * 0.9);
-    const h = radius * (0.35 + hash(seed + i, 8) * 0.25);
-    const ox = (hash(seed + i, 3) - 0.5) * radius * 0.9;
-    const oz = (hash(seed + i, 6) - 0.5) * radius * 0.9;
-
-    const geo = new THREE.BoxGeometry(w, h, d);
-    geo.translate(ox, h / 2, oz);
-    geometries.push({ geo, color: grassColor });
-  }
-
-  // Underside: a single downward cone. An earlier pass used a tall/narrow
-  // cone (height 2.2x radius, 6-sided) — from a distance that read as a
-  // sharp dart/spike stuck under the island rather than a tapered body, per
-  // feedback. Shorter and wider (roughly as wide as the top slabs, barely
-  // taller than it is wide) plus more sides reads as a stubby island bottom
-  // instead of a weapon.
-  const underHeight = radius * 1.1;
-  const cone = new THREE.ConeGeometry(radius * 1.05, underHeight, 9);
-  cone.rotateX(Math.PI);
-  cone.translate(0, -underHeight / 2, 0);
-  geometries.push({ geo: cone, color: dirtColor });
-
-  for (const { geo, color } of geometries) {
-    const colors = [];
-    const pos = geo.attributes.position;
-    for (let v = 0; v < pos.count; v++) {
-      colors.push(color.r, color.g, color.b);
-    }
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  }
-
-  const merged = mergeGeometries(geometries.map((g) => g.geo));
-  for (const { geo } of geometries) geo.dispose();
-
-  const mesh = new THREE.Mesh(merged, material);
-  mesh.position.copy(center);
-  mesh.userData.dispose = () => {
-    merged.dispose();
-    material.dispose();
-  };
-  return mesh;
-}
-
-// A handful of tall, narrow crystal-like columns clustered around a point —
-// cheap set-dressing that gives a station its own silhouette (the
-// "icebergs" beat) instead of empty ground with only a DOM panel over it.
-export function createCrystalCluster({
-  center,
-  count = 14,
-  spread = 20,
-  minHeight = 10,
-  maxHeight = 34,
-  colorLow = 0x1a2230,
-  colorHigh = 0xbfe6f5,
-} = {}) {
-  const group = new THREE.Group();
-  const material = new THREE.MeshStandardMaterial({
-    vertexColors: true,
-    flatShading: true,
-    roughness: 0.35,
-    metalness: 0.1,
-  });
-  const low = new THREE.Color(colorLow);
-  const high = new THREE.Color(colorHigh);
-
-  const geometries = [];
-  for (let i = 0; i < count; i++) {
-    const angle = (i / count) * Math.PI * 2 + Math.sin(i * 12.9) * 0.6;
-    const dist = spread * (0.25 + 0.75 * Math.abs(Math.sin(i * 7.31)));
-    const x = Math.cos(angle) * dist;
-    const z = Math.sin(angle) * dist;
-    const height = minHeight + (maxHeight - minHeight) * Math.abs(Math.sin(i * 3.71));
-    const width = height * (0.14 + 0.1 * Math.abs(Math.sin(i * 5.13)));
-
-    const geo = new THREE.ConeGeometry(width, height, 5);
-    geo.translate(x, height / 2, z);
-    geo.rotateY(i * 1.7);
-
-    const colors = [];
-    const pos = geo.attributes.position;
-    const c = new THREE.Color();
-    for (let v = 0; v < pos.count; v++) {
-      const t = THREE.MathUtils.clamp((pos.getY(v) + height / 2) / height, 0, 1);
-      c.copy(low).lerp(high, t);
-      colors.push(c.r, c.g, c.b);
-    }
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-    geometries.push(geo);
-  }
-
-  const merged = mergeGeometries(geometries);
-  const mesh = new THREE.Mesh(merged, material);
-  mesh.position.copy(center);
-  group.add(mesh);
-  group.userData.dispose = () => {
-    merged.dispose();
-    material.dispose();
-  };
-  return group;
 }

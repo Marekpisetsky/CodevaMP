@@ -4,30 +4,23 @@ import { createVoxelModel } from './voxel-model.js';
 import { createParticlePhysics } from './particle-physics.js';
 import { createCursorTracker } from './cursor-interaction.js';
 import { TIERS, guessInitialTier, stepDownTier, fpsFloorFor, measureFps, resolvePixelRatio } from './device-quality.js';
-import { createIsland, createBackgroundIsland } from './terrain.js';
-import { createGenerator, createShopStall, createWoolCluster } from './island-props.js';
+import { createIsland } from './terrain.js';
+import { createMinecraftHouse } from './island-props.js';
 import { createCameraRig } from './camera-rig.js';
 import { createPostProcessing } from './post-processing.js';
-import { createHudLabel } from './hud-label.js';
-import { buildModalidadContent } from './modalidad-object.js';
-import { buildBedwarsContent } from './bedwars-object.js';
-import { PORTFOLIO_ITEMS } from './portfolio-items.js';
+import { createOrbitDrag } from '../js/orbit-drag.js';
 import { createVirtualScroll } from '../js/virtual-scroll.js';
 import { reduceMotion, hoverCapable } from '../js/utils/motion-prefs.js';
 
 // The world-as-a-single-scene pivot (see plan): one continuous 3D
-// environment (voxel terrain), one PerspectiveCamera orbiting
-// between 5 stations (overview/destacado/modalidades/cta/hero) driven by
-// virtual-scroll.js's scroll-jacking, instead of 4 independent per-section
-// canvases. Every object in the world — hero, Modalidades item, the
-// Bedwars bed at the cta station — is built from the same particle
-// pipeline (skin-parser or mesh-sampler.js → particle-physics.js →
-// voxel-model.js). A rigid-block "exploded view" treatment
-// (hero-blocks.js, still in the repo but unused) was tried on the hero
-// character first and didn't read right there; per feedback everything
-// stays in this one particle language instead. Every station is now pure
-// 3D world — no DOM overlay content anywhere, per feedback that any
-// element in front of the world should be deleted, not just repositioned.
+// environment (voxel terrain), one PerspectiveCamera. Per feedback this
+// simplified down from 5 scroll-driven stations to just 2 (island, void) —
+// the island itself (see ISLAND/createIsland below) is now explored by
+// dragging (see createOrbitDrag), not by scrolling between fixed camera
+// stops; vertical scroll is reserved for the one real scene change, cutting
+// down into the void where the hero is. The particle pipeline (skin-parser
+// → particle-physics.js → voxel-model.js) stays exactly as it was — only
+// what's built with it changed.
 async function buildHero(skinUrl, tier) {
   const config = TIERS[tier];
   const skinData = await parseSkin(skinUrl, { targetCount: config.particleBudget });
@@ -51,71 +44,35 @@ async function buildHero(skinUrl, tier) {
   return { points, physics };
 }
 
-// One real island (see terrain.js's createIsland) instead of 4 separately
-// tinted zones on an infinite grid — every station now shares the same
-// ground, and a station is meant to read as a different place because of
-// what's actually standing there (a resource generator, the Bedwars bed,
-// the Modalidades carousel item), not because the ground itself changes
-// color under each camera.
-//
-// Anchors sit 120° apart around the island center so each camera looks back
-// in at its own subject with the rest of the island behind it, instead of
-// three cameras all favoring the same side. `angle` is reused for both the
-// anchor's own placement and its camera's orbitStation angle below, so the
-// two can never drift out of sync.
-const ISLAND = { center: { x: 0, z: 0 }, radius: 95 };
-// 48 put every anchor's object/label in view from every other station's
-// camera at once (confirmed by screenshot — modalidades' label was legible
-// from the hero station) — cute for "it's all one place" but reads as
-// clutter rather than a series of distinct beats. Wider spacing keeps that
-// same-island cohesion while giving each station room to actually be the
-// only thing in frame.
-const ANCHOR_RADIUS = 65;
-function anchorAt(angleDeg) {
-  const rad = (angleDeg * Math.PI) / 180;
-  return { x: Math.sin(rad) * ANCHOR_RADIUS, z: Math.cos(rad) * ANCHOR_RADIUS, angle: angleDeg };
-}
-const ELEMENTS = {
-  // Not a station anchor anymore (the hero moved into the void below the
-  // island — see heroVoidCenter) but still kept in `anchors` so the island's
-  // true center stays a flat, level plateau — every other anchor's Y
-  // baseline is `terrain.standingHeight`, which is measured at this exact
-  // point, so it has to stay flat even with nothing standing on it.
-  origin: { x: 0, z: 0, angle: 0 },
-  destacado: anchorAt(90),
-  modalidades: anchorAt(210),
-  cta: anchorAt(330),
-};
-// The bright, luminous sky-blue from earlier feedback for every station
-// still on the island, and a dark "void" palette for the final station,
-// where the camera drops below the island to reveal the hero — see
-// STATION_SKY below.
-const SKY_COLOR = 0x8fd4f2;
+// Small and compact on purpose — an earlier, much bigger island (~190 units
+// across, several separate elements scattered around it) read as "big and
+// shapeless" per feedback, closer to an amorphous landmass than a real
+// Bedwars map. One island, one thing on it (the house), no wasted scale.
+const ISLAND = { center: { x: 0, z: 0 }, radius: 50 };
 const VOID_COLOR = 0x0a0e1c;
 
-// Distant, low-detail islands scattered around the main one — the "other
-// islands visible in the distance, like in Bedwars" beat. Angles deliberately
-// don't line up with ELEMENTS' 90/210/330 so a background island never sits
-// directly behind a station's own subject.
-//
-// Every station's camera sits fairly low and close (15-24 units above the
-// island, 42-52 away, looking in at its own nearby subject) — a background
-// island anywhere near that same height range just disappears behind the
-// main island's own much-closer bulk, confirmed by an earlier pass that put
-// them at camera height and got zero of them actually visible in any of the
-// 4 stations' shots. Biasing height well above typical camera height (most
-// entries 45-90) is what actually gets them poking above the main island's
-// silhouette into open sky; a couple stay low/negative for the future
-// void-look-up station, where "below" is the point.
-const BACKGROUND_ISLANDS = [
-  { angle: 30, distance: 150, height: 55, radius: 20, seed: 11 },
-  { angle: 150, distance: 190, height: 78, radius: 26, seed: 27 },
-  { angle: 270, distance: 160, height: 45, radius: 18, seed: 43 },
-  { angle: 60, distance: 220, height: 90, radius: 22, seed: 59 },
-  { angle: 300, distance: 200, height: 62, radius: 16, seed: 71 },
-  { angle: 200, distance: 180, height: -30, radius: 24, seed: 83 },
-  { angle: 330, distance: 240, height: -55, radius: 30, seed: 95 },
-];
+// A vertical gradient instead of the old flat single color — "el cielo es
+// algo plano" was a direct callout. Same CanvasTexture technique
+// terrain.js's createTerrainAtlas already uses, not a new dependency or a
+// sky-dome mesh. scene.background accepts a Texture directly (rendered as a
+// screen-space backdrop quad), so this is the cheapest way to get a sky
+// that isn't a single solid color.
+const SKY_HORIZON = '#cdeefb';
+const SKY_ZENITH = '#4fa3e0';
+function createSkyGradient() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 2;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, SKY_ZENITH);
+  gradient.addColorStop(1, SKY_HORIZON);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
 
 export async function createWorldScene(container, skinUrl, { onStationChange } = {}) {
   let tier = guessInitialTier();
@@ -126,15 +83,14 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(SKY_COLOR);
-  scene.fog = new THREE.FogExp2(SKY_COLOR, 0.0021);
+  const skyTexture = createSkyGradient();
+  const voidColor = new THREE.Color(VOID_COLOR);
+  scene.background = skyTexture;
+  scene.fog = new THREE.FogExp2(SKY_HORIZON, 0.0021);
 
-  // Wider than a "look at one figure" framing on purpose — on a wide
-  // viewport the old 42° left huge dead-black margins on either side (the
-  // terrain was technically there, just too dim/far to read), which
-  // defeated the whole point of the hero being full-viewport. This plus
-  // the lighting bump below is what makes it actually read as a wallpaper
-  // world instead of one figure floating in black.
+  // Wide, close FOV — per feedback the old overview camera sat far/high
+  // above the island (a drone shot); everything now stays near and roughly
+  // eye-level instead (see the `stations` island pose below).
   const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 600);
 
   const ambient = new THREE.AmbientLight(0xaaaab4, 2);
@@ -149,60 +105,34 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   const terrain = createIsland({
     center: ISLAND.center,
     radius: ISLAND.radius,
-    // Smaller than the old single-hero-clearing default (42 world units) —
-    // with 4 anchors now sharing one bounded island, the old radius would
-    // flatten almost the entire thing. A tighter flat spot per anchor
-    // leaves real noise-driven terrain visible between them.
-    clearingRadius: 18,
-    anchors: Object.entries(ELEMENTS).map(([key, a]) => ({ ...a, key })),
+    // Just the one anchor now (the island's own center, for the house) —
+    // no separate per-station clearings needed anymore.
+    clearingRadius: 16,
+    anchors: [{ x: ISLAND.center.x, z: ISLAND.center.z, key: 'origin' }],
   });
 
-  // Everything that lives on the island (the ground itself, the distant
-  // islands, every real element) goes in one group so the void station can
-  // hide the whole cluster in one call instead of tracking each piece —
-  // see applyProgressEffects below, the "cut to another scene" beat.
+  // Everything that lives on the island (the ground, the house) goes in one
+  // group: it's what the void station hides on the cut (see
+  // applyProgressEffects below), and it's what createOrbitDrag spins when
+  // the user drags — a single transform for "look around the island".
   const islandGroup = new THREE.Group();
   scene.add(islandGroup);
   islandGroup.add(terrain);
 
-  const backgroundIslands = BACKGROUND_ISLANDS.map((b) => {
-    const rad = (b.angle * Math.PI) / 180;
-    const mesh = createBackgroundIsland({
-      center: new THREE.Vector3(
-        Math.sin(rad) * b.distance,
-        terrain.standingHeight + b.height,
-        Math.cos(rad) * b.distance,
-      ),
-      radius: b.radius,
-      seed: b.seed,
-    });
-    islandGroup.add(mesh);
-    return mesh;
-  });
+  const islandCenter = new THREE.Vector3(ISLAND.center.x, terrain.standingHeight, ISLAND.center.z);
+  const house = createMinecraftHouse({ position: islandCenter });
+  islandGroup.add(house);
 
-  // --- Destacado (station 1) — its own spot on the island, not the hero's
-  // spot viewed from further back. The video content itself is still DOM
-  // (world-panels.js cross-fades it in); a resource generator gives the
-  // station its own silhouette instead of empty ground underneath it, and
-  // reads as "featured" the way a generator is the natural focal point of
-  // any real Bedwars island. ---
-  const destacadoCenter = new THREE.Vector3(ELEMENTS.destacado.x, terrain.anchorHeights.destacado, ELEMENTS.destacado.z);
-  const generator = createGenerator({ position: destacadoCenter });
-  islandGroup.add(generator);
-
-  // --- Hero (station 4, the closing reveal) — not standing on the island
-  // anymore: after the scroll passes every real element up top, the camera
-  // drops below the island into open void and the hero is what's waiting
-  // down there. Floating, not "standing" — there's no ground this far below
-  // the island's own underside, so it doesn't need terrain.standingHeight
-  // the way every on-island object does.
+  // --- Hero (the void station, the closing reveal) — not standing on the
+  // island: the camera cuts down into open void below it and the hero is
+  // what's waiting down there. Floating, not "standing" — there's no ground
+  // this far below the island's own underside.
   //
   // Offset off the island's own x/z center on purpose — sitting directly
   // under it put the hero, the camera, and the island's center all on the
   // same vertical line, so a camera aimed at the hero and a camera aimed
-  // "up at the island" were the same direction; the station read as looking
-  // at the island with the hero incidentally in the way, not looking at the
-  // hero. Off-axis, the two directions actually separate. ---
+  // "up at the island" were the same direction. Off-axis, the two
+  // directions actually separate. ---
   const VOID_DROP = 90;
   const heroVoidCenter = new THREE.Vector3(ISLAND.center.x + 34, terrain.standingHeight - VOID_DROP, ISLAND.center.z - 22);
 
@@ -216,108 +146,6 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   heroGroup.add(points);
   scene.add(heroGroup);
 
-  // --- Modalidades object (station 2) — its own spot on the island, not
-  // stacked on top of the hero. ---
-  let modalidadIndex = 0;
-  async function buildModalidadItemContent(t) {
-    return buildModalidadContent(PORTFOLIO_ITEMS[modalidadIndex], modalidadIndex, t);
-  }
-
-  let { points: modalidadPoints, physics: modalidadPhysics } = await buildModalidadItemContent(tier);
-  const modalidadCenter = new THREE.Vector3(ELEMENTS.modalidades.x, terrain.anchorHeights.modalidades + 9, ELEMENTS.modalidades.z);
-  const modalidadGroup = new THREE.Group();
-  modalidadGroup.position.copy(modalidadCenter);
-  modalidadGroup.add(modalidadPoints);
-  islandGroup.add(modalidadGroup);
-
-  // A small market stall beside the floating carousel item — a real element
-  // for it to be "displayed at" instead of just floating over bare ground.
-  // Offset to the side rather than directly underneath: the item's noise-
-  // displaced placeholder geometry reaches down far enough that a stall
-  // directly below it got swallowed inside the particle cloud's own
-  // silhouette (confirmed by screenshot — the stall was completely invisible
-  // there), not actually sitting beside/under it the way the counter+sign
-  // shape reads when it has room to be seen.
-  const shopStall = createShopStall({
-    position: new THREE.Vector3(ELEMENTS.modalidades.x + 10, terrain.anchorHeights.modalidades, ELEMENTS.modalidades.z - 2),
-  });
-  islandGroup.add(shopStall);
-
-  const modalidadLabel = createHudLabel({
-    container,
-    camera,
-    getObject: () => modalidadGroup,
-    anchor: new THREE.Vector3(0, 7, 0),
-    title: PORTFOLIO_ITEMS[0].tag,
-    sub: PORTFOLIO_ITEMS[0].stat,
-  });
-
-  async function setModalidadItem(index) {
-    modalidadIndex = ((index % PORTFOLIO_ITEMS.length) + PORTFOLIO_ITEMS.length) % PORTFOLIO_ITEMS.length;
-    const item = PORTFOLIO_ITEMS[modalidadIndex];
-    const rebuilt = await buildModalidadItemContent(tier);
-    modalidadGroup.remove(modalidadPoints);
-    modalidadPoints.geometry.dispose();
-    modalidadPoints.material.dispose();
-
-    modalidadPoints = rebuilt.points;
-    modalidadPhysics = rebuilt.physics;
-    modalidadGroup.add(modalidadPoints);
-    modalidadLabel.setText(item.tag, item.stat);
-    return modalidadIndex;
-  }
-
-  // --- Bedwars bed (station 3, replaces "orbit the hero again") — the
-  // structure the plan's rigid-block idea was meant for, kept in the same
-  // particle language as everything else instead. A small reprise of the
-  // hero figure stands beside it, "defending" it, tying the CTA's closing
-  // beat back to the actual game the channel is about. ---
-  const bedCenter = new THREE.Vector3(ELEMENTS.cta.x, terrain.anchorHeights.cta, ELEMENTS.cta.z);
-
-  const { points: bedPoints, physics: bedPhysics } = await buildBedwarsContent(tier);
-  const bedGroup = new THREE.Group();
-  bedGroup.position.copy(bedCenter);
-  bedGroup.add(bedPoints);
-  islandGroup.add(bedGroup);
-
-  const { points: camperPoints, physics: camperPhysics } = await buildHero(skinUrl, tier);
-  const camperGroup = new THREE.Group();
-  // Offset diagonally, not just along one axis — purely-sideways placement
-  // put it directly in front of the bed from the station's own camera
-  // angle, merging the two into one blob instead of reading as two things.
-  camperGroup.position.set(bedCenter.x + 11, terrain.anchorHeights.cta, bedCenter.z + 9);
-  camperGroup.scale.setScalar(0.6);
-  camperGroup.rotation.y = -Math.PI / 3;
-  camperGroup.add(camperPoints);
-  islandGroup.add(camperGroup);
-
-  // Team wool by the bed — the single most literal real Bedwars element
-  // there is, and cheap: solid color, no texture needed to read correctly.
-  // Offset back toward the island center (not outward) — an outward offset
-  // here landed it right at the flattened clearing's own edge, reading as
-  // "about to fall off" instead of "next to the bed".
-  const wool = createWoolCluster({
-    position: new THREE.Vector3(bedCenter.x + 6, terrain.anchorHeights.cta, bedCenter.z - 5),
-    color: 0xe8342a,
-  });
-  islandGroup.add(wool);
-
-  const bedLabel = createHudLabel({
-    container,
-    camera,
-    getObject: () => bedGroup,
-    anchor: new THREE.Vector3(0, 5, 0),
-    title: 'CODEVAMP_04',
-    sub: 'DEFEND.BED',
-  });
-
-  // One pose per station, each orbiting its own anchor's center (ELEMENTS
-  // above, or the island/void center for the overview and hero stations) —
-  // a real change of place each time progress crosses a station, not just a
-  // wider-angle look at the same spot. Each on-island anchor's own `angle`
-  // (used to place it on the island, above) is reused here too, so every one
-  // of those cameras looks back in toward the island center with its
-  // subject silhouetted against the rest of the island instead of the void.
   function orbitStation(center, angleDeg, distance, heightAboveCenter, lookAtOffsetY = 0) {
     const rad = (angleDeg * Math.PI) / 180;
     return {
@@ -330,22 +158,15 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     };
   }
 
-  const islandCenter = new THREE.Vector3(ISLAND.center.x, terrain.standingHeight, ISLAND.center.z);
-
-  // Five stations: a wide establishing shot of the whole island (plus a
-  // couple background islands) first — the "ver todo el ambiente" beat —
-  // then each real element in turn, then the void drop for the hero reveal
-  // last. `STATION_SKY` (same length, same order) is what applyProgressEffects
-  // below lerps between; only the last entry differs from the shared island
-  // sky.
+  // Two stations: the island (close, low, horizontal — looking at the house
+  // roughly at eye level instead of down from above) and the void (the
+  // hero reveal, unchanged from before). Looking around the island itself
+  // is drag, not scroll, so it doesn't need its own set of camera stops
+  // anymore.
   const stations = [
-    orbitStation(islandCenter, 45, 150, 100, 15),                                                  // overview
-    orbitStation(destacadoCenter, ELEMENTS.destacado.angle, 44, 22, 10),                          // destacado — the generator
-    orbitStation(modalidadCenter, ELEMENTS.modalidades.angle, 42, 15, 6),                         // modalidades — its own object
-    orbitStation(bedCenter, ELEMENTS.cta.angle, 52, 19, 4),                                       // cta — the Bedwars bed + camper
-    orbitStation(heroVoidCenter, 200, 42, -10, FIGURE_HEIGHT * 0.5),                                // hero — below, looking at it directly
+    orbitStation(islandCenter, 0, 45, 16, 8),                             // island
+    orbitStation(heroVoidCenter, 200, 42, -10, FIGURE_HEIGHT * 0.5),      // void — the hero
   ];
-  const STATION_SKY = [SKY_COLOR, SKY_COLOR, SKY_COLOR, SKY_COLOR, VOID_COLOR];
   const cameraRig = createCameraRig({ camera, stations });
   let currentProgress = 0;
 
@@ -356,37 +177,30 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   // passthrough render.
   const postProcessing = reduceMotion ? null : createPostProcessing(renderer, scene, camera);
 
-  const _fogA = new THREE.Color();
-  const _fogB = new THREE.Color();
-  // The hero station (index 4) is a hard cut to a different place, not a
-  // continuous move through the same space — per feedback, dragging the
-  // camera down through the same island/props for that reveal both cost
-  // rendering the whole world for no reason and made the shot read as
-  // "pointing at the island" instead of a clean cut to the character. Hiding
-  // islandGroup (skips its draw calls entirely, real render cost saved) and
-  // masking the pop with a flash timed to the exact midpoint of the two
-  // transitions next to station 4 (cta→hero, hero→overview) means the
-  // toggle itself is never actually visible — postProcessing is null in
-  // reduceMotion (no transitions ever happen then, so it's moot).
+  // Drag-to-spin the island — see orbit-drag.js. Not built in reduceMotion:
+  // the frame loop that would actually apply the rotation never runs there.
+  const orbitDrag = reduceMotion ? null : createOrbitDrag({ target: islandGroup, container });
+
+  // With only 2 stations every transition is the same one (island ↔ void),
+  // so there's no "is this the void-adjacent transition" check to make
+  // anymore — it always is. The cut itself: island/void backgrounds swap
+  // instantly (not lerped) at the exact midpoint of the flash, same instant
+  // islandGroup's visibility flips — "sube a otra escena" as a real cut,
+  // like igloo.inc, instead of a continuous camera move revealing it.
   function applyProgressEffects(progress) {
-    const n = STATION_SKY.length;
+    const n = stations.length;
     const wrapped = ((progress % n) + n) % n;
     const i0 = Math.floor(wrapped);
-    const i1 = (i0 + 1) % n;
     const t = wrapped - i0;
 
-    _fogA.set(STATION_SKY[i0]);
-    _fogB.set(STATION_SKY[i1]);
-    scene.fog.color.copy(_fogA).lerp(_fogB, t);
-    scene.background.copy(scene.fog.color);
+    if (postProcessing) postProcessing.setFlash(Math.sin(t * Math.PI));
 
-    const isVoidAdjacent = i0 === 4 || i1 === 4;
-    if (postProcessing) postProcessing.setFlash(isVoidAdjacent ? Math.sin(t * Math.PI) : 0);
-
-    const showWorld = !isVoidAdjacent || (i0 === 4 ? t >= 0.5 : t < 0.5);
-    islandGroup.visible = showWorld;
-    modalidadLabel.setHidden(!showWorld);
-    bedLabel.setHidden(!showWorld);
+    const showIsland = i0 === 0 ? t < 0.5 : t >= 0.5;
+    if (showIsland !== islandGroup.visible) {
+      islandGroup.visible = showIsland;
+      scene.background = showIsland ? skyTexture : voidColor;
+      scene.fog.color.set(showIsland ? SKY_HORIZON : VOID_COLOR);
+    }
   }
 
   function setProgress(progress) {
@@ -404,9 +218,9 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     camera.aspect = aspect;
     camera.updateProjectionMatrix();
     // Portrait viewports see a much narrower horizontal slice at this fixed
-    // vertical FOV, so the dead-center hero/bed balloons to fill the width
-    // and gets awkwardly cropped — dolly the camera back as aspect narrows
-    // to keep its on-screen size roughly stable instead.
+    // vertical FOV, so the dead-center hero/house balloons to fill the
+    // width and gets awkwardly cropped — dolly the camera back as aspect
+    // narrows to keep its on-screen size roughly stable instead.
     cameraRig.setDistanceScale(aspect < 1 ? Math.min(2.2, 1 / aspect) : 1);
     setProgress(currentProgress);
     if (postProcessing) postProcessing.setSize(width, height);
@@ -430,9 +244,6 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     onProgress: (progress, engaged) => {
       setProgress(progress);
       if (postProcessing) {
-        // 0 exactly on a station, peaking halfway through a transition —
-        // the "solo durante una transición" cue from the plan, with no
-        // separate velocity tracking needed.
         const distFromStation = Math.abs(progress - Math.round(progress));
         postProcessing.setIntensity(Math.min(1, distFromStation * 2.2));
       }
@@ -445,28 +256,14 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     lastTime = now;
 
     points.rotation.y += delta * 0.2;
-    modalidadGroup.rotation.y += delta * 0.25;
-    bedGroup.rotation.y += delta * 0.08;
-    camperPoints.rotation.y += delta * 0.3;
     const t = now / 1000;
     points.material.uniforms.uTime.value = t;
-    modalidadPoints.material.uniforms.uTime.value = t;
-    bedPoints.material.uniforms.uTime.value = t;
-    camperPoints.material.uniforms.uTime.value = t;
 
     const cursorState = cursor ? cursor.update(delta) : null;
     physics.update(delta, cursorState, t);
     points.geometry.attributes.position.needsUpdate = true;
 
-    modalidadPhysics.update(delta, null, t);
-    modalidadPoints.geometry.attributes.position.needsUpdate = true;
-
-    bedPhysics.update(delta, null, t);
-    bedPoints.geometry.attributes.position.needsUpdate = true;
-
-    camperPhysics.update(delta, null, t);
-    camperPoints.geometry.attributes.position.needsUpdate = true;
-
+    if (orbitDrag) orbitDrag.update(delta);
     if (virtualScroll) virtualScroll.update(delta);
 
     if (postProcessing) postProcessing.render();
@@ -511,9 +308,6 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   if (reduceMotion) {
     const staticT = performance.now() / 1000;
     points.material.uniforms.uTime.value = staticT;
-    modalidadPoints.material.uniforms.uTime.value = staticT;
-    bedPoints.material.uniforms.uTime.value = staticT;
-    camperPoints.material.uniforms.uTime.value = staticT;
     renderer.render(scene, camera);
   } else {
     ensureLoop();
@@ -528,30 +322,19 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     stopLoop();
     resizeObserver.disconnect();
     if (virtualScroll) virtualScroll.dispose();
+    if (orbitDrag) orbitDrag.dispose();
     if (postProcessing) postProcessing.dispose();
     if (cursor) cursor.dispose();
     points.geometry.dispose();
     points.material.dispose();
-    modalidadPoints.geometry.dispose();
-    modalidadPoints.material.dispose();
-    modalidadLabel.dispose();
-    bedPoints.geometry.dispose();
-    bedPoints.material.dispose();
-    bedLabel.dispose();
-    camperPoints.geometry.dispose();
-    camperPoints.material.dispose();
     terrain.userData.dispose();
-    for (const bg of backgroundIslands) bg.userData.dispose();
-    generator.userData.dispose();
-    shopStall.userData.dispose();
-    wool.userData.dispose();
+    house.userData.dispose();
+    skyTexture.dispose();
     renderer.dispose();
   }
 
   return {
     dispose,
     camera,
-    setModalidadItem,
-    getModalidadIndex: () => modalidadIndex,
   };
 }
