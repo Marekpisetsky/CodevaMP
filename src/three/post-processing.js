@@ -8,10 +8,19 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 // camera-rig.js). Driven by a single 0..1 intensity uniform so it costs
 // nothing extra to leave wired up: at 0 (settled on a station) every
 // sample collapses to the same pixel, i.e. a plain passthrough render.
+// `uFlash` is a second, independent effect layered on the same pass — a
+// hard cut to a solid color, driven up to 1 only during the two transitions
+// next to the void/hero station (see world-scene.js's applyProgressEffects).
+// Peaking exactly when the screen is fully covered is what the void station
+// switch relies on: the world/background-islands/props group gets toggled
+// invisible at that same instant, so the pop is hidden behind the flash
+// instead of visible as a sudden change mid-scene.
 const TRANSITION_SHADER = {
   uniforms: {
     tDiffuse: { value: null },
     uIntensity: { value: 0 },
+    uFlash: { value: 0 },
+    uFlashColor: { value: [0.02, 0.03, 0.05] },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -23,6 +32,8 @@ const TRANSITION_SHADER = {
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
     uniform float uIntensity;
+    uniform float uFlash;
+    uniform vec3 uFlashColor;
     varying vec2 vUv;
 
     void main() {
@@ -40,7 +51,9 @@ const TRANSITION_SHADER = {
         float b = texture2D(tDiffuse, uv + center * aberration).b;
         sum += vec4(r, g, b, 1.0);
       }
-      gl_FragColor = sum / float(SAMPLES);
+      vec4 color = sum / float(SAMPLES);
+      color.rgb = mix(color.rgb, uFlashColor, uFlash);
+      gl_FragColor = color;
     }
   `,
 };
@@ -61,6 +74,9 @@ export function createPostProcessing(renderer, scene, camera) {
   function setIntensity(t) {
     transitionPass.uniforms.uIntensity.value = t;
   }
+  function setFlash(t) {
+    transitionPass.uniforms.uFlash.value = t;
+  }
   function setSize(width, height) {
     composer.setSize(width, height);
   }
@@ -71,5 +87,5 @@ export function createPostProcessing(renderer, scene, camera) {
     composer.dispose();
   }
 
-  return { setIntensity, setSize, render, dispose };
+  return { setIntensity, setFlash, setSize, render, dispose };
 }

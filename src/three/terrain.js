@@ -152,9 +152,9 @@ function createIslandMaterial(atlas) {
 // slab. That underside is the whole point: the site's final "descend below
 // the island into the void" beat needs something real to look up at.
 //
-// `anchors` (world x/z points) get a flat spot the same way the old
-// per-station "zones" used to — an object/camera placed on one shouldn't
-// have to fight random noise height under its own feet.
+// `anchors` (world x/z points, each with a `key`) get a flat spot the same
+// way the old per-station "zones" used to — an object/camera placed on one
+// shouldn't have to fight random noise height under its own feet.
 export function createIsland({
   center = { x: 0, z: 0 },
   radius = 70,
@@ -184,6 +184,22 @@ export function createIsland({
   const halfExtent = Math.ceil((radius * (1 + edgeNoiseAmount)) / cellSize) + 2;
   const columns = [];
   let centerTopLevel = 0;
+  const anchorLevels = {};
+
+  // Each anchor's own natural (unflattened) noise value, at its own exact
+  // position — what a clearing flattens *toward* below. Flattening straight
+  // to 0 (the very lowest level the island's noise can produce anywhere)
+  // instead of this reads fine for a single clearing at the one point that
+  // already defines "height 0" (the old single-hero-center design), but
+  // with several anchors scattered across noisy terrain it forces every one
+  // of them down to the island's global minimum regardless of what height
+  // its own neighborhood actually sits at — visibly sinking every prop into
+  // its own pit below the surrounding grass.
+  const anchorTargets = anchors.map((a) => {
+    const agx = (a.x - center.x) / cellSize;
+    const agz = (a.z - center.z) / cellSize;
+    return Math.pow(fbm(agx * noiseScale, agz * noiseScale), 1.5);
+  });
 
   for (let gx = -halfExtent; gx <= halfExtent; gx++) {
     for (let gz = -halfExtent; gz <= halfExtent; gz++) {
@@ -197,13 +213,24 @@ export function createIsland({
       if (distFromCenter >= effectiveRadius) continue;
 
       let n = Math.pow(fbm(gx * noiseScale, gz * noiseScale), 1.5);
+      // Anchors never overlap (they're spaced far apart relative to
+      // clearingRadius), so at most one ever actually pulls on a given
+      // column — tracking the single strongest (lowest flatten) one and
+      // blending toward *its* natural height is enough, no weighted
+      // multi-anchor blend needed.
       let flatten = 1;
-      for (const anchor of anchors) {
+      let flattenTarget = n;
+      for (let ai = 0; ai < anchors.length; ai++) {
+        const anchor = anchors[ai];
         const adx = worldX - anchor.x, adz = worldZ - anchor.z;
         const anchorDist = Math.sqrt(adx * adx + adz * adz);
-        flatten = Math.min(flatten, flattenFactor(anchorDist, clearingRadius));
+        const f = flattenFactor(anchorDist, clearingRadius);
+        if (f < flatten) {
+          flatten = f;
+          flattenTarget = anchorTargets[ai];
+        }
       }
-      n *= flatten;
+      n = flattenTarget + (n - flattenTarget) * flatten;
 
       const topLevel = Math.round(n * maxLevels);
       const edgeT = THREE.MathUtils.clamp(distFromCenter / radius, 0, 1);
@@ -211,6 +238,10 @@ export function createIsland({
 
       columns.push({ worldX, worldZ, topLevel, underDepth, heightT: THREE.MathUtils.clamp(n, 0, 1) });
       if (distFromCenter < cellSize * 0.5) centerTopLevel = topLevel;
+      for (const anchor of anchors) {
+        const adx = worldX - anchor.x, adz = worldZ - anchor.z;
+        if (Math.sqrt(adx * adx + adz * adz) < cellSize * 0.5) anchorLevels[anchor.key] = topLevel;
+      }
     }
   }
 
@@ -267,10 +298,21 @@ export function createIsland({
   geometry.attributes.aTint.needsUpdate = true;
   mesh.frustumCulled = false;
 
-  // Top of the island's center column, in world Y — where an anchored
-  // object/camera should stand (+ half the block's own height, since
-  // instance positions are block centers).
+  // Top of the island's center column, in world Y — the origin anchor's own
+  // standing height (kept as the default/legacy single value; background
+  // islands and anything else not tied to a specific anchor still uses it
+  // as a reference point).
   mesh.standingHeight = centerTopLevel * cellSize + cellSize / 2;
+
+  // Per-anchor standing height — each anchor's clearing now flattens toward
+  // its own local terrain instead of the island's global minimum (see
+  // anchorTargets above), so no two anchors are guaranteed to sit at the
+  // same height anymore; callers need to look theirs up by key instead of
+  // assuming `standingHeight` fits everyone.
+  mesh.anchorHeights = {};
+  for (const [key, level] of Object.entries(anchorLevels)) {
+    mesh.anchorHeights[key] = level * cellSize + cellSize / 2;
+  }
 
   return mesh;
 }
@@ -310,10 +352,14 @@ export function createBackgroundIsland({ center, radius = 14, seed = 0 } = {}) {
     geometries.push({ geo, color: grassColor });
   }
 
-  // Underside: a single downward cone, deep enough to read as a real body
-  // hanging below the top slabs rather than a thin wafer.
-  const underHeight = radius * 2.2;
-  const cone = new THREE.ConeGeometry(radius * 0.85, underHeight, 6);
+  // Underside: a single downward cone. An earlier pass used a tall/narrow
+  // cone (height 2.2x radius, 6-sided) — from a distance that read as a
+  // sharp dart/spike stuck under the island rather than a tapered body, per
+  // feedback. Shorter and wider (roughly as wide as the top slabs, barely
+  // taller than it is wide) plus more sides reads as a stubby island bottom
+  // instead of a weapon.
+  const underHeight = radius * 1.1;
+  const cone = new THREE.ConeGeometry(radius * 1.05, underHeight, 9);
   cone.rotateX(Math.PI);
   cone.translate(0, -underHeight / 2, 0);
   geometries.push({ geo: cone, color: dirtColor });

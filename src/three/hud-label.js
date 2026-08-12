@@ -31,13 +31,14 @@ export function createHudLabel({ container, camera, getObject, anchor, title, su
 
   const worldPoint = new THREE.Vector3(); // reused every frame, no per-frame allocation
   let raf = null;
+  let forcedHidden = false;
 
   function frame() {
     const object = getObject();
     worldPoint.copy(anchor).applyMatrix4(object.matrixWorld);
     worldPoint.project(camera);
 
-    if (worldPoint.z > 1 || worldPoint.z < -1) {
+    if (forcedHidden || worldPoint.z > 1 || worldPoint.z < -1) {
       el.classList.remove('is-visible');
     } else {
       const rect = container.getBoundingClientRect();
@@ -65,11 +66,21 @@ export function createHudLabel({ container, camera, getObject, anchor, title, su
     subScrambler.set(nextSub);
   }
 
+  // For the void station cut (world-scene.js) — the label's own anchor
+  // object is still technically in front of the camera during that station
+  // (projection alone can't tell "hidden behind a scene cut" from "visible"),
+  // so it needs an explicit override instead of relying on the projection
+  // check above.
+  function setHidden(hidden) {
+    forcedHidden = hidden;
+    if (hidden) el.classList.remove('is-visible');
+  }
+
   function dispose() {
     stopLoop();
     document.removeEventListener('visibilitychange', onVisibility);
     el.remove();
   }
 
-  return { el, setText, dispose };
+  return { el, setText, setHidden, dispose };
 }

@@ -54,9 +54,9 @@ async function buildHero(skinUrl, tier) {
 // One real island (see terrain.js's createIsland) instead of 4 separately
 // tinted zones on an infinite grid — every station now shares the same
 // ground, and a station is meant to read as a different place because of
-// what's actually standing there (icebergs today, a resource generator once
-// Fase 3 lands; the Bedwars bed; the Modalidades carousel item), not because
-// the ground itself changes color under each camera.
+// what's actually standing there (a resource generator, the Bedwars bed,
+// the Modalidades carousel item), not because the ground itself changes
+// color under each camera.
 //
 // Anchors sit 120° apart around the island center so each camera looks back
 // in at its own subject with the rest of the island behind it, instead of
@@ -154,9 +154,16 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     // flatten almost the entire thing. A tighter flat spot per anchor
     // leaves real noise-driven terrain visible between them.
     clearingRadius: 18,
-    anchors: Object.values(ELEMENTS),
+    anchors: Object.entries(ELEMENTS).map(([key, a]) => ({ ...a, key })),
   });
-  scene.add(terrain);
+
+  // Everything that lives on the island (the ground itself, the distant
+  // islands, every real element) goes in one group so the void station can
+  // hide the whole cluster in one call instead of tracking each piece —
+  // see applyProgressEffects below, the "cut to another scene" beat.
+  const islandGroup = new THREE.Group();
+  scene.add(islandGroup);
+  islandGroup.add(terrain);
 
   const backgroundIslands = BACKGROUND_ISLANDS.map((b) => {
     const rad = (b.angle * Math.PI) / 180;
@@ -169,7 +176,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
       radius: b.radius,
       seed: b.seed,
     });
-    scene.add(mesh);
+    islandGroup.add(mesh);
     return mesh;
   });
 
@@ -179,18 +186,25 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   // station its own silhouette instead of empty ground underneath it, and
   // reads as "featured" the way a generator is the natural focal point of
   // any real Bedwars island. ---
-  const destacadoCenter = new THREE.Vector3(ELEMENTS.destacado.x, terrain.standingHeight, ELEMENTS.destacado.z);
+  const destacadoCenter = new THREE.Vector3(ELEMENTS.destacado.x, terrain.anchorHeights.destacado, ELEMENTS.destacado.z);
   const generator = createGenerator({ position: destacadoCenter });
-  scene.add(generator);
+  islandGroup.add(generator);
 
   // --- Hero (station 4, the closing reveal) — not standing on the island
   // anymore: after the scroll passes every real element up top, the camera
   // drops below the island into open void and the hero is what's waiting
   // down there. Floating, not "standing" — there's no ground this far below
   // the island's own underside, so it doesn't need terrain.standingHeight
-  // the way every on-island object does. ---
+  // the way every on-island object does.
+  //
+  // Offset off the island's own x/z center on purpose — sitting directly
+  // under it put the hero, the camera, and the island's center all on the
+  // same vertical line, so a camera aimed at the hero and a camera aimed
+  // "up at the island" were the same direction; the station read as looking
+  // at the island with the hero incidentally in the way, not looking at the
+  // hero. Off-axis, the two directions actually separate. ---
   const VOID_DROP = 90;
-  const heroVoidCenter = new THREE.Vector3(ISLAND.center.x, terrain.standingHeight - VOID_DROP, ISLAND.center.z);
+  const heroVoidCenter = new THREE.Vector3(ISLAND.center.x + 34, terrain.standingHeight - VOID_DROP, ISLAND.center.z - 22);
 
   async function buildHeroContent(t) {
     return buildHero(skinUrl, t);
@@ -210,11 +224,11 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   }
 
   let { points: modalidadPoints, physics: modalidadPhysics } = await buildModalidadItemContent(tier);
-  const modalidadCenter = new THREE.Vector3(ELEMENTS.modalidades.x, terrain.standingHeight + 9, ELEMENTS.modalidades.z);
+  const modalidadCenter = new THREE.Vector3(ELEMENTS.modalidades.x, terrain.anchorHeights.modalidades + 9, ELEMENTS.modalidades.z);
   const modalidadGroup = new THREE.Group();
   modalidadGroup.position.copy(modalidadCenter);
   modalidadGroup.add(modalidadPoints);
-  scene.add(modalidadGroup);
+  islandGroup.add(modalidadGroup);
 
   // A small market stall beside the floating carousel item — a real element
   // for it to be "displayed at" instead of just floating over bare ground.
@@ -225,9 +239,9 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   // there), not actually sitting beside/under it the way the counter+sign
   // shape reads when it has room to be seen.
   const shopStall = createShopStall({
-    position: new THREE.Vector3(ELEMENTS.modalidades.x + 10, terrain.standingHeight, ELEMENTS.modalidades.z - 2),
+    position: new THREE.Vector3(ELEMENTS.modalidades.x + 10, terrain.anchorHeights.modalidades, ELEMENTS.modalidades.z - 2),
   });
-  scene.add(shopStall);
+  islandGroup.add(shopStall);
 
   const modalidadLabel = createHudLabel({
     container,
@@ -258,24 +272,24 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   // particle language as everything else instead. A small reprise of the
   // hero figure stands beside it, "defending" it, tying the CTA's closing
   // beat back to the actual game the channel is about. ---
-  const bedCenter = new THREE.Vector3(ELEMENTS.cta.x, terrain.standingHeight, ELEMENTS.cta.z);
+  const bedCenter = new THREE.Vector3(ELEMENTS.cta.x, terrain.anchorHeights.cta, ELEMENTS.cta.z);
 
   const { points: bedPoints, physics: bedPhysics } = await buildBedwarsContent(tier);
   const bedGroup = new THREE.Group();
   bedGroup.position.copy(bedCenter);
   bedGroup.add(bedPoints);
-  scene.add(bedGroup);
+  islandGroup.add(bedGroup);
 
   const { points: camperPoints, physics: camperPhysics } = await buildHero(skinUrl, tier);
   const camperGroup = new THREE.Group();
   // Offset diagonally, not just along one axis — purely-sideways placement
   // put it directly in front of the bed from the station's own camera
   // angle, merging the two into one blob instead of reading as two things.
-  camperGroup.position.set(bedCenter.x + 11, terrain.standingHeight, bedCenter.z + 9);
+  camperGroup.position.set(bedCenter.x + 11, terrain.anchorHeights.cta, bedCenter.z + 9);
   camperGroup.scale.setScalar(0.6);
   camperGroup.rotation.y = -Math.PI / 3;
   camperGroup.add(camperPoints);
-  scene.add(camperGroup);
+  islandGroup.add(camperGroup);
 
   // Team wool by the bed — the single most literal real Bedwars element
   // there is, and cheap: solid color, no texture needed to read correctly.
@@ -283,10 +297,10 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   // here landed it right at the flattened clearing's own edge, reading as
   // "about to fall off" instead of "next to the bed".
   const wool = createWoolCluster({
-    position: new THREE.Vector3(bedCenter.x + 6, terrain.standingHeight, bedCenter.z - 5),
+    position: new THREE.Vector3(bedCenter.x + 6, terrain.anchorHeights.cta, bedCenter.z - 5),
     color: 0xe8342a,
   });
-  scene.add(wool);
+  islandGroup.add(wool);
 
   const bedLabel = createHudLabel({
     container,
@@ -321,7 +335,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   // Five stations: a wide establishing shot of the whole island (plus a
   // couple background islands) first — the "ver todo el ambiente" beat —
   // then each real element in turn, then the void drop for the hero reveal
-  // last. `STATION_SKY` (same length, same order) is what applyFogForProgress
+  // last. `STATION_SKY` (same length, same order) is what applyProgressEffects
   // below lerps between; only the last entry differs from the shared island
   // sky.
   const stations = [
@@ -329,37 +343,58 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     orbitStation(destacadoCenter, ELEMENTS.destacado.angle, 44, 22, 10),                          // destacado — the generator
     orbitStation(modalidadCenter, ELEMENTS.modalidades.angle, 42, 15, 6),                         // modalidades — its own object
     orbitStation(bedCenter, ELEMENTS.cta.angle, 52, 19, 4),                                       // cta — the Bedwars bed + camper
-    orbitStation(heroVoidCenter, 0, 50, -20, FIGURE_HEIGHT * 0.6),                                 // hero — below, looking up
+    orbitStation(heroVoidCenter, 200, 42, -10, FIGURE_HEIGHT * 0.5),                                // hero — below, looking at it directly
   ];
   const STATION_SKY = [SKY_COLOR, SKY_COLOR, SKY_COLOR, SKY_COLOR, VOID_COLOR];
   const cameraRig = createCameraRig({ camera, stations });
   let currentProgress = 0;
 
+  // Built before the first setProgress() call below — applyProgressEffects
+  // reads it for the void station's flash. Only built when transitions can
+  // actually happen: with reduceMotion there's no virtual-scroll, progress
+  // never changes, so the composer would just be pure overhead for a
+  // passthrough render.
+  const postProcessing = reduceMotion ? null : createPostProcessing(renderer, scene, camera);
+
   const _fogA = new THREE.Color();
   const _fogB = new THREE.Color();
-  function applyFogForProgress(progress) {
+  // The hero station (index 4) is a hard cut to a different place, not a
+  // continuous move through the same space — per feedback, dragging the
+  // camera down through the same island/props for that reveal both cost
+  // rendering the whole world for no reason and made the shot read as
+  // "pointing at the island" instead of a clean cut to the character. Hiding
+  // islandGroup (skips its draw calls entirely, real render cost saved) and
+  // masking the pop with a flash timed to the exact midpoint of the two
+  // transitions next to station 4 (cta→hero, hero→overview) means the
+  // toggle itself is never actually visible — postProcessing is null in
+  // reduceMotion (no transitions ever happen then, so it's moot).
+  function applyProgressEffects(progress) {
     const n = STATION_SKY.length;
     const wrapped = ((progress % n) + n) % n;
     const i0 = Math.floor(wrapped);
     const i1 = (i0 + 1) % n;
     const t = wrapped - i0;
+
     _fogA.set(STATION_SKY[i0]);
     _fogB.set(STATION_SKY[i1]);
     scene.fog.color.copy(_fogA).lerp(_fogB, t);
     scene.background.copy(scene.fog.color);
+
+    const isVoidAdjacent = i0 === 4 || i1 === 4;
+    if (postProcessing) postProcessing.setFlash(isVoidAdjacent ? Math.sin(t * Math.PI) : 0);
+
+    const showWorld = !isVoidAdjacent || (i0 === 4 ? t >= 0.5 : t < 0.5);
+    islandGroup.visible = showWorld;
+    modalidadLabel.setHidden(!showWorld);
+    bedLabel.setHidden(!showWorld);
   }
 
   function setProgress(progress) {
     currentProgress = progress;
     cameraRig.applyProgress(progress);
-    applyFogForProgress(progress);
+    applyProgressEffects(progress);
   }
   setProgress(currentProgress);
-
-  // Only built when transitions can actually happen — with reduceMotion
-  // there's no virtual-scroll, progress never changes, so the composer
-  // would just be pure overhead for a passthrough render.
-  const postProcessing = reduceMotion ? null : createPostProcessing(renderer, scene, camera);
 
   function resize() {
     const width = Math.max(1, container.clientWidth);
