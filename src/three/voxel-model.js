@@ -19,7 +19,7 @@ export function createVoxelModel({ positions, colors, normals, seeds, pointSize,
     vertexColors: true,
     transparent: true,
     depthWrite: false,
-    depthTest: false,
+    depthTest: true,
     blending: THREE.AdditiveBlending,
     uniforms: {
       uTime: { value: 0 },

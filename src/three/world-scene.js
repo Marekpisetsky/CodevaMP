@@ -57,11 +57,19 @@ async function buildHero(skinUrl, tier) {
 // pointillist-figure scene and back around. Order matches `stations` below
 // (index i's zone is station i's zone) so fog/terrain lookups can share
 // the same index.
+// Every zone got a brightness/saturation pass — the previous colorLow/
+// fogColor values were dark enough (near-black) that the flat ground right
+// under a station's own object and the "sky" (scene.background, which just
+// mirrors the current fog color — see applyFogForProgress below, there's no
+// separate sky dome) both read as void instead of a colored place. Keeping
+// each station's identity but lifting it out of near-black: destacado in
+// particular moves to an actual bright sky-blue per feedback that "cool"
+// doesn't have to mean dark to look good.
 const STATION_ZONES = [
   {
     key: 'hero', x: 0, z: 0, radius: 38,
-    colorLow: 0x312f38, colorMid: 0x4a1814, colorHigh: 0xe8342a,
-    fogColor: 0x0a0a0c,
+    colorLow: 0x3a2024, colorMid: 0x6e2019, colorHigh: 0xf2483a,
+    fogColor: 0x241014,
   },
   {
     // Far to the +x side, roughly level with hero in z — checked against
@@ -72,18 +80,18 @@ const STATION_ZONES = [
     // shots since those cameras end up looking back roughly toward -z
     // regardless of which station they belong to).
     key: 'destacado', x: 120, z: 0, radius: 30,
-    colorLow: 0x141c28, colorMid: 0x2c4a60, colorHigh: 0xbfe6f5,
-    fogColor: 0x0e1620,
+    colorLow: 0x3d6180, colorMid: 0x5e93b5, colorHigh: 0xdff4fc,
+    fogColor: 0x8fd4f2,
   },
   {
     key: 'modalidades', x: 60, z: 42, radius: 30,
-    colorLow: 0x201830, colorMid: 0x4a2f6b, colorHigh: 0xab6ff0,
-    fogColor: 0x130e1e,
+    colorLow: 0x3d2a5c, colorMid: 0x6b45a0, colorHigh: 0xc796fa,
+    fogColor: 0x3a2560,
   },
   {
     key: 'cta', x: -58, z: 52, radius: 30,
-    colorLow: 0x1c1414, colorMid: 0x5c1210, colorHigh: 0xff4433,
-    fogColor: 0x120a0a,
+    colorLow: 0x40201c, colorMid: 0x82241c, colorHigh: 0xff5c44,
+    fogColor: 0x381814,
   },
 ];
 

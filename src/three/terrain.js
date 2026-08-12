@@ -35,6 +35,22 @@ function smoothstep(edge0, edge1, x) {
   return t * t * (3 - 2 * t);
 }
 
+// A quadratic ramp from the center all the way out to `radius` (the old
+// behavior) makes height climb continuously from the very first cell past
+// the center — from a camera standing just past the radius looking in, that
+// reads as a punchbowl/crater with whatever stands at the true center (a
+// station's hero/object) sitting in the bottom of a pit, visually cut off
+// from the ground around it. Keeping the inner ~55% genuinely flat (0, not
+// "close to 0") and confining the rise to a narrow outer band instead gives
+// stations a real flat plateau to stand on, with the terrain only starting
+// to climb near the very edge of the clearing.
+function flattenFactor(dist, radius) {
+  const flatRadius = radius * 0.55;
+  if (dist <= flatRadius) return 0;
+  if (dist >= radius) return 1;
+  return smoothstep(flatRadius, radius, dist);
+}
+
 function paintNoiseBand(ctx, { x, y, w, h, base, variance, edgeBand = 0 }) {
   const imageData = ctx.createImageData(w, h);
   for (let row = 0; row < h; row++) {
@@ -159,9 +175,9 @@ export function createTerrain({
   // block that reads as near-pure-black on a wide viewport just vanishes
   // into the background, which is exactly what made the world read as a
   // narrow figure floating in empty space instead of a full wallpaper.
-  const neutralLow = new THREE.Color(0x222026);
-  const neutralMid = new THREE.Color(0x2a2730);
-  const neutralHigh = new THREE.Color(0x3a3640);
+  const neutralLow = new THREE.Color(0x2e2a34);
+  const neutralMid = new THREE.Color(0x3c3742);
+  const neutralHigh = new THREE.Color(0x524b58);
 
   const preparedZones = zones.map((z) => ({
     x: z.x,
@@ -193,18 +209,14 @@ export function createTerrain({
       // could put a station's own camera underneath, or its object
       // floating above, a tall random peak that has nothing to do with
       // that baseline.
-      let flatten = distFromCenter < clearingRadius
-        ? (distFromCenter / clearingRadius) ** 2
-        : 1;
+      let flatten = flattenFactor(distFromCenter, clearingRadius);
       for (const zone of zones) {
         // distFromCenter above is in grid-cell units (nx/nz), not world
         // units — zone.x/zone.z are world units, so convert before
         // comparing, or clearingRadius ends up ~3x too small here.
         const zdx = nx - zone.x / cellSize, zdz = nz - zone.z / cellSize;
         const zoneDist = Math.sqrt(zdx * zdx + zdz * zdz);
-        if (zoneDist < clearingRadius) {
-          flatten = Math.min(flatten, (zoneDist / clearingRadius) ** 2);
-        }
+        flatten = Math.min(flatten, flattenFactor(zoneDist, clearingRadius));
       }
       n *= flatten;
 
