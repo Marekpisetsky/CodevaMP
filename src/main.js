@@ -19,12 +19,12 @@ if (dataSaver) {
 pointerInteractions.init();
 emberTrail.init();
 
-// 4 stations total (hero/destacado/modalidades/cta) — must match
+// 5 stations total (overview/destacado/modalidades/cta/hero) — must match
 // world-scene.js's `stations` array length. No station has DOM content to
 // cross-fade anymore (every station is pure 3D world now), so this
 // currently has nothing to toggle — kept wired since it's the plumbing
 // world-scene.js's camera-rig progress already flows through.
-const worldPanels = createWorldPanels(document.querySelectorAll('[data-station]'), 4);
+const worldPanels = createWorldPanels(document.querySelectorAll('[data-station]'), 5);
 
 heroVoxel.init(document.getElementById('hero-voxel'), {
   onStationChange(progress, engaged) {
