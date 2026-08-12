@@ -4,7 +4,7 @@ import { createVoxelModel } from './voxel-model.js';
 import { createParticlePhysics } from './particle-physics.js';
 import { createCursorTracker } from './cursor-interaction.js';
 import { TIERS, guessInitialTier, stepDownTier, fpsFloorFor, measureFps, resolvePixelRatio } from './device-quality.js';
-import { createIsland, createCrystalCluster } from './terrain.js';
+import { createIsland, createBackgroundIsland, createCrystalCluster } from './terrain.js';
 import { createCameraRig } from './camera-rig.js';
 import { createPostProcessing } from './post-processing.js';
 import { createHudLabel } from './hud-label.js';
@@ -86,6 +86,30 @@ const ELEMENTS = {
 // actually off the island to use it).
 const SKY_COLOR = 0x8fd4f2;
 
+// Distant, low-detail islands scattered around the main one — the "other
+// islands visible in the distance, like in Bedwars" beat. Angles deliberately
+// don't line up with ELEMENTS' 90/210/330 so a background island never sits
+// directly behind a station's own subject.
+//
+// Every station's camera sits fairly low and close (15-24 units above the
+// island, 42-52 away, looking in at its own nearby subject) — a background
+// island anywhere near that same height range just disappears behind the
+// main island's own much-closer bulk, confirmed by an earlier pass that put
+// them at camera height and got zero of them actually visible in any of the
+// 4 stations' shots. Biasing height well above typical camera height (most
+// entries 45-90) is what actually gets them poking above the main island's
+// silhouette into open sky; a couple stay low/negative for the future
+// void-look-up station, where "below" is the point.
+const BACKGROUND_ISLANDS = [
+  { angle: 30, distance: 150, height: 55, radius: 20, seed: 11 },
+  { angle: 150, distance: 190, height: 78, radius: 26, seed: 27 },
+  { angle: 270, distance: 160, height: 45, radius: 18, seed: 43 },
+  { angle: 60, distance: 220, height: 90, radius: 22, seed: 59 },
+  { angle: 300, distance: 200, height: 62, radius: 16, seed: 71 },
+  { angle: 200, distance: 180, height: -30, radius: 24, seed: 83 },
+  { angle: 330, distance: 240, height: -55, radius: 30, seed: 95 },
+];
+
 export async function createWorldScene(container, skinUrl, { onStationChange } = {}) {
   let tier = guessInitialTier();
 
@@ -126,6 +150,21 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     anchors: Object.values(ELEMENTS),
   });
   scene.add(terrain);
+
+  const backgroundIslands = BACKGROUND_ISLANDS.map((b) => {
+    const rad = (b.angle * Math.PI) / 180;
+    const mesh = createBackgroundIsland({
+      center: new THREE.Vector3(
+        Math.sin(rad) * b.distance,
+        terrain.standingHeight + b.height,
+        Math.cos(rad) * b.distance,
+      ),
+      radius: b.radius,
+      seed: b.seed,
+    });
+    scene.add(mesh);
+    return mesh;
+  });
 
   // --- Destacado (station 1) — its own spot on the island, not the hero's
   // spot viewed from further back. The video content itself is still DOM
@@ -410,6 +449,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     camperPoints.geometry.dispose();
     camperPoints.material.dispose();
     terrain.userData.dispose();
+    for (const bg of backgroundIslands) bg.userData.dispose();
     icebergs.userData.dispose();
     renderer.dispose();
   }

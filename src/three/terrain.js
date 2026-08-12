@@ -275,6 +275,70 @@ export function createIsland({
   return mesh;
 }
 
+// A cheap, low-detail island for the horizon — same grass-top/dirt-bottom
+// read as the real island, but built from a handful of merged primitives
+// (mergeGeometries, same technique createCrystalCluster below already uses)
+// instead of per-block InstancedMesh instances. These are far enough away
+// that per-block detail would never actually be visible, so paying for it
+// would be pure waste; what sells "there's a world of these out here" is
+// silhouette and count, not fidelity.
+export function createBackgroundIsland({ center, radius = 14, seed = 0 } = {}) {
+  const material = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    flatShading: true,
+    roughness: 0.9,
+    metalness: 0.02,
+  });
+  const grassColor = new THREE.Color(0x5c9c3e);
+  const dirtColor = new THREE.Color(0x6b4a30);
+
+  const geometries = [];
+
+  // Top: a few overlapping slabs at slightly different sizes/heights instead
+  // of one flat box — an irregular silhouette reads as "island" even at a
+  // distance; a single perfect box reads as a floating brick.
+  const topCount = 3 + Math.floor(hash(seed, 1) * 3);
+  for (let i = 0; i < topCount; i++) {
+    const w = radius * (1.1 + hash(seed + i, 2) * 0.9);
+    const d = radius * (1.1 + hash(seed + i, 5) * 0.9);
+    const h = radius * (0.35 + hash(seed + i, 8) * 0.25);
+    const ox = (hash(seed + i, 3) - 0.5) * radius * 0.9;
+    const oz = (hash(seed + i, 6) - 0.5) * radius * 0.9;
+
+    const geo = new THREE.BoxGeometry(w, h, d);
+    geo.translate(ox, h / 2, oz);
+    geometries.push({ geo, color: grassColor });
+  }
+
+  // Underside: a single downward cone, deep enough to read as a real body
+  // hanging below the top slabs rather than a thin wafer.
+  const underHeight = radius * 2.2;
+  const cone = new THREE.ConeGeometry(radius * 0.85, underHeight, 6);
+  cone.rotateX(Math.PI);
+  cone.translate(0, -underHeight / 2, 0);
+  geometries.push({ geo: cone, color: dirtColor });
+
+  for (const { geo, color } of geometries) {
+    const colors = [];
+    const pos = geo.attributes.position;
+    for (let v = 0; v < pos.count; v++) {
+      colors.push(color.r, color.g, color.b);
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  }
+
+  const merged = mergeGeometries(geometries.map((g) => g.geo));
+  for (const { geo } of geometries) geo.dispose();
+
+  const mesh = new THREE.Mesh(merged, material);
+  mesh.position.copy(center);
+  mesh.userData.dispose = () => {
+    merged.dispose();
+    material.dispose();
+  };
+  return mesh;
+}
+
 // A handful of tall, narrow crystal-like columns clustered around a point —
 // cheap set-dressing that gives a station its own silhouette (the
 // "icebergs" beat) instead of empty ground with only a DOM panel over it.
