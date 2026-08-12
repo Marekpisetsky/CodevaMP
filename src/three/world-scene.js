@@ -4,7 +4,8 @@ import { createVoxelModel } from './voxel-model.js';
 import { createParticlePhysics } from './particle-physics.js';
 import { createCursorTracker } from './cursor-interaction.js';
 import { TIERS, guessInitialTier, stepDownTier, fpsFloorFor, measureFps, resolvePixelRatio } from './device-quality.js';
-import { createIsland, createBackgroundIsland, createCrystalCluster } from './terrain.js';
+import { createIsland, createBackgroundIsland } from './terrain.js';
+import { createGenerator, createShopStall, createWoolCluster } from './island-props.js';
 import { createCameraRig } from './camera-rig.js';
 import { createPostProcessing } from './post-processing.js';
 import { createHudLabel } from './hud-label.js';
@@ -168,18 +169,13 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
 
   // --- Destacado (station 1) — its own spot on the island, not the hero's
   // spot viewed from further back. The video content itself is still DOM
-  // (world-panels.js cross-fades it in), but the icebergs give the station
-  // its own silhouette instead of empty ground underneath it. (Fase 3 swaps
-  // these for a resource-generator prop that actually belongs on a Bedwars
-  // island — kept as icebergs for now so this step stays scoped to the
-  // island shape itself.) ---
+  // (world-panels.js cross-fades it in); a resource generator gives the
+  // station its own silhouette instead of empty ground underneath it, and
+  // reads as "featured" the way a generator is the natural focal point of
+  // any real Bedwars island. ---
   const destacadoCenter = new THREE.Vector3(ELEMENTS.destacado.x, terrain.standingHeight, ELEMENTS.destacado.z);
-  const icebergs = createCrystalCluster({
-    center: destacadoCenter,
-    colorLow: 0x3d6180,
-    colorHigh: 0xdff4fc,
-  });
-  scene.add(icebergs);
+  const generator = createGenerator({ position: destacadoCenter });
+  scene.add(generator);
 
   // --- Hero (station 0) ---
   async function buildHeroContent(t) {
@@ -205,6 +201,19 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   modalidadGroup.position.copy(modalidadCenter);
   modalidadGroup.add(modalidadPoints);
   scene.add(modalidadGroup);
+
+  // A small market stall beside the floating carousel item — a real element
+  // for it to be "displayed at" instead of just floating over bare ground.
+  // Offset to the side rather than directly underneath: the item's noise-
+  // displaced placeholder geometry reaches down far enough that a stall
+  // directly below it got swallowed inside the particle cloud's own
+  // silhouette (confirmed by screenshot — the stall was completely invisible
+  // there), not actually sitting beside/under it the way the counter+sign
+  // shape reads when it has room to be seen.
+  const shopStall = createShopStall({
+    position: new THREE.Vector3(ELEMENTS.modalidades.x + 10, terrain.standingHeight, ELEMENTS.modalidades.z - 2),
+  });
+  scene.add(shopStall);
 
   const modalidadLabel = createHudLabel({
     container,
@@ -253,6 +262,17 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   camperGroup.rotation.y = -Math.PI / 3;
   camperGroup.add(camperPoints);
   scene.add(camperGroup);
+
+  // Team wool by the bed — the single most literal real Bedwars element
+  // there is, and cheap: solid color, no texture needed to read correctly.
+  // Offset back toward the island center (not outward) — an outward offset
+  // here landed it right at the flattened clearing's own edge, reading as
+  // "about to fall off" instead of "next to the bed".
+  const wool = createWoolCluster({
+    position: new THREE.Vector3(bedCenter.x + 6, terrain.standingHeight, bedCenter.z - 5),
+    color: 0xe8342a,
+  });
+  scene.add(wool);
 
   const bedLabel = createHudLabel({
     container,
@@ -450,7 +470,9 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     camperPoints.material.dispose();
     terrain.userData.dispose();
     for (const bg of backgroundIslands) bg.userData.dispose();
-    icebergs.userData.dispose();
+    generator.userData.dispose();
+    shopStall.userData.dispose();
+    wool.userData.dispose();
     renderer.dispose();
   }
 
