@@ -261,6 +261,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
 
   const _fogA = new THREE.Color();
   const _fogB = new THREE.Color();
+  const _white = new THREE.Color(0xffffff);
   function applyFogForProgress(progress) {
     const n = STATION_ZONES.length;
     const wrapped = ((progress % n) + n) % n;
@@ -271,6 +272,15 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     _fogB.set(STATION_ZONES[i1].fogColor);
     scene.fog.color.copy(_fogA).lerp(_fogB, t);
     scene.background.copy(scene.fog.color);
+    // The mist planes used to carry a fixed color (hero's own fog tone) —
+    // fine while every station was dark, but once destacado's sky went
+    // bright blue that same dark tone showed up as an out-of-place black
+    // smudge hanging in a bright sky. Tracking the current station's own
+    // fog color (lightened, so it still reads as mist rather than
+    // vanishing into an identical background) keeps it looking like
+    // atmosphere native to wherever the camera actually is.
+    mist.material.uniforms.uColor.value.copy(scene.fog.color).lerp(_white, 0.35);
+    mist2.material.uniforms.uColor.value.copy(scene.fog.color).lerp(_white, 0.35);
   }
 
   function setProgress(progress) {
