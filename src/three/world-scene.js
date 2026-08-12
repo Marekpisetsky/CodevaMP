@@ -4,7 +4,7 @@ import { createVoxelModel } from './voxel-model.js';
 import { createParticlePhysics } from './particle-physics.js';
 import { createCursorTracker } from './cursor-interaction.js';
 import { TIERS, guessInitialTier, stepDownTier, fpsFloorFor, measureFps, resolvePixelRatio } from './device-quality.js';
-import { createTerrain, createCrystalCluster } from './terrain.js';
+import { createIsland, createCrystalCluster } from './terrain.js';
 import { createCameraRig } from './camera-rig.js';
 import { createPostProcessing } from './post-processing.js';
 import { createHudLabel } from './hud-label.js';
@@ -50,54 +50,44 @@ async function buildHero(skinUrl, tier) {
   return { points, physics };
 }
 
-// Each station claims its own patch of the shared ground, its own palette,
-// and its own fog tint — instead of the camera just changing angle on one
-// uniform surface. Arriving at a station is meant to read as arriving
-// somewhere new, the way igloo.inc cuts from its igloo to icebergs to its
-// pointillist-figure scene and back around. Order matches `stations` below
-// (index i's zone is station i's zone) so fog/terrain lookups can share
-// the same index.
-// Every zone got a brightness/saturation pass — the previous colorLow/
-// fogColor values were dark enough (near-black) that the flat ground right
-// under a station's own object and the "sky" (scene.background, which just
-// mirrors the current fog color — see applyFogForProgress below, there's no
-// separate sky dome) both read as void instead of a colored place. Keeping
-// each station's identity but lifting it out of near-black: destacado in
-// particular moves to an actual bright sky-blue per feedback that "cool"
-// doesn't have to mean dark to look good.
-const STATION_ZONES = [
-  {
-    key: 'hero', x: 0, z: 0, radius: 38,
-    colorLow: 0x3a2024, colorMid: 0x6e2019, colorHigh: 0xf2483a,
-    fogColor: 0x241014,
-  },
-  {
-    // Far to the +x side, roughly level with hero in z — checked against
-    // every other station's camera forward direction so the icebergs stay
-    // out of frame until progress actually carries the camera here (an
-    // earlier placement along hero's own -z line of sight, then one
-    // further +z past modalidades/cta, both leaked into other stations'
-    // shots since those cameras end up looking back roughly toward -z
-    // regardless of which station they belong to).
-    key: 'destacado', x: 120, z: 0, radius: 30,
-    colorLow: 0x3d6180, colorMid: 0x5e93b5, colorHigh: 0xdff4fc,
-    fogColor: 0x8fd4f2,
-  },
-  {
-    key: 'modalidades', x: 60, z: 42, radius: 30,
-    colorLow: 0x3d2a5c, colorMid: 0x6b45a0, colorHigh: 0xc796fa,
-    fogColor: 0x3a2560,
-  },
-  {
-    key: 'cta', x: -58, z: 52, radius: 30,
-    colorLow: 0x40201c, colorMid: 0x82241c, colorHigh: 0xff5c44,
-    fogColor: 0x381814,
-  },
-];
+// One real island (see terrain.js's createIsland) instead of 4 separately
+// tinted zones on an infinite grid — every station now shares the same
+// ground, and a station is meant to read as a different place because of
+// what's actually standing there (icebergs today, a resource generator once
+// Fase 3 lands; the Bedwars bed; the Modalidades carousel item), not because
+// the ground itself changes color under each camera.
+//
+// Anchors sit 120° apart around the island center so each camera looks back
+// in at its own subject with the rest of the island behind it, instead of
+// three cameras all favoring the same side. `angle` is reused for both the
+// anchor's own placement and its camera's orbitStation angle below, so the
+// two can never drift out of sync.
+const ISLAND = { center: { x: 0, z: 0 }, radius: 95 };
+// 48 put every anchor's object/label in view from every other station's
+// camera at once (confirmed by screenshot — modalidades' label was legible
+// from the hero station) — cute for "it's all one place" but reads as
+// clutter rather than a series of distinct beats. Wider spacing keeps that
+// same-island cohesion while giving each station room to actually be the
+// only thing in frame.
+const ANCHOR_RADIUS = 65;
+function anchorAt(angleDeg) {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: Math.sin(rad) * ANCHOR_RADIUS, z: Math.cos(rad) * ANCHOR_RADIUS, angle: angleDeg };
+}
+const ELEMENTS = {
+  hero: { x: 0, z: 0, angle: 0 },
+  destacado: anchorAt(90),
+  modalidades: anchorAt(210),
+  cta: anchorAt(330),
+};
+// The bright, luminous sky-blue from earlier feedback — one shared sky for
+// the whole island now instead of a per-station fog lerp (Fase 5 brings
+// back a second, darker "void" palette once there's a station that's
+// actually off the island to use it).
+const SKY_COLOR = 0x8fd4f2;
 
 export async function createWorldScene(container, skinUrl, { onStationChange } = {}) {
   let tier = guessInitialTier();
-  const fogColor = STATION_ZONES[0].fogColor;
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(resolvePixelRatio(tier));
@@ -105,8 +95,8 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(fogColor);
-  scene.fog = new THREE.FogExp2(fogColor, 0.0021);
+  scene.background = new THREE.Color(SKY_COLOR);
+  scene.fog = new THREE.FogExp2(SKY_COLOR, 0.0021);
 
   // Wider than a "look at one figure" framing on purpose — on a wide
   // viewport the old 42° left huge dead-black margins on either side (the
@@ -125,20 +115,30 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   fill.position.set(0, 25, 60);
   scene.add(ambient, key, rim, fill);
 
-  const terrain = createTerrain({ zones: STATION_ZONES });
+  const terrain = createIsland({
+    center: ISLAND.center,
+    radius: ISLAND.radius,
+    // Smaller than the old single-hero-clearing default (42 world units) —
+    // with 4 anchors now sharing one bounded island, the old radius would
+    // flatten almost the entire thing. A tighter flat spot per anchor
+    // leaves real noise-driven terrain visible between them.
+    clearingRadius: 18,
+    anchors: Object.values(ELEMENTS),
+  });
   scene.add(terrain);
 
-  const [heroZone, destacadoZone, modalidadZone, bedZone] = STATION_ZONES;
-
-  // --- Destacado (station 1) — its own spot on the terrain, not the
-  // hero's spot viewed from further back. The video content itself is
-  // still DOM (world-panels.js cross-fades it in), but the icebergs give
-  // the station its own silhouette instead of empty ground underneath it. ---
-  const destacadoCenter = new THREE.Vector3(destacadoZone.x, terrain.standingHeight, destacadoZone.z);
+  // --- Destacado (station 1) — its own spot on the island, not the hero's
+  // spot viewed from further back. The video content itself is still DOM
+  // (world-panels.js cross-fades it in), but the icebergs give the station
+  // its own silhouette instead of empty ground underneath it. (Fase 3 swaps
+  // these for a resource-generator prop that actually belongs on a Bedwars
+  // island — kept as icebergs for now so this step stays scoped to the
+  // island shape itself.) ---
+  const destacadoCenter = new THREE.Vector3(ELEMENTS.destacado.x, terrain.standingHeight, ELEMENTS.destacado.z);
   const icebergs = createCrystalCluster({
     center: destacadoCenter,
-    colorLow: destacadoZone.colorLow,
-    colorHigh: destacadoZone.colorHigh,
+    colorLow: 0x3d6180,
+    colorHigh: 0xdff4fc,
   });
   scene.add(icebergs);
 
@@ -149,11 +149,11 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
 
   let { points, physics } = await buildHeroContent(tier);
   const heroGroup = new THREE.Group();
-  heroGroup.position.set(heroZone.x, terrain.standingHeight, heroZone.z);
+  heroGroup.position.set(ELEMENTS.hero.x, terrain.standingHeight, ELEMENTS.hero.z);
   heroGroup.add(points);
   scene.add(heroGroup);
 
-  // --- Modalidades object (station 2) — its own spot on the terrain, not
+  // --- Modalidades object (station 2) — its own spot on the island, not
   // stacked on top of the hero. ---
   let modalidadIndex = 0;
   async function buildModalidadItemContent(t) {
@@ -161,7 +161,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   }
 
   let { points: modalidadPoints, physics: modalidadPhysics } = await buildModalidadItemContent(tier);
-  const modalidadCenter = new THREE.Vector3(modalidadZone.x, terrain.standingHeight + 9, modalidadZone.z);
+  const modalidadCenter = new THREE.Vector3(ELEMENTS.modalidades.x, terrain.standingHeight + 9, ELEMENTS.modalidades.z);
   const modalidadGroup = new THREE.Group();
   modalidadGroup.position.copy(modalidadCenter);
   modalidadGroup.add(modalidadPoints);
@@ -196,7 +196,7 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   // particle language as everything else instead. A small reprise of the
   // hero figure stands beside it, "defending" it, tying the CTA's closing
   // beat back to the actual game the channel is about. ---
-  const bedCenter = new THREE.Vector3(bedZone.x, terrain.standingHeight, bedZone.z);
+  const bedCenter = new THREE.Vector3(ELEMENTS.cta.x, terrain.standingHeight, ELEMENTS.cta.z);
 
   const { points: bedPoints, physics: bedPhysics } = await buildBedwarsContent(tier);
   const bedGroup = new THREE.Group();
@@ -225,9 +225,12 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
   });
 
   // Four stations, one per section of the site (hero/destacado/modalidades/
-  // cta), each orbiting its own zone's center (STATION_ZONES above) — a
-  // real change of place each time progress crosses a station, not just a
-  // wider-angle look at the same spot the hero stands on.
+  // cta), each orbiting its own anchor's center (ELEMENTS above) — a real
+  // change of place each time progress crosses a station, not just a
+  // wider-angle look at the same spot the hero stands on. Each anchor's own
+  // `angle` (used to place it on the island, above) is reused here too, so
+  // every camera looks back in toward the island center with its subject
+  // silhouetted against the rest of the island instead of the void.
   function orbitStation(center, angleDeg, distance, heightAboveCenter, lookAtOffsetY = 0) {
     const rad = (angleDeg * Math.PI) / 180;
     return {
@@ -240,35 +243,20 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     };
   }
 
-  const heroCenter = new THREE.Vector3(heroZone.x, terrain.standingHeight, heroZone.z);
+  const heroCenter = new THREE.Vector3(ELEMENTS.hero.x, terrain.standingHeight, ELEMENTS.hero.z);
 
   const stations = [
-    orbitStation(heroCenter, 0, 46, FIGURE_HEIGHT * 0.6, FIGURE_HEIGHT * 0.5),  // hero
-    orbitStation(destacadoCenter, 15, 44, 22, 10),                             // destacado — the icebergs
-    orbitStation(modalidadCenter, 30, 42, 15, 6),                               // modalidades — its own object
-    orbitStation(bedCenter, 25, 52, 19, 4),                                     // cta — the Bedwars bed + camper
+    orbitStation(heroCenter, 0, 46, FIGURE_HEIGHT * 0.6, FIGURE_HEIGHT * 0.5),                    // hero
+    orbitStation(destacadoCenter, ELEMENTS.destacado.angle, 44, 22, 10),                          // destacado — the icebergs
+    orbitStation(modalidadCenter, ELEMENTS.modalidades.angle, 42, 15, 6),                         // modalidades — its own object
+    orbitStation(bedCenter, ELEMENTS.cta.angle, 52, 19, 4),                                       // cta — the Bedwars bed + camper
   ];
   const cameraRig = createCameraRig({ camera, stations });
   let currentProgress = 0;
 
-  const _fogA = new THREE.Color();
-  const _fogB = new THREE.Color();
-  function applyFogForProgress(progress) {
-    const n = STATION_ZONES.length;
-    const wrapped = ((progress % n) + n) % n;
-    const i0 = Math.floor(wrapped);
-    const i1 = (i0 + 1) % n;
-    const t = wrapped - i0;
-    _fogA.set(STATION_ZONES[i0].fogColor);
-    _fogB.set(STATION_ZONES[i1].fogColor);
-    scene.fog.color.copy(_fogA).lerp(_fogB, t);
-    scene.background.copy(scene.fog.color);
-  }
-
   function setProgress(progress) {
     currentProgress = progress;
     cameraRig.applyProgress(progress);
-    applyFogForProgress(progress);
   }
   setProgress(currentProgress);
 

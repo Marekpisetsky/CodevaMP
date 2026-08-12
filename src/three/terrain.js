@@ -97,34 +97,14 @@ function createTerrainAtlas({ size = 16 } = {}) {
   return texture;
 }
 
-// One cube "block" per grid column, height quantized to discrete levels —
-// this (plus flat shading) is what reads as voxel/Minecraft terrain rather
-// than a smoothly-deformed hill. A flattened clearing at the center gives
-// the hero a level spot to stand on instead of a random height.
-//
-// `zones` lets each station claim a patch of this shared ground with its
-// own palette (world-scene.js passes one per station, in world x/z units)
-// — a station's arrival is meant to read as a different place, not just a
-// different camera angle on the same red-black ground. Ground outside any
-// zone's radius falls back to a quiet neutral tone, so the colored patches
-// read as distinct islands instead of one continuous gradient.
-export function createTerrain({
-  gridSize = 90,
-  cellSize = 3,
-  maxLevels = 10,
-  noiseScale = 0.045,
-  clearingRadius = 14,
-  zones = [],
-} = {}) {
-  // Flush against each other (no shrink factor) — a small per-instance gap
-  // reads as a deliberate render choice ("floating voxels"), but here it
-  // just showed as broken seams with nothing between them. Real terrain
-  // blocks sit flush.
+// A single cube geometry (shared by every instance below) with UVs remapped
+// so the top face samples the atlas's grass band and every other face
+// samples its dirt band — same trick regardless of what the block ends up
+// tinted, so this only needs to happen once.
+function createIslandBlockGeometry(cellSize) {
   const geometry = new THREE.BoxGeometry(cellSize, cellSize, cellSize);
-  // Remap the top face's V range onto the atlas's top half, every other
-  // face onto the bottom half — BoxGeometry's fixed vertex layout is 4 UVs
-  // per face in order [+x, -x, +y, -y, +z, -z], so face 2 (+y, top) is
-  // vertices 8-11.
+  // BoxGeometry's fixed vertex layout is 4 UVs per face in order
+  // [+x, -x, +y, -y, +z, -z], so face 2 (+y, top) is vertices 8-11.
   const uv = geometry.attributes.uv;
   for (let face = 0; face < 6; face++) {
     const isTop = face === 2;
@@ -135,8 +115,16 @@ export function createTerrain({
     }
   }
   uv.needsUpdate = true;
+  return geometry;
+}
 
-  const atlas = createTerrainAtlas();
+function createIslandMaterial(atlas) {
+  const material = new THREE.MeshStandardMaterial({
+    map: atlas,
+    flatShading: true,
+    roughness: 0.92,
+    metalness: 0.04,
+  });
   // Not vertexColors/setColorAt — in this three.js version that combined
   // with a `map` on an InstancedMesh silently drops the texture entirely
   // (confirmed by testing: MeshBasicMaterial/MeshStandardMaterial with
@@ -145,12 +133,6 @@ export function createTerrain({
   // attribute, makes the map vanish — a real bug in this combination, not
   // a config mistake). A custom per-instance attribute wired through
   // onBeforeCompile sidesteps it entirely.
-  const material = new THREE.MeshStandardMaterial({
-    map: atlas,
-    flatShading: true,
-    roughness: 0.92,
-    metalness: 0.04,
-  });
   material.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader
       .replace('void main() {', 'attribute vec3 aTint;\nvarying vec3 vTint;\nvoid main() {\n  vTint = aTint;');
@@ -158,8 +140,108 @@ export function createTerrain({
       .replace('void main() {', 'varying vec3 vTint;\nvoid main() {')
       .replace('#include <map_fragment>', '#include <map_fragment>\n  diffuseColor.rgb *= vTint;');
   };
+  return material;
+}
 
-  const count = gridSize * gridSize;
+// One real, bounded island instead of an infinite tinted grid: a column
+// exists only if it falls inside a radius that's itself perturbed by noise
+// (a natural, non-circular coastline instead of a perfect disc), and below
+// its surface block it carries a stack of extra blocks going down — deepest
+// at the island's center, tapering to nothing at the edge — so the island
+// actually has a body and an underside instead of being a single floating
+// slab. That underside is the whole point: the site's final "descend below
+// the island into the void" beat needs something real to look up at.
+//
+// `anchors` (world x/z points) get a flat spot the same way the old
+// per-station "zones" used to — an object/camera placed on one shouldn't
+// have to fight random noise height under its own feet.
+export function createIsland({
+  center = { x: 0, z: 0 },
+  radius = 70,
+  cellSize = 3,
+  maxLevels = 10,
+  noiseScale = 0.045,
+  edgeNoiseScale = 0.02,
+  edgeNoiseAmount = 0.3,
+  maxUnderDepth = 5,
+  // World units, not grid-cell units — the old zones code got this wrong
+  // once already (see flattenFactor's callers below) by comparing a
+  // world-unit distance against a grid-cell-unit radius, silently making
+  // the flat spot ~3x too small. Keeping everything in world units here
+  // avoids that unit class of bug entirely.
+  clearingRadius = 42,
+  anchors = [],
+} = {}) {
+  const geometry = createIslandBlockGeometry(cellSize);
+  const atlas = createTerrainAtlas();
+  const material = createIslandMaterial(atlas);
+
+  // Pass 1: walk every candidate column in a square bounding box (big enough
+  // to cover the noise-perturbed radius at its widest) and keep only the
+  // ones actually inside the island. Membership isn't known ahead of time
+  // (unlike the old fixed grid), so the instance count has to be collected
+  // first and the InstancedMesh sized to the real total after.
+  const halfExtent = Math.ceil((radius * (1 + edgeNoiseAmount)) / cellSize) + 2;
+  const columns = [];
+  let centerTopLevel = 0;
+
+  for (let gx = -halfExtent; gx <= halfExtent; gx++) {
+    for (let gz = -halfExtent; gz <= halfExtent; gz++) {
+      const worldX = center.x + gx * cellSize;
+      const worldZ = center.z + gz * cellSize;
+      const dx = worldX - center.x, dz = worldZ - center.z;
+      const distFromCenter = Math.sqrt(dx * dx + dz * dz);
+
+      const edgeN = fbm(gx * edgeNoiseScale, gz * edgeNoiseScale, 3);
+      const effectiveRadius = radius * (1 + (edgeN - 0.5) * 2 * edgeNoiseAmount);
+      if (distFromCenter >= effectiveRadius) continue;
+
+      let n = Math.pow(fbm(gx * noiseScale, gz * noiseScale), 1.5);
+      let flatten = 1;
+      for (const anchor of anchors) {
+        const adx = worldX - anchor.x, adz = worldZ - anchor.z;
+        const anchorDist = Math.sqrt(adx * adx + adz * adz);
+        flatten = Math.min(flatten, flattenFactor(anchorDist, clearingRadius));
+      }
+      n *= flatten;
+
+      const topLevel = Math.round(n * maxLevels);
+      const edgeT = THREE.MathUtils.clamp(distFromCenter / radius, 0, 1);
+      const underDepth = Math.round(maxUnderDepth * Math.pow(1 - edgeT, 1.5));
+
+      columns.push({ worldX, worldZ, topLevel, underDepth, heightT: THREE.MathUtils.clamp(n, 0, 1) });
+      if (distFromCenter < cellSize * 0.5) centerTopLevel = topLevel;
+    }
+  }
+
+  // Real Minecraft-ish colors this time (grass green / dirt brown / stone
+  // grey) instead of the old per-station tint — one shared island doesn't
+  // need a palette per zone anymore, it needs to actually look like ground.
+  const grassLow = new THREE.Color(0x3c6b2a);
+  const grassMid = new THREE.Color(0x5c9c3e);
+  const grassHigh = new THREE.Color(0x8fd45a);
+  const dirtColor = new THREE.Color(0x6b4a30);
+  const stoneColor = new THREE.Color(0x59565c);
+  const grass = new THREE.Color();
+  const under = new THREE.Color();
+
+  const positions = [];
+  const colors = [];
+  for (const col of columns) {
+    grass.copy(grassLow).lerp(grassMid, Math.min(1, col.heightT / 0.5));
+    if (col.heightT >= 0.5) grass.copy(grassMid).lerp(grassHigh, (col.heightT - 0.5) / 0.5);
+    positions.push(col.worldX, col.topLevel * cellSize, col.worldZ);
+    colors.push(grass.r, grass.g, grass.b);
+
+    for (let d = 1; d <= col.underDepth; d++) {
+      const dt = Math.min(1, d / Math.max(1, maxUnderDepth));
+      under.copy(dirtColor).lerp(stoneColor, smoothstep(0.35, 1, dt));
+      positions.push(col.worldX, (col.topLevel - d) * cellSize, col.worldZ);
+      colors.push(under.r, under.g, under.b);
+    }
+  }
+
+  const count = positions.length / 3;
   const tintArray = new Float32Array(count * 3);
   geometry.setAttribute('aTint', new THREE.InstancedBufferAttribute(tintArray, 3));
 
@@ -171,93 +253,24 @@ export function createTerrain({
     material.dispose();
   };
 
-  // Brighter floor than a literal "--bg-panel" match on purpose — a low
-  // block that reads as near-pure-black on a wide viewport just vanishes
-  // into the background, which is exactly what made the world read as a
-  // narrow figure floating in empty space instead of a full wallpaper.
-  const neutralLow = new THREE.Color(0x2e2a34);
-  const neutralMid = new THREE.Color(0x3c3742);
-  const neutralHigh = new THREE.Color(0x524b58);
-
-  const preparedZones = zones.map((z) => ({
-    x: z.x,
-    z: z.z,
-    radius: z.radius,
-    low: new THREE.Color(z.colorLow),
-    mid: new THREE.Color(z.colorMid),
-    high: new THREE.Color(z.colorHigh),
-  }));
-
   const dummy = new THREE.Object3D();
-  const color = new THREE.Color();
-  const zoneColor = new THREE.Color();
-  const half = gridSize / 2;
-  let i = 0;
-  let centerHeight = 0;
-
-  for (let gx = 0; gx < gridSize; gx++) {
-    for (let gz = 0; gz < gridSize; gz++) {
-      const nx = gx - half, nz = gz - half;
-      const distFromCenter = Math.sqrt(nx * nx + nz * nz);
-      const worldX = nx * cellSize, worldZ = nz * cellSize;
-
-      let n = Math.pow(fbm(nx * noiseScale, nz * noiseScale), 1.5);
-      // Flatten toward 0 height around the grid origin AND around every
-      // zone center, not just the origin — every station's object/camera
-      // is placed using the shared `terrain.standingHeight` (the height at
-      // the grid origin) as its Y baseline, so unflattened noise elsewhere
-      // could put a station's own camera underneath, or its object
-      // floating above, a tall random peak that has nothing to do with
-      // that baseline.
-      let flatten = flattenFactor(distFromCenter, clearingRadius);
-      for (const zone of zones) {
-        // distFromCenter above is in grid-cell units (nx/nz), not world
-        // units — zone.x/zone.z are world units, so convert before
-        // comparing, or clearingRadius ends up ~3x too small here.
-        const zdx = nx - zone.x / cellSize, zdz = nz - zone.z / cellSize;
-        const zoneDist = Math.sqrt(zdx * zdx + zdz * zdz);
-        flatten = Math.min(flatten, flattenFactor(zoneDist, clearingRadius));
-      }
-      n *= flatten;
-
-      const level = Math.round(n * maxLevels);
-      const y = level * cellSize;
-
-      dummy.position.set(worldX, y, worldZ);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-
-      const t = THREE.MathUtils.clamp(n, 0, 1);
-      color.copy(neutralLow).lerp(neutralMid, Math.min(1, t / 0.5));
-      if (t >= 0.5) color.copy(neutralMid).lerp(neutralHigh, (t - 0.5) / 0.5);
-
-      for (const zone of preparedZones) {
-        const dx = worldX - zone.x, dz = worldZ - zone.z;
-        const d = Math.sqrt(dx * dx + dz * dz);
-        const weight = 1 - smoothstep(zone.radius * 0.5, zone.radius * 1.5, d);
-        if (weight <= 0) continue;
-        if (t < 0.5) zoneColor.copy(zone.low).lerp(zone.mid, t / 0.5);
-        else zoneColor.copy(zone.mid).lerp(zone.high, (t - 0.5) / 0.5);
-        color.lerp(zoneColor, weight);
-      }
-
-      tintArray[i * 3] = color.r;
-      tintArray[i * 3 + 1] = color.g;
-      tintArray[i * 3 + 2] = color.b;
-
-      if (distFromCenter < 0.5) centerHeight = y;
-      i++;
-    }
+  for (let i = 0; i < count; i++) {
+    dummy.position.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(i, dummy.matrix);
+    tintArray[i * 3] = colors[i * 3];
+    tintArray[i * 3 + 1] = colors[i * 3 + 1];
+    tintArray[i * 3 + 2] = colors[i * 3 + 2];
   }
 
   mesh.instanceMatrix.needsUpdate = true;
   geometry.attributes.aTint.needsUpdate = true;
   mesh.frustumCulled = false;
 
-  // Top of the terrain's center column, in world Y — where the hero should
-  // stand (+ half the block's own height, since instance positions are
-  // block centers).
-  mesh.standingHeight = centerHeight + cellSize / 2;
+  // Top of the island's center column, in world Y — where an anchored
+  // object/camera should stand (+ half the block's own height, since
+  // instance positions are block centers).
+  mesh.standingHeight = centerTopLevel * cellSize + cellSize / 2;
 
   return mesh;
 }
