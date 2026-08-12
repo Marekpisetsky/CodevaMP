@@ -4,7 +4,7 @@ import { createVoxelModel } from './voxel-model.js';
 import { createParticlePhysics } from './particle-physics.js';
 import { createCursorTracker } from './cursor-interaction.js';
 import { TIERS, guessInitialTier, stepDownTier, fpsFloorFor, measureFps, resolvePixelRatio } from './device-quality.js';
-import { createTerrain, createMovingMist, createCrystalCluster } from './terrain.js';
+import { createTerrain, createCrystalCluster } from './terrain.js';
 import { createCameraRig } from './camera-rig.js';
 import { createPostProcessing } from './post-processing.js';
 import { createHudLabel } from './hud-label.js';
@@ -15,7 +15,7 @@ import { createVirtualScroll } from '../js/virtual-scroll.js';
 import { reduceMotion, hoverCapable } from '../js/utils/motion-prefs.js';
 
 // The world-as-a-single-scene pivot (see plan): one continuous 3D
-// environment (voxel terrain + moving mist), one PerspectiveCamera orbiting
+// environment (voxel terrain), one PerspectiveCamera orbiting
 // between 4 stations (hero/destacado/modalidades/cta) driven by
 // virtual-scroll.js's scroll-jacking, instead of 4 independent per-section
 // canvases. Every object in the world — hero, Modalidades item, the
@@ -127,14 +127,6 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
 
   const terrain = createTerrain({ zones: STATION_ZONES });
   scene.add(terrain);
-
-  const mist = createMovingMist({ color: fogColor });
-  mist.position.set(0, terrain.standingHeight + 6, -44);
-  scene.add(mist);
-  const mist2 = createMovingMist({ color: fogColor, width: 520 });
-  mist2.position.set(70, terrain.standingHeight + 12, -8);
-  mist2.rotation.y = Math.PI / 3;
-  scene.add(mist2);
 
   const [heroZone, destacadoZone, modalidadZone, bedZone] = STATION_ZONES;
 
@@ -261,7 +253,6 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
 
   const _fogA = new THREE.Color();
   const _fogB = new THREE.Color();
-  const _white = new THREE.Color(0xffffff);
   function applyFogForProgress(progress) {
     const n = STATION_ZONES.length;
     const wrapped = ((progress % n) + n) % n;
@@ -272,15 +263,6 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     _fogB.set(STATION_ZONES[i1].fogColor);
     scene.fog.color.copy(_fogA).lerp(_fogB, t);
     scene.background.copy(scene.fog.color);
-    // The mist planes used to carry a fixed color (hero's own fog tone) —
-    // fine while every station was dark, but once destacado's sky went
-    // bright blue that same dark tone showed up as an out-of-place black
-    // smudge hanging in a bright sky. Tracking the current station's own
-    // fog color (lightened, so it still reads as mist rather than
-    // vanishing into an identical background) keeps it looking like
-    // atmosphere native to wherever the camera actually is.
-    mist.material.uniforms.uColor.value.copy(scene.fog.color).lerp(_white, 0.35);
-    mist2.material.uniforms.uColor.value.copy(scene.fog.color).lerp(_white, 0.35);
   }
 
   function setProgress(progress) {
@@ -352,8 +334,6 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     modalidadPoints.material.uniforms.uTime.value = t;
     bedPoints.material.uniforms.uTime.value = t;
     camperPoints.material.uniforms.uTime.value = t;
-    mist.material.uniforms.uTime.value = t;
-    mist2.material.uniforms.uTime.value = t;
 
     const cursorState = cursor ? cursor.update(delta) : null;
     physics.update(delta, cursorState, t);
@@ -443,10 +423,6 @@ export async function createWorldScene(container, skinUrl, { onStationChange } =
     camperPoints.material.dispose();
     terrain.userData.dispose();
     icebergs.userData.dispose();
-    mist.geometry.dispose();
-    mist.material.dispose();
-    mist2.geometry.dispose();
-    mist2.material.dispose();
     renderer.dispose();
   }
 
